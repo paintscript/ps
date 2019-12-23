@@ -21,7 +21,7 @@
 (defn- round [n]
   #?(:cljs (js/Math.round n)))
 
-(defn coord [scaled xy-init upd!]
+(defn coord [scaled xy-init upd! coord-size]
   (#?(:cljs r/with-let :clj let)
     [!xy   (atom xy-init)
      !snap (atom nil)]
@@ -39,10 +39,10 @@
                                 (upd! xy')
                                 (reset! !xy xy'))))
            :on-mouse-up   #(reset! !snap nil)}
-       [:circle {:cx x :cy y :r 0.2 :fill "hsla(0,100%,50%,1)"}]
-       [:circle {:cx x :cy y :r 1.5 :fill "hsla(240,100%,50%,0.3)"}]
+       [:circle {:cx x :cy y :r (-> 0.2 (* coord-size)) :fill "hsla(0,100%,50%,1)"}]
+       [:circle {:cx x :cy y :r (-> 1.5 (* coord-size)) :fill "hsla(240,100%,50%,0.3)"}]
        [:text {:x x :y (+ y 0.5) :fill "white"
-               :font-size 1
+               :font-size (-> 1 (* coord-size))
                :text-anchor "middle"
                :style {:user-select "none"}}
         (str x " " y)]])))
@@ -59,26 +59,36 @@
 (defn- normalize-curves [pth-vv]
   (loop [[[pth-k & pnts :as pth-v] & pth-vv-tail] pth-vv
          tgt-prev nil
+         c2-prev nil
          acc []]
     (if-not pth-k
       acc
       (case pth-k
-        :line     (recur pth-vv-tail (last pth-v) (conj acc pth-v))
-        :line*    (recur pth-vv-tail (last pth-v) (conj acc pth-v))
+        :line     (recur pth-vv-tail (last pth-v) nil (conj acc pth-v))
+        :line*    (recur pth-vv-tail (last pth-v) nil (conj acc pth-v))
 
         :curve-C  (let [[_ c2 tgt] pnts]
-                    (recur pth-vv-tail (flip-c2 c2 tgt) (conj acc pth-v)))
+                    (recur pth-vv-tail tgt c2 (conj acc pth-v)))
+
+        :curve-c  (let [[c1 c2 tgt :as pnts'] (map #(mapv + % tgt-prev) pnts)]
+                    (recur pth-vv-tail tgt c2 (conj acc [:curve-C c1 c2 tgt])))
 
         :curve-C1 (let [[c1 tgt] pnts
                         curve-C [:curve-C c1 tgt tgt]]
-                    (recur pth-vv-tail tgt (conj acc curve-C)))
+                    (recur pth-vv-tail tgt nil (conj acc curve-C)))
 
         :curve-S  (let [[c2 tgt] pnts
-                        curve-C [:curve-C tgt-prev c2 tgt]]
-                    (recur pth-vv-tail (flip-c2 c2 tgt) (conj acc curve-C)))
+                        c1 (flip-c2 c2-prev tgt-prev)
+                        curve-C [:curve-C c1 c2 tgt]]
+                    (recur pth-vv-tail tgt c2 (conj acc curve-C)))
+
+        :curve-s  (let [[c2 tgt] (map #(mapv + % tgt-prev) pnts)
+                        c1 (flip-c2 c2-prev tgt-prev)
+                        curve-C [:curve-C c1 c2 tgt]]
+                    (recur pth-vv-tail tgt c2 (conj acc curve-C)))
 
         :curve-Q  (let [[_ tgt] pnts]
-                    (recur pth-vv-tail tgt (conj acc pth-v)))))))
+                    (recur pth-vv-tail tgt nil (conj acc pth-v)))))))
 
 (defn- steal-next [pth-vv-tail]
   (let [xy-1         (-> pth-vv-tail first last)
@@ -139,10 +149,15 @@
       :line     [data (cons "M" args)]
       :line*    [data (cons "L" args)]
       :curve-S  (let [[   c2 tgt] args] [data (list "S"    c2  tgt)])
+      :curve-s  (let [[   c2 tgt] args] [data (list "s"    c2  tgt)])
       :curve-C  (let [[c1 c2 tgt] args] [data (list "C" c1 c2  tgt)])
+      :curve-c  (let [[c1 c2 tgt] args] [data (list "c" c1 c2  tgt)])
       :curve-C1 (let [[c1    tgt] args] [data (list "C" c1 tgt tgt)])
+      :curve-c1 (let [[c1    tgt] args] [data (list "c" c1 tgt tgt)])
       :curve-Q  (let [[c     tgt] args] [data (list "Q" c      tgt)])
-      :curve-T  (let [[c1    tgt] args] [data (list "T" c1 tgt tgt)]))))
+      :curve-q  (let [[c     tgt] args] [data (list "q" c      tgt)])
+      :curve-T  (let [[c1    tgt] args] [data (list "T" c1 tgt tgt)])
+      :curve-t  (let [[c1    tgt] args] [data (list "t" c1 tgt tgt)]))))
 
 (defn path
   ([pth-vecs] (path nil pth-vecs))
@@ -158,9 +173,12 @@
                       (->> (map second))
                       (cond-> mirror
                               (as-> pnts
-                                    (->> (if (= :merged mirror)
-                                           (reverse-pth-vecs width pth-vecs)
-                                           pth-vecs)
+                                    (->> (case mirror
+                                           nil       pth-vecs
+                                           :merged   (->> pth-vecs
+                                                          (reverse-pth-vecs width))
+                                           :separate (->> pth-vecs
+                                                          normalize-curves))
                                          (path {:debug? true})
                                          first
                                          (map second)
@@ -174,7 +192,8 @@
            [:path {:d (apply d points)}]
            points))))))
 
-(defn path-builder [{:as opts :keys [scaled debug? attrs]} pth-vecs-init]
+(defn path-builder [{:as opts :keys [scaled debug? attrs coord-size]}
+                    pth-vecs-init]
   (#?(:cljs r/with-let :clj let)
     [!pth-vecs (atom pth-vecs-init)]
     (let [pth-vecs @!pth-vecs
@@ -187,4 +206,4 @@
                [i-pnt pnt] (map-indexed vector args)
                :let [upd! #(swap! !pth-vecs assoc-in [i (+ i-pnt pnt-offset)] %)]]
            ^{:key (hash [i i-pnt])}
-           [coord scaled pnt upd!]))])))
+           [coord scaled pnt upd! (or coord-size 1)]))])))
