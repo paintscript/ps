@@ -21,32 +21,6 @@
 (defn- round [n]
   #?(:cljs (js/Math.round n)))
 
-(defn coord [scaled xy-init upd! coord-size]
-  (#?(:cljs r/with-let :clj let)
-    [!xy   (atom xy-init)
-     !snap (atom nil)]
-    (let [[x y] @!xy]
-      [:g {:style {:cursor "pointer"
-                   :text-select "none"}
-           :on-mouse-down #(reset! !snap {:xy0 [x y] :m0 (xy-mouse %)})
-           :on-mouse-move (fn [ev]
-                            (when-let [{:as snap :keys [xy0 m0]} @!snap]
-                              (let [m1  (xy-mouse ev)
-                                    d   (mapv - m1 m0)
-                                    d'  (mapv / d scaled)
-                                    d'  (mapv round d')
-                                    xy' (mapv + xy0 d')]
-                                (upd! xy')
-                                (reset! !xy xy'))))
-           :on-mouse-up   #(reset! !snap nil)}
-       [:circle {:cx x :cy y :r (-> 0.2 (* coord-size)) :fill "hsla(0,100%,50%,1)"}]
-       [:circle {:cx x :cy y :r (-> 1.5 (* coord-size)) :fill "hsla(240,100%,50%,0.3)"}]
-       [:text {:x x :y (+ y 0.5) :fill "white"
-               :font-size (-> 1 (* coord-size))
-               :text-anchor "middle"
-               :style {:user-select "none"}}
-        (str x " " y)]])))
-
 (defn- parse-vec [[k & args]]
   (if (map? (first args))
     [k (first args) 2 (rest args)]
@@ -99,7 +73,7 @@
 (defn- reverse-pth-vec-pnts
   "drop last point and redistribute the rest in reverse:
     ([:line 1 2] [:curve-C 3 4 5] [:curve-C 6 7 8])
-    => ([:curve-C 7 6 5] [:curve-C 4 3 2] [:line 1])
+    => ([:curve-C 7 6 5] [:curve-C 4 3 2] [:line* 1])
   "
   [pth-vv]
   (loop [[[pth-k & pnts :as pth-v-curr] & pth-vv-tail] (reverse pth-vv)
@@ -161,7 +135,9 @@
 
 (defn path
   ([pth-vecs] (path nil pth-vecs))
-  ([{:keys [mode debug? close? cutout? draw? width mirror] :or {mode :concave}}
+  ([{:keys [mode debug? close? cutout? draw? width mirror]
+     :or   {width 100
+            mode  :concave}}
     pth-vecs-init]
    (let
      [!pth-vecs (atom pth-vecs-init)]
@@ -169,28 +145,60 @@
            pnt-tups
            (for [[i pth-vec] (map-indexed vector pth-vecs)]
              (pth-vec-->svg-seq i pth-vec))
-           points (-> pnt-tups
-                      (->> (map second))
-                      (cond-> mirror
-                              (as-> pnts
-                                    (->> (case mirror
-                                           nil       pth-vecs
-                                           :merged   (->> pth-vecs
-                                                          (reverse-pth-vecs width))
-                                           :separate (->> pth-vecs
-                                                          normalize-curves))
-                                         (path {:debug? true})
-                                         first
-                                         (map second)
-                                         (mirror-pnts width)
-                                         (concat pnts))))
-                      (cond-> close? (concat ["Z"]))
-                      flatten)]
+
+           points
+           (-> pnt-tups
+               (->> (map second))
+               (cond-> mirror
+                       (as-> pnts
+                             (->> (case mirror
+                                    nil       pth-vecs
+                                    :merged   (->> pth-vecs
+                                                   (reverse-pth-vecs width))
+                                    :separate (->> pth-vecs
+                                                   normalize-curves))
+                                  (path {:debug? true})
+                                  first
+                                  (map second)
+                                  (mirror-pnts width)
+                                  (concat pnts))))
+               (cond-> close? (concat ["Z"]))
+               flatten)]
+
        (if debug?
          [pnt-tups points]
          (if draw?
            [:path {:d (apply d points)}]
            points))))))
+
+;; -----------------------------------------------------------------------------
+;; UI
+
+(defn coord [scaled xy-init upd! coord-size]
+  (#?(:cljs r/with-let :clj let)
+    [!xy   (atom xy-init)
+     !snap (atom nil)]
+    (let [[x y] @!xy]
+      [:g {:style {:cursor "pointer"
+                   :text-select "none"}
+           :on-mouse-down #(reset! !snap {:xy0 [x y] :m0 (xy-mouse %)})
+           :on-mouse-move (fn [ev]
+                            (when-let [{:as snap :keys [xy0 m0]} @!snap]
+                              (let [m1  (xy-mouse ev)
+                                    d   (mapv - m1 m0)
+                                    d'  (mapv / d scaled)
+                                    d'  (mapv round d')
+                                    xy' (mapv + xy0 d')]
+                                (upd! xy')
+                                (reset! !xy xy'))))
+           :on-mouse-up   #(reset! !snap nil)}
+       [:circle {:cx x :cy y :r (-> 0.2 (* coord-size)) :fill "hsla(0,100%,50%,1)"}]
+       [:circle {:cx x :cy y :r (-> 1.5 (* coord-size)) :fill "hsla(240,100%,50%,0.3)"}]
+       [:text {:x x :y (+ y 0.5) :fill "white"
+               :font-size (-> 1 (* coord-size))
+               :text-anchor "middle"
+               :style {:user-select "none"}}
+        (str x " " y)]])))
 
 (defn path-builder [{:as opts :keys [scaled debug? attrs coord-size]}
                     pth-vecs-init]
