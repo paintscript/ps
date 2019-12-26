@@ -8,15 +8,16 @@
    {:xx (fn [_ctx {:keys [title]} f] (testing title (f)))
     :x->
     (fn [ctx c args]
-      (let [{:keys [op opts arcs pnts width path =>]}
+      (let [{:keys [op opts-base opts arcs pnts width path =>]}
             (merge (-> ctx :args) args)]
-        (is (= =>
-               (case op
-                 :path                 (core/path opts path)
-                 :arcs                 (#'core/arcs arcs opts)
-                 :mirror-pnts          (#'core/mirror-pnts width pnts)
-                 :normalize-curves     (#'core/normalize-curves path)
-                 :reverse-pth-vec-pnts (#'core/reverse-pth-vec-pnts path))))))}})
+        (let [opts' (merge opts-base opts)]
+          (is (= =>
+                 (case op
+                   :path                 (core/path opts' path)
+                   :arcs                 (#'core/arcs arcs opts)
+                   :mirror-pnts          (#'core/mirror-pnts width pnts)
+                   :normalize-curves     (#'core/normalize-curves path)
+                   :reverse-pth-vec-pnts (#'core/reverse-pth-vec-pnts path)))))))}})
 
 (def core-xspace
   [(xx "util"
@@ -53,16 +54,23 @@
 
    (xx {:= {:op :path}}
 
+       (x:= :view-opts
+            {:debug? true :coord-size 10
+             :attrs {:stroke "red" :stroke-width 2 :fill "none"}})
+
        (x-> :opts {}
-            :path [[:line [0 0] [10 10]]]
-            :=>   (list "M" 0 0 10 10))
+            :path [[:line [0 0] [30 30]]]
+            :=>   (list "M" 0 0 30 30))
 
        (xx {:= {:opts {:mirror :separate}}}
 
-           (x-> :path [[:line [0 0] [10 10]]]
-                :=>   '("M" 0 0 10 10 "M" 100 0 90 10)))
+           (x-> :path [[:line [0 0] [30 30]]]
+                :=>   '("M" 0 0 30 30 "M" 100 0 70 30)))
 
        (xx {:= {:opts {:mirror :merged}}}
+
+           (x-> :path [[:line [0 0] [30 30]]]
+                :=>   '("M" 0 0 30 30 "L" 70 30 100 0))
 
            (x-> :path [[:line [0 0] [50 50]]]
                 :=>   '("M" 0 0 50 50 "L" 50 50 100 0))))])

@@ -200,7 +200,8 @@
                :style {:user-select "none"}}
         (str x " " y)]])))
 
-(defn path-builder [{:as opts :keys [scaled debug? attrs coord-size]}
+(defn path-builder [{:as opts :keys [scaled debug? attrs coord-size]
+                     :or {scaled [1 1]}}
                     pth-vecs-init]
   (#?(:cljs r/with-let :clj let)
     [!pth-vecs (atom pth-vecs-init)]

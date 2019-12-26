@@ -1,0 +1,12 @@
+@import '../../../xspace/resources/scss/index';
+@import '../../../urlkit-util/resources/scss/ui';
+
+body {
+  padding: 0 15px;
+  font-family: 'Helvetica Neue', sans-serif;
+}
+
+div.xspace-paintscript > svg {
+  display: block;
+  background-color: hsl(240,0%,95%);
+}
