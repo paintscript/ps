@@ -30,16 +30,43 @@
   (let [delta (mapv - tgt c2)]
     (mapv + tgt delta)))
 
+(defn- flip-bin [n] (case n 0 1 0))
+
+(defn- mirror-pnt  [width pnt]  (update pnt 0 #(- width %)))
+(defn- mirror-pnts [width pnts] (map #(mirror-pnt width %) pnts))
+
+(defn- mirror-pth-vecs [width pth-vv]
+  (->> pth-vv
+       (map (fn [[pth-k & pnts :as pth-v]]
+              (case pth-k
+                :arc     (let [[opts & pnts] pnts]
+                           (concat [pth-k (-> opts
+                                              (update :mode #(case % :convex :concave :convex)))]
+                                   (mirror-pnts width pnts)))
+                :curve-A (let [[r [rot f1 f2] xy] pnts
+
+                               ;; NOTE: needs to be undone when combined with reverse
+                               f2' (-> f2 flip-bin)]
+                           [:curve-A r [rot f1 f2'] (mirror-pnt width xy)])
+                (cons pth-k
+                      (mirror-pnts width pnts)))))))
+
 (defn- normalize-curves [pth-vv]
   (loop [[[pth-k & pnts :as pth-v] & pth-vv-tail] pth-vv
          tgt-prev nil
-         c2-prev nil
-         acc []]
+         c2-prev  nil
+         acc      []]
     (if-not pth-k
       acc
       (case pth-k
         :line     (recur pth-vv-tail (last pth-v) nil (conj acc pth-v))
         :line*    (recur pth-vv-tail (last pth-v) nil (conj acc pth-v))
+        :arc      (let [[arg1 & args-rest] pnts
+                        arc' (if (map? arg1) pth-v (concat [:arc {}] pnts))]
+                    (recur pth-vv-tail (last pth-v) nil (conj acc arc')))
+
+        :curve-A  (let [[_ _ tgt] pnts]
+                    (recur pth-vv-tail tgt nil (conj acc pth-v)))
 
         :curve-C  (let [[_ c2 tgt] pnts]
                     (recur pth-vv-tail tgt c2 (conj acc pth-v)))
@@ -89,6 +116,16 @@
                        i (cons :line* (concat (reverse pnts) [xy-1]))]
                    (recur pth-vv-tail' (-> acc (cond-> (seq pnts) (conj i)))))
 
+        :arc     (let [i (cons :arc* (reverse pnts))]
+                   (recur pth-vv-tail (-> acc (cond-> (seq pnts) (conj i)))))
+
+        :curve-A  (let [[r p xy2] pnts
+                        p' (update p 2 flip-bin)
+                        [xy-1
+                         pth-vv-tail'] (steal-next pth-vv-tail)
+                        i              [:curve-A r p' xy-1]]
+                    (recur pth-vv-tail' (conj acc i)))
+
         :curve-C (let [[c1 c2 xy]     pnts
                        [xy-1
                         pth-vv-tail'] (steal-next pth-vv-tail)
@@ -98,7 +135,7 @@
         :curve-Q (let [[c xy] pnts
                        [xy-1
                         pth-vv-tail'] (steal-next pth-vv-tail)
-                       i            [:curve-Q c xy-1]]
+                       i              [:curve-Q c xy-1]]
                    (recur pth-vv-tail' (conj acc i)))))))
 
 (defn- reverse-pth-vecs
@@ -106,13 +143,6 @@
   (->> pth-vecs
        normalize-curves
        reverse-pth-vec-pnts))
-
-(defn- mirror-pnts [width pnts]
-  (->> pnts
-       (map (fn [[op-char & pnts]]
-              (cons op-char
-                    (map (fn [pnt] (update pnt 0 #(- width %)))
-                         pnts))))))
 
 (defn pth-vec-->svg-seq [i pth-vec]
   (let [[k opts i-o args] (parse-vec pth-vec)
@@ -122,6 +152,7 @@
       :arc*     [data (arcs args (assoc opts :ctd? true))]
       :line     [data (cons "M" args)]
       :line*    [data (cons "L" args)]
+      :curve-A  (let [[r  p  tgt] args] [data (list "A" r  p   tgt)])
       :curve-S  (let [[   c2 tgt] args] [data (list "S"    c2  tgt)])
       :curve-s  (let [[   c2 tgt] args] [data (list "s"    c2  tgt)])
       :curve-C  (let [[c1 c2 tgt] args] [data (list "C" c1 c2  tgt)])
@@ -157,10 +188,10 @@
                                                    (reverse-pth-vecs width))
                                     :separate (->> pth-vecs
                                                    normalize-curves))
+                                  (mirror-pth-vecs width)
                                   (path {:debug? true})
                                   first
                                   (map second)
-                                  (mirror-pnts width)
                                   (concat pnts))))
                (cond-> close? (concat ["Z"]))
                flatten)]

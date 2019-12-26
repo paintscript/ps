@@ -29,12 +29,6 @@
                         ["A" [10  10] [0 "0,1"] [10 10]]
                         ["A" [10 -10] [0 "0,1"] [20  0]])))
 
-       (xx {:= {:op :mirror-pnts}}
-
-           (x-> :width 10
-                :pnts  '([:line [0  0] [10 10]])
-                :=>    '([:line [10 0] [0  10]])))
-
        (xx {:= {:op :normalize-curves}}
 
            (x-> "C1"
@@ -58,22 +52,58 @@
             {:debug? true :coord-size 10
              :attrs {:stroke "red" :stroke-width 2 :fill "none"}})
 
-       (x-> :opts {}
-            :path [[:line [0 0] [30 30]]]
-            :=>   (list "M" 0 0 30 30))
-
-       (xx {:= {:opts {:mirror :separate}}}
+       (xx "lines"
 
            (x-> :path [[:line [0 0] [30 30]]]
-                :=>   '("M" 0 0 30 30 "M" 100 0 70 30)))
+                :=>   (list "M" 0 0 30 30))
 
-       (xx {:= {:opts {:mirror :merged}}}
+           (xx {:= {:opts {:mirror :separate}}}
 
-           (x-> :path [[:line [0 0] [30 30]]]
-                :=>   '("M" 0 0 30 30 "L" 70 30 100 0))
+               (x-> :path [[:line [0 0] [30 30]]]
+                    :=>   '("M" 0 0 30 30 "M" 100 0 70 30)))
 
-           (x-> :path [[:line [0 0] [50 50]]]
-                :=>   '("M" 0 0 50 50 "L" 50 50 100 0))))])
+           (xx {:= {:opts {:mirror :merged}}}
+
+               (x-> :path [[:line [0 0] [30 30]]]
+                    :=>   '("M" 0 0 30 30 "L" 70 30 100 0))
+
+               (x-> :path [[:line [0 0] [50 50]]]
+                    :=>   '("M" 0 0 50 50 "L" 50 50 100 0))))
+
+       (xx "arcs"
+
+           (xx {:= {:path [[:arc [0 0] [30 30]]]}}
+
+               (x-> :=>   '("M" 0 0 "A" 30 30 0 "0,1" 30 30))
+
+               (x-> :opts {:mirror :separate}
+                    :=>   '("M" 0   0 "A"  30 30 0 "0,1" 30 30
+                            "M" 100 0 "A" -30 30 0 "0,0" 70 30)))
+
+           (xx {:= {:path [[:arc [10 10] [50 30]]]}}
+
+               (x-> :=>   '("M" 10 10 "A" 40 20 0 "0,1" 50 30))
+
+               (x-> :opts {:mirror :separate}
+                    :=>   '("M" 10 10 "A"  40 20 0 "0,1" 50 30
+                            "M" 90 10 "A" -40 20 0 "0,0" 50 30)))
+
+           (xx {:= {:path [[:line [10 10]]
+                           [:curve-A [40 20] [0 0 1] [50 30]]]}}
+
+               (x-> :=>   '("M" 10 10 "A"  40 20 0 0 1 50 30))
+
+               (x-> :opts {:mirror :separate}
+                    :=>   '("M" 10 10 "A" 40 20 0 0 1 50 30
+                            "M" 90 10 "A" 40 20 0 0 0 50 30))
+
+               (x-> :opts {:mirror :merged}
+                    :view-opts
+                    {:debug? false :coord-size 10
+                     :attrs {:stroke "red" :stroke-width 2 :fill "none"}}
+                    :=>   ["M" 10 10
+                           "A" 40 20 0 0 1 50 30
+                           "A" 40 20 0 0 1 90 10]))))])
 
 (deftest core-test
   (x/traverse-xspace core-xspace-cfg

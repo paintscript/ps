@@ -1,6 +1,6 @@
 (ns paintscript.xspace-view
   (:require [reagent.core :as r]
-            [svg-hiccup-kit.core :refer [tf]]
+            [svg-hiccup-kit.core :refer [tf d]]
             [paintscript.core :as core]))
 
 (defn xspace-paintscript [ctx c args]
@@ -14,5 +14,8 @@
        (condp #(contains? %1 %2) op
          #{:path}
          [:svg {:width 100 :height 100}
-          [core/path-builder opts' path]]
+          [core/path-builder opts' path]
+          ; [:path {:stroke "red" :fill "none"
+          ;         :d (apply d =>)}]
+          ]
          nil))]))

@@ -2,4 +2,7 @@
 {:tests [{:id           :unit
           :source-paths ["src/"]
           :test-paths   ["xspace/"]
-          :ns-patterns  [".*"]}]}
+          :ns-patterns  [".*"]}]
+
+ :capture-output? false
+ }
