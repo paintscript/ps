@@ -1,7 +1,8 @@
 (ns paintscript.core
   (:require #?(:cljs [reagent.core :as r :refer [atom]])
             [clojure.string :as str]
-            [svg-hiccup-kit.core :refer [d d2]]))
+            [svg-hiccup-kit.core :refer [d d2]]
+            [paintscript.util :as u]))
 
 (defn- arcs
   [pth {:as opts :keys [mode ctd?] :or {mode :concave}}]
@@ -144,6 +145,17 @@
        normalize-curves
        reverse-pth-vec-pnts))
 
+(defn map-pnts [f pth-vecs]
+  (->> pth-vecs
+       (map (fn [[op-k & pnts :as pth-vec]]
+              (case op-k
+                :curve-A (-> pth-vec (update 3 f))
+                (cons op-k
+                      (map f pnts)))))))
+
+(defn scale-path [pth-vecs ctr n]
+  (map-pnts #(u/tl-point-towards % ctr n) pth-vecs))
+
 (defn pth-vec-->svg-seq [i pth-vec]
   (let [[k opts i-o args] (parse-vec pth-vec)
         data [args i i-o]]
@@ -167,12 +179,15 @@
 (defn path
   ([pth-vecs] (path nil pth-vecs))
   ([{:keys [mode debug? close? cutout? draw? width mirror]
+     [scale-ctr scale-fract :as scale] :scale
      :or   {width 100
             mode  :concave}}
     pth-vecs-init]
    (let
      [!pth-vecs (atom pth-vecs-init)]
-     (let [pth-vecs @!pth-vecs
+     (let [pth-vecs (-> @!pth-vecs
+                        (cond-> scale
+                                (scale-path scale-ctr scale-fract)))
            pnt-tups
            (for [[i pth-vec] (map-indexed vector pth-vecs)]
              (pth-vec-->svg-seq i pth-vec))
@@ -184,10 +199,8 @@
                        (as-> pnts
                              (->> (case mirror
                                     nil       pth-vecs
-                                    :merged   (->> pth-vecs
-                                                   (reverse-pth-vecs width))
-                                    :separate (->> pth-vecs
-                                                   normalize-curves))
+                                    :merged   (->> pth-vecs (reverse-pth-vecs width))
+                                    :separate (->> pth-vecs normalize-curves))
                                   (mirror-pth-vecs width)
                                   (path {:debug? true})
                                   first

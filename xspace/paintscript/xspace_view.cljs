@@ -4,7 +4,7 @@
             [paintscript.core :as core]))
 
 (defn xspace-paintscript [ctx c args]
-  (r/with-let [{:as args* :keys [op view-opts opts path =>]}
+  (r/with-let [{:as args* :keys [op view-opts opts path pnts center fract =>]}
                (merge (:args ctx) args)
 
                opts' (merge view-opts
@@ -18,4 +18,12 @@
           ; [:path {:stroke "red" :fill "none"
           ;         :d (apply d =>)}]
           ]
+
+         #{:scale-path}
+         [:div
+          [:svg {:width 100 :height 100}
+           [core/path-builder opts' path]]
+
+          [:svg {:width 100 :height 100}
+           [core/path-builder opts' (core/scale-path path center fract)]]]
          nil))]))
