@@ -156,9 +156,24 @@
 (defn scale-path [pth-vecs ctr n]
   (map-pnts #(u/tl-point-towards % ctr n) pth-vecs))
 
+(defn- add-ctrl-pnt-meta [args]
+  (let [ctrl-cnt (dec (count args))]
+    (map-indexed (fn [i pnt]
+                   (if (< i ctrl-cnt)
+                     (with-meta pnt {:ctrl? true})
+                     pnt))
+                 args)))
+
+(def ^:private lines-with-ctrl-pnts
+  #{:curve-S :curve-s
+    :curve-C :curve-c :curve-C1 :curve-c1
+    :curve-Q :curve-q
+    :curve-T :curve-t})
+
 (defn pth-vec-->svg-seq [i pth-vec]
   (let [[k opts i-o args] (parse-vec pth-vec)
-        data [args i i-o]]
+        args' (-> args (cond-> (lines-with-ctrl-pnts k) add-ctrl-pnt-meta))
+        data [args' i i-o]]
     (case k
       :arc      [data (arcs args opts)]
       :arc*     [data (arcs args (assoc opts :ctd? true))]
@@ -218,10 +233,11 @@
 ;; -----------------------------------------------------------------------------
 ;; UI
 
-(defn coord [scaled xy-init upd! coord-size]
+(defn coord [scaled xy-init args-last upd! coord-size]
   (#?(:cljs r/with-let :clj let)
     [!xy   (atom xy-init)
-     !snap (atom nil)]
+     !snap (atom nil)
+     ctrl? (-> xy-init meta :ctrl?)]
     (let [[x y] @!xy]
       [:g {:style {:cursor "pointer"
                    :text-select "none"}
@@ -236,8 +252,15 @@
                                 (upd! xy')
                                 (reset! !xy xy'))))
            :on-mouse-up   #(reset! !snap nil)}
+       (when-let [[x2 y2] (when ctrl? args-last)]
+         [:line {:x1 x :y1 y :x2 x2 :y2 y2
+                 :stroke "hsla(120,100%,50%,0.3)"
+                 :stroke-width 1
+                 :vector-effect "non-scaling-stroke"}])
        [:circle {:cx x :cy y :r (-> 0.2 (* coord-size)) :fill "hsla(0,100%,50%,1)"}]
-       [:circle {:cx x :cy y :r (-> 1.5 (* coord-size)) :fill "hsla(240,100%,50%,0.3)"}]
+       [:circle {:cx x :cy y :r (-> 1.5 (* coord-size)) :fill (if ctrl?
+                                                                "hsla(120,100%,50%,0.3)"
+                                                                "hsla(240,100%,50%,0.3)")}]
        [:text {:x x :y (+ y 0.5) :fill "white"
                :font-size (-> 1 (* coord-size))
                :text-anchor "middle"
@@ -261,4 +284,4 @@
                [i-pnt pnt] (map-indexed vector args)
                :let [upd! #(swap! !pth-vecs assoc-in [i (+ i-pnt pnt-offset)] %)]]
            ^{:key (hash [i i-pnt])}
-           [coord scaled pnt upd! (or coord-size 1)]))])))
+           [coord scaled pnt (last args) upd! (or coord-size 1)]))])))

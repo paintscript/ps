@@ -10,12 +10,15 @@ script:
   - (cd ../; git clone https://github.com/aw7/z-com.git)
   - lein do xx1, bldui
   - (cd resources-app/; npm install; npm install grunt-cli -g; grunt)
+  - cp CNAME resources-app/public/
 
 deploy:
   provider: pages
+  repo: paintscript/paintscript.github.io
   local-dir: resources-app/public/
   skip-cleanup: true
   keep-history: false
   github-token: $GH_TOKEN
+  target_branch: master
   on:
     branch: master
