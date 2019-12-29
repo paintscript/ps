@@ -10,21 +10,23 @@
 
 (defn canvas [{:keys [dims script]}]
   (r/with-let [!script (r/atom script)
-               !sc     (r/atom 4)]
-    (let [sc @!sc
-          [w h] (->> dims (mapv #(* % sc)))]
+               sc 4
+               [report! dnd-fns] (ps/drag-and-drop-fns [sc sc] !script)]
+    (let [[w h] (->> dims (mapv #(* % sc)))]
       [:div.canvas
        [:div.script
         [:textarea
          {:value     (str/trim (pprint' @!script))
           :on-change #(reset! !script (-> % .-target .-value read-string))}]]
        [:div.paint
-        [:svg {:style {:width w :height h}}
+        [:svg (merge {:style {:width w :height h}}
+                     dnd-fns)
          [tf {:sc [sc sc]}
           [ps/path-builder {:debug?     true
                             :coord-size 2
                             :scaled     [sc sc]
                             :atom?      true
                             :attrs      {:stroke "black"
-                                         :fill "hsl(0,0%,80%)"}}
-                           !script]]]]])))
+                                         :fill "hsl(0,0%,80%)"}
+                            :report!    report!}
+                           @!script]]]]])))

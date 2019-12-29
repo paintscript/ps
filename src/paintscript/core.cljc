@@ -156,13 +156,8 @@
 (defn scale-path [pth-vecs ctr n]
   (map-pnts #(u/tl-point-towards % ctr n) pth-vecs))
 
-(defn- add-ctrl-pnt-meta [args]
-  (let [ctrl-cnt (dec (count args))]
-    (map-indexed (fn [i pnt]
-                   (if (< i ctrl-cnt)
-                     (with-meta pnt {:ctrl? true})
-                     pnt))
-                 args)))
+(def ^:private s-curves
+  #{:curve-S :curve-s})
 
 (def ^:private lines-with-ctrl-pnts
   #{:curve-S :curve-s
@@ -170,10 +165,22 @@
     :curve-Q :curve-q
     :curve-T :curve-t})
 
+(defn- add-ctrl-pnt-meta [args k i-pth-vec]
+  (let [ctrl-cnt (dec (count args))]
+    (map-indexed (fn [i pnt]
+                   (if (< i ctrl-cnt)
+                     (with-meta pnt {:i-tgt (if (and (= 2 ctrl-cnt)
+                                                     (= 0 i))
+                                              (dec i-pth-vec)
+                                              i-pth-vec)})
+                     pnt))
+                 args)))
+
 (defn pth-vec-->svg-seq [i pth-vec]
   (let [[k opts i-o args] (parse-vec pth-vec)
-        args' (-> args (cond-> (lines-with-ctrl-pnts k) add-ctrl-pnt-meta))
-        data [args' i i-o]]
+        args' (-> args (cond-> (lines-with-ctrl-pnts k)
+                               (add-ctrl-pnt-meta k i)))
+        data [args' i i-o k]]
     (case k
       :arc      [data (arcs args opts)]
       :arc*     [data (arcs args (assoc opts :ctd? true))]
@@ -233,55 +240,54 @@
 ;; -----------------------------------------------------------------------------
 ;; UI
 
-(defn coord [scaled xy-init args-last upd! coord-size]
-  (#?(:cljs r/with-let :clj let)
-    [!xy   (atom xy-init)
-     !snap (atom nil)
-     ctrl? (-> xy-init meta :ctrl?)]
-    (let [[x y] @!xy]
-      [:g {:style {:cursor "pointer"
-                   :text-select "none"}
-           :on-mouse-down #(reset! !snap {:xy0 [x y] :m0 (xy-mouse %)})
-           :on-mouse-move (fn [ev]
-                            (when-let [{:as snap :keys [xy0 m0]} @!snap]
-                              (let [m1  (xy-mouse ev)
-                                    d   (mapv - m1 m0)
-                                    d'  (mapv / d scaled)
-                                    d'  (mapv round d')
-                                    xy' (mapv + xy0 d')]
-                                (upd! xy')
-                                (reset! !xy xy'))))
-           :on-mouse-up   #(reset! !snap nil)}
-       (when-let [[x2 y2] (when ctrl? args-last)]
-         [:line {:x1 x :y1 y :x2 x2 :y2 y2
-                 :stroke "hsla(120,100%,50%,0.3)"
-                 :stroke-width 1
-                 :vector-effect "non-scaling-stroke"}])
-       [:circle {:cx x :cy y :r (-> 0.2 (* coord-size)) :fill "hsla(0,100%,50%,1)"}]
-       [:circle {:cx x :cy y :r (-> 1.5 (* coord-size)) :fill (if ctrl?
-                                                                "hsla(120,100%,50%,0.3)"
-                                                                "hsla(240,100%,50%,0.3)")}]
-       [:text {:x x :y (+ y 0.5) :fill "white"
-               :font-size (-> 1 (* coord-size))
-               :text-anchor "middle"
-               :style {:user-select "none"}}
-        (str x " " y)]])))
+(defn drag-and-drop-fns [scaled !pth-vecs]
+  (let [!xy-ii (atom nil)
+        !snap  (atom nil)
+        upd!   #(swap! !pth-vecs assoc-in @!xy-ii %)
+        get!   #(get-in @!pth-vecs @!xy-ii)]
+    [#(reset! !xy-ii %)
+     {:on-mouse-down #(reset! !snap {:xy0 (get!) :m0 (xy-mouse %)})
+      :on-mouse-move (fn [ev]
+                       (if-let [{:as snap :keys [xy0 m0]} @!snap]
+                         (let [m1  (xy-mouse ev)
+                               d   (mapv - m1 m0)
+                               d'  (mapv / d scaled)
+                               d'  (mapv round d')
+                               xy' (mapv + xy0 d')]
+                           (upd! xy'))))
+      :on-mouse-up   #(reset! !snap nil)}]))
 
-(defn path-builder [{:as opts :keys [scaled debug? attrs coord-size atom?]
+(defn coord [scaled [x y :as xy] pth-vecs report! coord-size]
+  (let [i-tgt (-> xy meta :i-tgt)]
+    [:g {:style {:cursor "pointer"
+                 :text-select "none"}
+         :on-mouse-down report!}
+     (when-let [[x2 y2] (when i-tgt
+                          (-> pth-vecs (get i-tgt) last))]
+       [:line {:x1 x :y1 y :x2 x2 :y2 y2
+               :stroke "hsla(120,100%,50%,0.3)"
+               :stroke-width 1
+               :vector-effect "non-scaling-stroke"}])
+     [:circle {:cx x :cy y :r (-> 0.2 (* coord-size)) :fill "hsla(0,100%,50%,1)"}]
+     [:circle {:cx x :cy y :r (-> 1.5 (* coord-size)) :fill (if i-tgt
+                                                              "hsla(120,100%,50%,0.3)"
+                                                              "hsla(240,100%,50%,0.3)")}]
+     [:text {:x x :y (+ y 0.5) :fill "white"
+             :font-size (-> 1 (* coord-size))
+             :text-anchor "middle"
+             :style {:user-select "none"}}
+      (str x " " y)]]))
+
+(defn path-builder [{:as opts :keys [scaled debug? attrs coord-size atom? report!]
                      :or {scaled [1 1]}}
-                    pth-vecs-init]
-  (#?(:cljs r/with-let :clj let)
-    [!pth-vecs (if atom?
-                 pth-vecs-init
-                 (atom pth-vecs-init))]
-    (let [pth-vecs @!pth-vecs
-          [pnt-tups points] (path (assoc opts :debug? true) pth-vecs)]
-      [:g
-       [:path (merge attrs
-                     {:d (apply d points)})]
-       (when debug?
-         (for [[args i pnt-offset] (map first pnt-tups)
-               [i-pnt pnt] (map-indexed vector args)
-               :let [upd! #(swap! !pth-vecs assoc-in [i (+ i-pnt pnt-offset)] %)]]
-           ^{:key (hash [i i-pnt])}
-           [coord scaled pnt (last args) upd! (or coord-size 1)]))])))
+                    pth-vecs]
+  (let [[pnt-tups points] (path (assoc opts :debug? true) pth-vecs)]
+    [:g
+     [:path (merge attrs
+                   {:d (apply d points)})]
+     (when debug?
+       (for [[args i pnt-offset k] (map first pnt-tups)
+             [i-pnt pnt] (map-indexed vector args)
+             :let [report! (partial report! [i (+ i-pnt pnt-offset)])]]
+         ^{:key (hash [k i i-pnt])}
+         [coord scaled pnt pth-vecs report! (or coord-size 1)]))]))
