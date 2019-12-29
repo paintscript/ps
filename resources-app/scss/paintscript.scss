@@ -8,13 +8,14 @@ div.canvas {
   div.script {
     textarea {
       box-sizing: border-box;
+      padding: 5px;
       width: 30vw;
       display: block;
       height: 100vh;
       margin: 0;
       border-width: 0 5px 0 0;
       border-style: solid;
-      border-color: hsl(0,0%,30%);
+      border-color: hsl(0,0%,0%);
       outline: none !important;
     }
   }
@@ -30,6 +31,7 @@ div.canvas {
       display: block;
 
       text { font-family: sans-serif; }
+      path { stroke-linecap: round; }
     }
   }
 }

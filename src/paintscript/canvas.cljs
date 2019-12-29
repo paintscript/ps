@@ -1,5 +1,6 @@
 (ns paintscript.canvas
   (:require [clojure.string :as str]
+            [clojure.walk :as w]
             [cljs.pprint :refer [pprint]]
             [cljs.reader :refer [read-string]]
             [reagent.core :as r]
@@ -12,7 +13,8 @@
   (r/with-let [!script (r/atom script)
                sc 4
                [report! dnd-fns] (ps/drag-and-drop-fns [sc sc] !script)]
-    (let [[w h] (->> dims (mapv #(* % sc)))]
+    (let [[w h] (->> dims (mapv #(* % sc)))
+          script @!script]
       [:div.canvas
        [:div.script
         [:textarea
@@ -22,11 +24,12 @@
         [:svg (merge {:style {:width w :height h}}
                      dnd-fns)
          [tf {:sc [sc sc]}
-          [ps/path-builder {:debug?     true
-                            :coord-size 2
-                            :scaled     [sc sc]
-                            :atom?      true
-                            :attrs      {:stroke "black"
-                                         :fill "hsl(0,0%,80%)"}
-                            :report!    report!}
-                           @!script]]]]])))
+          [ps/path-builder {:attrs {:stroke "black"
+                                    :fill "hsl(0,0%,80%)"}}
+                           script]]
+
+         [ps/path-builder {:debug?     true
+                           :scaled     sc
+                           :coord-size 10
+                           :report!    report!}
+                          script]]]])))

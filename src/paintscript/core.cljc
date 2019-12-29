@@ -257,37 +257,50 @@
                            (upd! xy'))))
       :on-mouse-up   #(reset! !snap nil)}]))
 
-(defn coord [scaled [x y :as xy] pth-vecs report! coord-size]
-  (let [i-tgt (-> xy meta :i-tgt)]
-    [:g {:style {:cursor "pointer"
-                 :text-select "none"}
-         :on-mouse-down report!}
-     (when-let [[x2 y2] (when i-tgt
-                          (-> pth-vecs (get i-tgt) last))]
-       [:line {:x1 x :y1 y :x2 x2 :y2 y2
-               :stroke "hsla(120,100%,50%,0.3)"
-               :stroke-width 1
-               :vector-effect "non-scaling-stroke"}])
-     [:circle {:cx x :cy y :r (-> 0.2 (* coord-size)) :fill "hsla(0,100%,50%,1)"}]
-     [:circle {:cx x :cy y :r (-> 1.5 (* coord-size)) :fill (if i-tgt
-                                                              "hsla(120,100%,50%,0.3)"
-                                                              "hsla(240,100%,50%,0.3)")}]
-     [:text {:x x :y (+ y 0.5) :fill "white"
-             :font-size (-> 1 (* coord-size))
-             :text-anchor "middle"
-             :style {:user-select "none"}}
-      (str x " " y)]]))
+(defn coord [scaled xy pth-vecs report! coord-size]
+  (#?(:cljs r/with-let :clj let) [!hover? (atom false)]
+    (let [[x y] (mapv #(* % scaled) xy)
+          i-tgt (-> xy meta :i-tgt)]
+      [:g {:style {:cursor "pointer"
+                   :text-select "none"}
+           :on-mouse-down report!
+           :on-mouse-over #(reset! !hover? true)
+           :on-mouse-out  #(reset! !hover? false)}
+       (when-let [[x2 y2] (when i-tgt
+                            (-> pth-vecs
+                                (get i-tgt)
+                                last
+                                (->> (mapv #(* % scaled)))))]
+         [:line {:x1 x :y1 y :x2 x2 :y2 y2
+                 :stroke "hsla(120,100%,50%,0.3)"
+                 :stroke-width 1}])
 
-(defn path-builder [{:as opts :keys [scaled debug? attrs coord-size atom? report!]
-                     :or {scaled [1 1]}}
+       (if @!hover?
+         [:g
+          [:circle {:cx x :cy y :r (* coord-size 1.5)
+                    :fill (if i-tgt
+                            "hsla(120,100%,50%,0.3)"
+                            "hsla(240,100%,50%,0.3)")}]
+          [:text {:x x :y y :fill "white"
+                  :font-size coord-size
+                  :text-anchor "middle"
+                  :dominant-baseline "middle"
+                  :style {:user-select "none"}}
+           (str/join " " xy)]]
+         [:circle {:cx x :cy y :r coord-size
+                   :fill (if i-tgt
+                           "hsla(120,100%,50%,0.3)"
+                           "hsla(240,100%,50%,0.3)")}])])))
+
+(defn path-builder [{:as opts :keys [scaled debug? attrs coord-size atom? report!]}
                     pth-vecs]
   (let [[pnt-tups points] (path (assoc opts :debug? true) pth-vecs)]
     [:g
-     [:path (merge attrs
-                   {:d (apply d points)})]
-     (when debug?
+     (if debug?
        (for [[args i pnt-offset k] (map first pnt-tups)
              [i-pnt pnt] (map-indexed vector args)
              :let [report! (partial report! [i (+ i-pnt pnt-offset)])]]
          ^{:key (hash [k i i-pnt])}
-         [coord scaled pnt pth-vecs report! (or coord-size 1)]))]))
+         [coord scaled pnt pth-vecs report! (or coord-size 1)])
+       [:path (merge attrs
+                     {:d (apply d points)})])]))
