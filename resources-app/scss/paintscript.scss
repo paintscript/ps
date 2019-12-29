@@ -1,0 +1,35 @@
+html, body {
+  margin: 0; padding: 0;
+}
+
+div.canvas {
+  display: flex;
+
+  div.script {
+    textarea {
+      box-sizing: border-box;
+      width: 30vw;
+      display: block;
+      height: 100vh;
+      margin: 0;
+      border-width: 0 5px 0 0;
+      border-style: solid;
+      border-color: hsl(0,0%,30%);
+      resize: none;
+    }
+  }
+
+  div.paint {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+
+    svg {
+      border: 5px solid hsl(0,0%,95%);
+      display: block;
+
+      text { font-family: sans-serif; }
+    }
+  }
+}

@@ -6,6 +6,8 @@
                  [xspace "0.2.14"]]
 
   :source-paths ["src/"]
+  :plugins      [[lein-cljsbuild "1.1.7"]
+                 [lein-figwheel "0.5.19"]]
 
   :profiles
   {:xx     {:test-paths ["xspace/"]}
@@ -15,12 +17,22 @@
             :dependencies   [[hiccup-icons "0.4.1"]
                              [urlkit "0.3.3"]
                              [urlkit-util "0.1.2"]]
-            :plugins        [[lein-cljsbuild "1.1.7"]
-                             [lein-figwheel "0.5.19"]]}}
+            :figwheel       {:css-dirs ["resources-docs/public/css"]}}
+   :app    {:resource-paths ["resources-app/"]
+            :figwheel       {:css-dirs ["resources-app/public/css"]}}}
 
   :cljsbuild
   {:builds
-   [{:id           "docs--fig"
+   [{:id           "app--fig"
+     :source-paths ["src/"]
+     :figwheel     {:on-jsload "paintscript.app/on-js-reload" }
+     :compiler     {:main       paintscript.app
+                    :output-to  "resources-app/public/js/compiled/app.js"
+                    :output-dir "resources-app/public/js/compiled/out"
+                    :asset-path "js/compiled/out"
+                    :source-map-timestamp true}}
+
+    {:id           "docs--fig"
      :source-paths ["src/" "xspace/" "src-docs/"]
      :figwheel     {:on-jsload "paintscript.docs-index/on-js-reload" }
      :compiler     {:main       paintscript.docs-index
@@ -36,12 +48,13 @@
                     :optimizations :advanced
                     :pretty-print  false}}]}
 
-  :figwheel
-  {:css-dirs ["resources-docs/public/css"]}
-
   :aliases
-  {"pub"   ["install"]
-   "xx"    ["with-profile" "+kaocha" "run" "-m" "kaocha.runner"
-            "--focus-meta" ":test-refresh/focus" "--watch"]
-   "fig"   ["with-profile" "+docs" "figwheel"         "docs--fig"]
-   "bldui" ["with-profile" "+docs" "cljsbuild" "once" "docs--prod"]})
+  {"pub"    ["install"]
+   "xx"     ["with-profile" "+kaocha" "run" "-m" "kaocha.runner"
+             "--focus-meta" ":test-refresh/focus" "--watch"]
+
+   "fig"    ["with-profile" "+app" "figwheel"         "app--fig"]
+   "bldui"  ["with-profile" "+app" "cljsbuild" "once" "app--prod"]
+
+   "figd"   ["with-profile" "+docs" "figwheel"         "docs--fig"]
+   "blduid" ["with-profile" "+docs" "cljsbuild" "once" "docs--prod"]})
