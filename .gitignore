@@ -3,4 +3,4 @@ target/
 node_modules/
 js/
 css/
-*.json
+!*.json

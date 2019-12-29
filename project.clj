@@ -32,6 +32,13 @@
                     :asset-path "js/compiled/out"
                     :source-map-timestamp true}}
 
+    {:id           "app--prod"
+     :source-paths ["src/"]
+     :compiler     {:main       paintscript.app
+                    :output-to  "resources-app/public/js/compiled/app.js"
+                    :optimizations :advanced
+                    :pretty-print  false}}
+
     {:id           "docs--fig"
      :source-paths ["src/" "xspace/" "src-docs/"]
      :figwheel     {:on-jsload "paintscript.docs-index/on-js-reload" }
@@ -52,6 +59,7 @@
   {"pub"    ["install"]
    "xx"     ["with-profile" "+kaocha" "run" "-m" "kaocha.runner"
              "--focus-meta" ":test-refresh/focus" "--watch"]
+   "xx1"    ["with-profile" "+xx" "test"]
 
    "fig"    ["with-profile" "+app" "figwheel"         "app--fig"]
    "bldui"  ["with-profile" "+app" "cljsbuild" "once" "app--prod"]
