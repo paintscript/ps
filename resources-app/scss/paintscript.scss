@@ -4,19 +4,49 @@ html, body {
 
 div.canvas {
   display: flex;
+  * { box-sizing: border-box; }
+
+  --status-height:    40px;
+  --target-col:       hsla(0,0%,50%,0.3); //hsla(240,100%,50%,0.3);
+  --control-col:      hsla(120,100%,50%,0.3);
+  --path-bg:          hsl(0,0%,80%);
+  --sel-fg:           hsl(240,100%,50%);
+  --sel-bg:           hsl(240,100%,95%);
+  --light-grey:       hsl(0,0%,95%);
+  --light-grey-alpha: hsla(0,0%,0%,0.10);
+
+  --sidebar: 30vw;
 
   div.script {
+    border-width: 0 5px 0 0;
+    border-style: solid;
+    border-color: hsl(0,0%,0%);
+    height: 100vh;
+    // width: var(--sidebar);
+
     textarea {
-      box-sizing: border-box;
+      // box-sizing: border-box;
       padding: 5px;
-      width: 30vw;
+      width: var(--sidebar);
       display: block;
-      height: 100vh;
+      height: calc(100vh - var(--status-height));
       margin: 0;
-      border-width: 0 5px 0 0;
-      border-style: solid;
-      border-color: hsl(0,0%,0%);
       outline: none !important;
+      resize: none;
+      border: 0;
+    }
+
+    div.status {
+      div.selection {
+        white-space: nowrap;
+        height: var(--status-height);
+        background-color: var(--light-grey); color: black;
+        padding-left: 10px;
+        display: flex; align-items: center;
+        font-family: sans-serif;
+        > * + * { margin-left: 5px; }
+        > span.selected { color: var(--sel-fg); }
+      }
     }
   }
 
@@ -25,13 +55,41 @@ div.canvas {
     align-items: center;
     justify-content: center;
     width: 100%;
+    select: none;
 
     svg {
-      border: 5px solid hsl(0,0%,95%);
+      border: 5px solid var(--light-grey);
       display: block;
+
+      g.main {
+        path {
+          stroke: black;
+          // fill: var(--light-grey);
+          fill: none;
+        }
+      }
+
+      g.sel {
+        stroke: var(--sel-fg); fill: none;
+        stroke-width: 1.5;
+      }
+
+      g.coords {
+        line.ctrl-target {
+          stroke: var(--light-grey-alpha);
+          stroke-width: 1.5;
+        }
+      }
 
       text { font-family: sans-serif; }
       path { stroke-linecap: round; }
+
+      g {
+        &.control  circle { fill: hsl(0,0%,90%); }
+        &.target   circle { fill: transparent; stroke: var(--target-col); stroke-width: 2; }
+        &.hover    circle { fill: black; }
+        &.selected circle { fill: var(--sel-fg); }
+      }
     }
   }
 }

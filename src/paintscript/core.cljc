@@ -52,7 +52,7 @@
                 (cons pth-k
                       (mirror-pnts width pnts)))))))
 
-(defn- normalize-curves [pth-vv]
+(defn normalize-curves [pth-vv]
   (loop [[[pth-k & pnts :as pth-v] & pth-vv-tail] pth-vv
          tgt-prev nil
          c2-prev  nil
@@ -257,50 +257,47 @@
                            (upd! xy'))))
       :on-mouse-up   #(reset! !snap nil)}]))
 
-(defn coord [scaled xy pth-vecs report! coord-size]
+(defn coord [{:keys [scaled report! coord-size sel]} pth-vecs xy ii]
   (#?(:cljs r/with-let :clj let) [!hover? (atom false)]
     (let [[x y] (mapv #(* % scaled) xy)
-          i-tgt (-> xy meta :i-tgt)]
-      [:g {:style {:cursor "pointer"
-                   :text-select "none"}
-           :on-mouse-down report!
-           :on-mouse-over #(reset! !hover? true)
-           :on-mouse-out  #(reset! !hover? false)}
+          i-tgt (-> xy meta :i-tgt)
+          hover? @!hover?]
+      [:g
        (when-let [[x2 y2] (when i-tgt
                             (-> pth-vecs
                                 (get i-tgt)
                                 last
                                 (->> (mapv #(* % scaled)))))]
-         [:line {:x1 x :y1 y :x2 x2 :y2 y2
-                 :stroke "hsla(120,100%,50%,0.3)"
-                 :stroke-width 1}])
+         [:line.ctrl-target {:x1 x :y1 y :x2 x2 :y2 y2}])
+       [:g {:style {:cursor "pointer" :text-select "none"}
+            :on-mouse-down (fn [] (report! ii))
+            :on-mouse-over #(reset! !hover? true)
+            :on-mouse-out  #(reset! !hover? false)
+            :class (str (if i-tgt "control" "target")
+                        (when hover? " hover")
+                        (when (= sel ii) " selected"))}
+        (if hover?
+          [:g
+           [:circle {:cx x :cy y :r (* coord-size 1.5)}]
+           [:text {:x x :y y :fill "white"
+                   :font-size coord-size
+                   :text-anchor "middle"
+                   :dominant-baseline "middle"
+                   :style {:user-select "none"}}
+            (str/join " " xy)]]
+          [:circle {:cx x :cy y :r coord-size}])]])))
 
-       (if @!hover?
-         [:g
-          [:circle {:cx x :cy y :r (* coord-size 1.5)
-                    :fill (if i-tgt
-                            "hsla(120,100%,50%,0.3)"
-                            "hsla(240,100%,50%,0.3)")}]
-          [:text {:x x :y y :fill "white"
-                  :font-size coord-size
-                  :text-anchor "middle"
-                  :dominant-baseline "middle"
-                  :style {:user-select "none"}}
-           (str/join " " xy)]]
-         [:circle {:cx x :cy y :r coord-size
-                   :fill (if i-tgt
-                           "hsla(120,100%,50%,0.3)"
-                           "hsla(240,100%,50%,0.3)")}])])))
+(defn plot-coords [opts pth-vecs pnt-tups]
+  (for [[args i pnt-offset k] (map first pnt-tups)
+        [i-pnt pnt] (map-indexed vector args)]
+    ^{:key (hash [k i i-pnt])}
+    [coord opts pth-vecs pnt [i (+ i-pnt pnt-offset)]]))
 
-(defn path-builder [{:as opts :keys [scaled debug? attrs coord-size atom? report!]}
+(defn path-builder [{:as opts :keys [debug? attrs]}
                     pth-vecs]
   (let [[pnt-tups points] (path (assoc opts :debug? true) pth-vecs)]
     [:g
      (if debug?
-       (for [[args i pnt-offset k] (map first pnt-tups)
-             [i-pnt pnt] (map-indexed vector args)
-             :let [report! (partial report! [i (+ i-pnt pnt-offset)])]]
-         ^{:key (hash [k i i-pnt])}
-         [coord scaled pnt pth-vecs report! (or coord-size 1)])
+       (plot-coords opts pth-vecs pnt-tups)
        [:path (merge attrs
                      {:d (apply d points)})])]))

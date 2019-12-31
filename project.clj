@@ -36,6 +36,7 @@
      :source-paths ["src/"]
      :compiler     {:main       paintscript.app
                     :output-to  "resources-app/public/js/compiled/app.js"
+                    :output-dir "resources-app/public/js/compiled/out2"
                     :optimizations :advanced
                     :pretty-print  false}}
 
@@ -44,8 +45,8 @@
      :figwheel     {:on-jsload "paintscript.docs-index/on-js-reload" }
      :compiler     {:main       paintscript.docs-index
                     :output-to  "resources-docs/public/js/compiled/docs.js"
-                    :output-dir "resources-docs/public/js/compiled/out"
-                    :asset-path "js/compiled/out"
+                    :output-dir "resources-docs/public/js/compiled/out3"
+                    :asset-path "js/compiled/out3"
                     :source-map-timestamp true}}
 
     {:id           "docs--prod"
