@@ -4,9 +4,9 @@
 
 (defn- root []
   [canvas {:dims [100 100]
-           :script [[:line [65 15]]
-                    [:curve-C [5 32] [62 35] [64 48]]
-                    [:curve-S [18 42] [17 77]]]}])
+           :script [[:M [65 15]]
+                    [:C [5 32] [62 35] [64 48]]
+                    [:S [18 42] [17 77]]]}])
 
 (defn- mount-root! []
   (r/render [#'root]

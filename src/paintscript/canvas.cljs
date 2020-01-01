@@ -13,7 +13,7 @@
   (let [pth-vec-prev    (get script-norm (dec pth-vec-i))
         [k :as pth-vec] (get script-norm pth-vec-i)]
     (list
-     [:line (last pth-vec-prev)]
+     [:M (last pth-vec-prev)]
      pth-vec)))
 
 (defn canvas [{:keys [dims script]}]
@@ -31,7 +31,7 @@
           !script'          (delay
                              (->> script
                                   (take (inc pth-vec-i))
-                                  ps/normalize-curves))]
+                                  ps/normalize-path))]
       [:div.canvas
        [:div.script
         [:textarea
