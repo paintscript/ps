@@ -9,9 +9,9 @@
 
 (defn- pprint' [edn] (with-out-str *out* (pprint edn)))
 
-(defn get-path-segment [script-norm pth-vec-i]
-  (let [pth-vec-prev    (get script-norm (dec pth-vec-i))
-        [k :as pth-vec] (get script-norm pth-vec-i)]
+(defn get-path-segment [pth-vecs pth-vec-i]
+  (let [pth-vec-prev    (get pth-vecs (dec pth-vec-i))
+        [k :as pth-vec] (get pth-vecs pth-vec-i)]
     (list
      [:M (last pth-vec-prev)]
      pth-vec)))
@@ -21,25 +21,24 @@
                !sel    (r/atom nil)
                sc 4
                [report! dnd-fns] (ps/drag-and-drop-fns [sc sc] !script)
-               report!' (fn [ii] (reset! !sel ii) (report! ii))]
+               report!' (fn [iii] (reset! !sel iii) (report! iii))]
     (let [[w h] (->> dims (mapv #(* % sc)))
           script @!script
-          [pth-vec-i pnt-i :as sel] @!sel
+          [pth-i pth-vec-i pnt-i :as sel] @!sel
 
-          [pnt-tups points] (->> script
-                                 (ps/path {:debug? true}))
-          !script'          (delay
-                             (->> script
-                                  (take (inc pth-vec-i))
-                                  ps/normalize-path))]
+          out-tups (->> script
+                        (map-indexed
+                         (fn [pth-i [_ opts & pth-vv :as path]]
+                           [pth-i opts pth-vv
+                            (ps/path (merge opts {:debug? true}) pth-vv)])))]
       [:div.canvas
        [:div.script
         [:textarea
-         {:value     (str/trim (pprint' @!script))
+         {:value     (str/trim (pprint' script))
           :on-change #(reset! !script (-> % .-target .-value read-string))}]
         [:div.status
          (when sel
-           (let [[k & pnts] (nth script pth-vec-i)]
+           (let [[k & pnts] (get-in script [pth-i pth-vec-i])]
              [:div.selection
               [:span.pth-k (pr-str k)]
               (for [[i pnt] (map-indexed vector pnts)]
@@ -51,15 +50,29 @@
         [:svg (merge {:style {:width w :height h}}
                      dnd-fns)
          [tf* {:sc [sc sc]}
+
           [:g.main
-           [ps/path-builder {} script]]
-          (when sel
-            [:g.sel
-             [ps/path-builder {} (get-path-segment @!script' pth-vec-i)]])]
+           (for [[pth-i opts pth-vv
+                  [pnt-tups pnts] :as out-tup] out-tups]
+             ^{:key pth-i}
+             [ps/path-builder opts pth-i pth-vv])]
+
+          (when (and sel (> pth-vec-i ps/i-pth-vec0))
+            (let [pth-vv' (->> (get script pth-i)
+                               (take (inc pth-vec-i))
+                               (drop ps/i-pth-vec0)
+                               ps/normalize-path)]
+              [:g.sel
+               [ps/path-builder {} pth-i
+                (get-path-segment pth-vv' (- pth-vec-i ps/i-pth-vec0))]]))]
 
          [:g.coords
-          (ps/plot-coords {:scaled     sc
-                           :coord-size 10
-                           :report!    report!'
-                           :sel        sel}
-                          script pnt-tups)]]]])))
+          (for [[pth-i opts pth-vv
+                 [pnt-tups pnts] :as out-tup] out-tups]
+            ^{:key pth-i}
+            [:g
+             (ps/plot-coords {:scaled     sc
+                              :coord-size 10
+                              :report!    report!'
+                              :sel        sel}
+                             pth-i pth-vv pnt-tups)])]]]])))

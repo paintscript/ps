@@ -55,7 +55,7 @@ div.canvas {
     align-items: center;
     justify-content: center;
     width: 100%;
-    select: none;
+    * { user-select: none; }
 
     svg {
       border: 5px solid var(--light-grey);

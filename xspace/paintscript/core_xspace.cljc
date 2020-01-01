@@ -16,7 +16,7 @@
                    :path                 (core/path opts' path)
                    :arcs                 (#'core/arcs arcs opts)
                    :mirror-pnts          (#'core/mirror-pnts width pnts)
-                   :normalize-path     (#'core/normalize-path path)
+                   :normalize-path       (#'core/normalize-path path)
                    :reverse-pth-vec-pnts (#'core/reverse-pth-vec-pnts path)
                    :scale-path           (core/scale-path path center fract)))))))}})
 

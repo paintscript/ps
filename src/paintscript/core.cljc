@@ -167,20 +167,20 @@
 
 (defn- add-ctrl-pnt-meta [args k i-pth-vec]
   (let [ctrl-cnt (dec (count args))]
-    (map-indexed (fn [i pnt]
-                   (if (< i ctrl-cnt)
+    (map-indexed (fn [i-pnt pnt]
+                   (if (< i-pnt ctrl-cnt)
                      (with-meta pnt {:i-tgt (if (and (= 2 ctrl-cnt)
-                                                     (= 0 i))
+                                                     (= 0 i-pnt))
                                               (dec i-pth-vec)
                                               i-pth-vec)})
                      pnt))
                  args)))
 
-(defn pth-vec-->svg-seq [i pth-vec]
-  (let [[k opts i-o args] (parse-vec pth-vec)
+(defn pth-vec-->svg-seq [i-pth-vec pth-vec]
+  (let [[k opts i-pnt0 args] (parse-vec pth-vec)
         args' (-> args (cond-> (lines-with-ctrl-pnts k)
-                               (add-ctrl-pnt-meta k i)))
-        data [args' i i-o k]]
+                               (add-ctrl-pnt-meta k i-pth-vec)))
+        data [args' i-pth-vec i-pnt0 k]]
     (case k
       :arc  [data (arcs args opts)]
       :arc* [data (arcs args (assoc opts :ctd? true))]
@@ -198,44 +198,44 @@
       :T    (let [[c1    tgt] args] [data (list "T" c1 tgt tgt)])
       :t    (let [[c1    tgt] args] [data (list "t" c1 tgt tgt)]))))
 
+(def i-pth-vec0 2)
+
 (defn path
   ([pth-vecs] (path nil pth-vecs))
   ([{:keys [mode debug? close? cutout? draw? width mirror]
      [scale-ctr scale-fract :as scale] :scale
      :or   {width 100
             mode  :concave}}
-    pth-vecs-init]
-   (let
-     [!pth-vecs (atom pth-vecs-init)]
-     (let [pth-vecs (-> @!pth-vecs
-                        (cond-> scale
-                                (scale-path scale-ctr scale-fract)))
-           pnt-tups
-           (for [[i pth-vec] (map-indexed vector pth-vecs)]
-             (pth-vec-->svg-seq i pth-vec))
+    pth-vecs]
+   (let [pth-vecs' (-> pth-vecs
+                       (cond-> scale
+                               (scale-path scale-ctr scale-fract)))
+         pnt-tups
+         (for [[pth-vec-i pth-vec] (map-indexed vector pth-vecs')]
+           (pth-vec-->svg-seq pth-vec-i pth-vec))
 
-           points
-           (-> pnt-tups
-               (->> (map second))
-               (cond-> mirror
-                       (as-> pnts
-                             (->> (case mirror
-                                    nil       pth-vecs
-                                    :merged   (->> pth-vecs (reverse-pth-vecs width))
-                                    :separate (->> pth-vecs normalize-path))
-                                  (mirror-pth-vecs width)
-                                  (path {:debug? true})
-                                  first
-                                  (map second)
-                                  (concat pnts))))
-               (cond-> close? (concat ["Z"]))
-               flatten)]
+         points
+         (-> pnt-tups
+             (->> (map second))
+             (cond-> mirror
+                     (as-> pnts
+                           (->> (case mirror
+                                  nil       pth-vecs'
+                                  :merged   (->> pth-vecs' (reverse-pth-vecs width))
+                                  :separate (->> pth-vecs' normalize-path))
+                                (mirror-pth-vecs width)
+                                (path {:debug? true})
+                                first
+                                (map second)
+                                (concat pnts))))
+             (cond-> close? (concat ["Z"]))
+             flatten)]
 
-       (if debug?
-         [pnt-tups points]
-         (if draw?
-           [:path {:d (apply d points)}]
-           points))))))
+     (if debug?
+       [pnt-tups points]
+       (if draw?
+         [:path {:d (apply d points)}]
+         points)))))
 
 ;; -----------------------------------------------------------------------------
 ;; UI
@@ -257,7 +257,7 @@
                            (upd! xy'))))
       :on-mouse-up   #(reset! !snap nil)}]))
 
-(defn coord [{:keys [scaled report! coord-size sel]} pth-vecs xy ii]
+(defn coord [{:keys [scaled report! coord-size sel]} pth-vecs xy iii]
   (#?(:cljs r/with-let :clj let) [!hover? (atom false)]
     (let [[x y] (mapv #(* % scaled) xy)
           i-tgt (-> xy meta :i-tgt)
@@ -265,17 +265,17 @@
       [:g
        (when-let [[x2 y2] (when i-tgt
                             (-> pth-vecs
-                                (get i-tgt)
+                                (nth i-tgt)
                                 last
                                 (->> (mapv #(* % scaled)))))]
          [:line.ctrl-target {:x1 x :y1 y :x2 x2 :y2 y2}])
        [:g {:style {:cursor "pointer" :text-select "none"}
-            :on-mouse-down (fn [] (report! ii))
+            :on-mouse-down (fn [] (report! iii))
             :on-mouse-over #(reset! !hover? true)
             :on-mouse-out  #(reset! !hover? false)
             :class (str (if i-tgt "control" "target")
                         (when hover? " hover")
-                        (when (= sel ii) " selected"))}
+                        (when (= sel iii) " selected"))}
         (if hover?
           [:g
            [:circle {:cx x :cy y :r (* coord-size 1.5)}]
@@ -287,17 +287,18 @@
             (str/join " " xy)]]
           [:circle {:cx x :cy y :r coord-size}])]])))
 
-(defn plot-coords [opts pth-vecs pnt-tups]
-  (for [[args i pnt-offset k] (map first pnt-tups)
-        [i-pnt pnt] (map-indexed vector args)]
-    ^{:key (hash [k i i-pnt])}
-    [coord opts pth-vecs pnt [i (+ i-pnt pnt-offset)]]))
+(defn plot-coords [opts pth-i pth-vecs pnt-tups]
+  (for [[args i-pth-vec i-pnt0 k] (map first pnt-tups)
+        [i-pnt pnt] (map-indexed vector args)
+        :let [iii [pth-i (+ i-pth-vec i-pth-vec0) (+ i-pnt0 i-pnt)]]]
+    ^{:key (hash iii)}
+    [coord opts pth-vecs pnt iii]))
 
 (defn path-builder [{:as opts :keys [debug? attrs]}
-                    pth-vecs]
+                    pth-i pth-vecs]
   (let [[pnt-tups points] (path (assoc opts :debug? true) pth-vecs)]
     [:g
      (if debug?
-       (plot-coords opts pth-vecs pnt-tups)
+       (plot-coords opts pth-i pth-vecs pnt-tups)
        [:path (merge attrs
                      {:d (apply d points)})])]))
