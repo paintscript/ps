@@ -94,6 +94,20 @@
                   curve-C [:C c1 c2 tgt]]
               (recur pth-vv-tail tgt c2 (conj acc curve-C)))))))
 
+(defn- with-abs-meta [pnt1 pnt2] (with-meta pnt1 {:abs pnt2}))
+(defn abs-meta [pnt] (-> pnt meta :abs))
+
+(defn attach-normalized-meta [pth-vecs pth-vecs']
+  (map (fn [[k & pnts :as pth-vec] [k' & pnts']]
+         (case k
+           :c (vec (cons k (map with-abs-meta pnts pnts')))
+           :s (let [[  c2  tgt]  pnts
+                    [_ c2' tgt'] pnts']
+                [k (with-abs-meta c2 c2') (with-abs-meta tgt tgt')])
+           pth-vec))
+       pth-vecs
+       pth-vecs'))
+
 (defn- steal-next [pth-vv-tail]
   (let [xy-1         (-> pth-vv-tail first last)
         pth-v-next   (-> pth-vv-tail first drop-last)
@@ -172,10 +186,10 @@
   (let [ctrl-cnt (dec (count args))]
     (map-indexed (fn [i-pnt pnt]
                    (if (< i-pnt ctrl-cnt)
-                     (with-meta pnt {:i-tgt (if (and (= 2 ctrl-cnt)
-                                                     (= 0 i-pnt))
-                                              (dec i-pth-vec)
-                                              i-pth-vec)})
+                     (vary-meta pnt merge {:i-tgt (if (and (= 2 ctrl-cnt)
+                                                           (= 0 i-pnt))
+                                                    (dec i-pth-vec)
+                                                    i-pth-vec)})
                      pnt))
                  args)))
 
@@ -258,11 +272,16 @@
                            (upd! xy'))))
       :on-mouse-up   #(reset! !snap nil)}]))
 
+(def ^:private relative? #{:c :s})
+
 (defn coord [{:keys [scaled report! coord-size controls?]
               [i-pth-sel i-pth-vec-sel i-pnt-sel :as sel] :sel}
-             pth-vecs xy [i-pth i-pth-vec _ :as iii]]
+             k pth-vecs xy [i-pth i-pth-vec _ :as iii]]
   (#?(:cljs r/with-let :clj let) [!hover? (atom false)]
-    (let [[x y] (mapv #(* % scaled) xy)
+    (let [[x y] (->> (if (relative? k)
+                       (-> xy abs-meta)
+                       xy)
+                     (mapv #(* % scaled)))
           i-tgt (-> xy meta :i-tgt)
           hover? @!hover?]
       (when (or (not i-tgt)
@@ -273,6 +292,8 @@
                               (-> pth-vecs
                                   (nth i-tgt)
                                   last
+                                  (cond-> (relative? k)
+                                          (#(-> % abs-meta (or %))))
                                   (->> (mapv #(* % scaled)))))]
            [:line.ctrl-target {:x1 x :y1 y :x2 x2 :y2 y2}])
          [:g {:style {:cursor "pointer" :text-select "none"}
@@ -299,7 +320,7 @@
         [i-pnt pnt] (map-indexed vector args)
         :let [iii [pth-i (+ i-pth-vec i-pth-vec0) (+ i-pnt0 i-pnt)]]]
     ^{:key (hash iii)}
-    [coord opts pth-vecs pnt iii]))
+    [coord opts k pth-vecs pnt iii]))
 
 (defn path-builder [{:as opts :keys [debug? attrs]}
                     pth-i pth-vecs]

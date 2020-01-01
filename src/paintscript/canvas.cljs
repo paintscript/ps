@@ -50,7 +50,6 @@
                 [zc/button
                  :label "add"
                  :on-click #(do
-                              (println :append-path pth-i-sel)
                               (reset! !sel nil)
                               (swap! !script ops/append-pth pth-i-sel))]
                 [zc/button
@@ -112,14 +111,17 @@
                [ps/path-builder {} pth-i-sel
                 (get-path-segment pth-vv' (- pth-vec-i-sel ps/i-pth-vec0))]]))]
 
-         [:g.coords
-          (for [[pth-i opts pth-vv
-                 [pnt-tups pnts] :as out-tup] out-tups]
-            ^{:key pth-i}
-            [:g
-             (ps/plot-coords {:scaled     sc
-                              :coord-size 10
-                              :report!    report!'
-                              :sel        sel
-                              :controls?  (= pth-i-sel pth-i)}
-                             pth-i pth-vv pnt-tups)])]]]])))
+         (let []
+           [:g.coords
+            (for [[pth-i opts pth-vv _] out-tups]
+              (let [pth-vv' (ps/attach-normalized-meta pth-vv
+                                                       (ps/normalize-path pth-vv))
+                    [pnt-tups pnts] (ps/path (merge opts {:debug? true}) pth-vv')]
+                ^{:key pth-i}
+                [:g
+                 (ps/plot-coords {:scaled     sc
+                                  :coord-size 10
+                                  :report!    report!'
+                                  :sel        sel
+                                  :controls?  (= pth-i-sel pth-i)}
+                                 pth-i pth-vv' pnt-tups)]))])]]])))
