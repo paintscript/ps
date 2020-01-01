@@ -38,6 +38,7 @@
 ;; points
 
 (def pnt-i-offset 1)
+(def pth-vec-i-offset 2)
 
 (defn infer-succ-pnt
   [pth-vecs pth-i pnt-i]
@@ -79,3 +80,25 @@
   (let [pnt-i' (+ pnt-i pnt-i-offset)]
     (-> pth-vecs
         (update pth-i vec-remove pnt-i'))))
+
+;; path-vecs
+
+(defn infer-succ-pth-vec [pth-vecs pth-i]
+  (let [[k & pnts :as pth-vec-1] (get pth-vecs pth-i)]
+    (case k
+      :M [:L (offset-pnt (last pnts) [10 10])]
+      :L [:L (offset-pnt (last pnts) [10 10])]
+      :C (let [tgt (offset-pnt (last pnts) [10 10])]
+           [:C (last pnts) tgt tgt])
+      :S (let [tgt (offset-pnt (last pnts) [10 10])]
+           [:S tgt tgt]))))
+
+(defn append-pth-vec
+  [pth-vecs pth-i]
+  (-> pth-vecs
+      (vec-append pth-i (infer-succ-pth-vec pth-vecs pth-i))))
+
+(defn del-pth-vec
+  [pth-vecs pth-i]
+  (-> pth-vecs
+      (vec-remove pth-i)))

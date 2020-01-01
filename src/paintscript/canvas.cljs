@@ -48,7 +48,20 @@
                (pr-str opts)]
 
               [:div.selection-level.path-vec
-               [:span.pth-k (pr-str k)]]
+               [:span.pth-k (pr-str k)]
+               [:div.controls.crud
+                [zc/button
+                 :label "add"
+                 :on-click #(do
+                              (reset! !sel nil)
+                              (swap! !script update-in [pth-i-sel]
+                                     ops/append-pth-vec pth-vec-i-sel))]
+                [zc/button
+                 :label "del"
+                 :on-click #(do
+                              (reset! !sel nil)
+                              (swap! !script update-in [pth-i-sel]
+                                     ops/del-pth-vec pth-vec-i-sel))]]]
 
               [:div.selection-level.point
                [:span (pr-str (nth pnts (- pnt-i-sel ps/i-pnt0)))]

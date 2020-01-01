@@ -15,7 +15,9 @@
                  :append-pnt (if pnt
                                (apply ops/append-pnt pth-vecs (concat ii [pnt]))
                                (apply ops/append-pnt pth-vecs ii))
-                 :del-pnt (apply ops/del-pnt pth-vecs ii))
+                 :del-pnt (apply ops/del-pnt pth-vecs ii)
+                 :append-pth-vec (apply ops/append-pth-vec pth-vecs ii)
+                 :del-pth-vec (apply ops/del-pth-vec pth-vecs ii))
 
                ))))}})
 
@@ -44,7 +46,19 @@
 
        (x-> :pth-vecs [[:L [0 0] [5 5] [10 10]]]
             :ii       [0 1]
-            :=>       [[:L [0 0] [10 10]]]))])
+            :=>       [[:L [0 0] [10 10]]]))
+
+   (xx {:= {:op :append-pth-vec}}
+
+       (x-> :pth-vecs [[:L [0 0] [5 5]]]
+            :ii       [0]
+            :=>       [[:L [0 0] [5 5]] [:L [15 15]]]))
+
+   (xx {:= {:op :del-pth-vec}}
+
+       (x-> :pth-vecs [[:L [0 0] [5 5]] [:L [15 15]]]
+            :ii       [0]
+            :=>       [[:L [15 15]]]))])
 
 (deftest ops-test
   (x/traverse-xspace ops-xspace-cfg
