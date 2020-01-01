@@ -24,7 +24,7 @@
                report!' (fn [iii] (reset! !sel iii) (report! iii))]
     (let [[w h] (->> dims (mapv #(* % sc)))
           script @!script
-          [pth-i pth-vec-i pnt-i :as sel] @!sel
+          [pth-i-sel pth-vec-i pnt-i :as sel] @!sel
 
           out-tups (->> script
                         (map-indexed
@@ -36,15 +36,24 @@
         [:textarea
          {:value     (str/trim (pprint' script))
           :on-change #(reset! !script (-> % .-target .-value read-string))}]
+
         [:div.status
          (when sel
-           (let [[k & pnts] (get-in script [pth-i pth-vec-i])]
-             [:div.selection
-              [:span.pth-k (pr-str k)]
-              (for [[i pnt] (map-indexed vector pnts)]
-                ^{:key (hash [sel i pnt])}
-                [:span {:class (when (= pnt-i (inc i)) "selected")}
-                 (pr-str pnt)])]))]]
+           (let [[_ opts :as path] (get script pth-i-sel)
+                 [k & pnts]        (get path pth-vec-i)]
+             [:div.selection-stack
+              [:div.selection-level.path
+               (pr-str opts)]
+
+              [:div.selection-level.path-vec
+               [:span.pth-k (pr-str k)]
+               (for [[i pnt] (map-indexed vector pnts)]
+                 ^{:key (hash [sel i pnt])}
+                 [:span {:class (when (= pnt-i (inc i)) "selected")}
+                  (pr-str pnt)])]
+
+              [:div.selection-level.point
+               (pr-str (nth pnts (dec pnt-i)))]]))]]
 
        [:div.paint
         [:svg (merge {:style {:width w :height h}}
@@ -58,12 +67,12 @@
              [ps/path-builder opts pth-i pth-vv])]
 
           (when (and sel (> pth-vec-i ps/i-pth-vec0))
-            (let [pth-vv' (->> (get script pth-i)
+            (let [pth-vv' (->> (get script pth-i-sel)
                                (take (inc pth-vec-i))
                                (drop ps/i-pth-vec0)
                                ps/normalize-path)]
               [:g.sel
-               [ps/path-builder {} pth-i
+               [ps/path-builder {} pth-i-sel
                 (get-path-segment pth-vv' (- pth-vec-i ps/i-pth-vec0))]]))]
 
          [:g.coords
@@ -74,5 +83,6 @@
              (ps/plot-coords {:scaled     sc
                               :coord-size 10
                               :report!    report!'
-                              :sel        sel}
+                              :sel        sel
+                              :controls?  (= pth-i-sel pth-i)}
                              pth-i pth-vv pnt-tups)])]]]])))

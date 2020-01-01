@@ -257,35 +257,41 @@
                            (upd! xy'))))
       :on-mouse-up   #(reset! !snap nil)}]))
 
-(defn coord [{:keys [scaled report! coord-size sel]} pth-vecs xy iii]
+(defn coord [{:keys [scaled report! coord-size controls?]
+              [i-pth-sel i-pth-vec-sel i-pnt-sel :as sel] :sel}
+             pth-vecs xy [i-pth i-pth-vec _ :as iii]]
   (#?(:cljs r/with-let :clj let) [!hover? (atom false)]
     (let [[x y] (mapv #(* % scaled) xy)
           i-tgt (-> xy meta :i-tgt)
           hover? @!hover?]
-      [:g
-       (when-let [[x2 y2] (when i-tgt
-                            (-> pth-vecs
-                                (nth i-tgt)
-                                last
-                                (->> (mapv #(* % scaled)))))]
-         [:line.ctrl-target {:x1 x :y1 y :x2 x2 :y2 y2}])
-       [:g {:style {:cursor "pointer" :text-select "none"}
-            :on-mouse-down (fn [] (report! iii))
-            :on-mouse-over #(reset! !hover? true)
-            :on-mouse-out  #(reset! !hover? false)
-            :class (str (if i-tgt "control" "target")
-                        (when hover? " hover")
-                        (when (= sel iii) " selected"))}
-        (if hover?
-          [:g
-           [:circle {:cx x :cy y :r (* coord-size 1.5)}]
-           [:text {:x x :y y :fill "white"
-                   :font-size coord-size
-                   :text-anchor "middle"
-                   :dominant-baseline "middle"
-                   :style {:user-select "none"}}
-            (str/join " " xy)]]
-          [:circle {:cx x :cy y :r coord-size}])]])))
+      (when (or (not i-tgt)
+                (and (= i-pth-sel     i-pth)
+                     (= i-pth-vec-sel i-pth-vec)))
+        [:g
+         (when-let [[x2 y2] (when i-tgt
+                              (-> pth-vecs
+                                  (nth i-tgt)
+                                  last
+                                  (->> (mapv #(* % scaled)))))]
+           [:line.ctrl-target {:x1 x :y1 y :x2 x2 :y2 y2}])
+         [:g {:style {:cursor "pointer" :text-select "none"}
+              :on-mouse-down (fn [] (report! iii))
+              :on-mouse-over #(reset! !hover? true)
+              :on-mouse-out  #(reset! !hover? false)
+              :class (str (if i-tgt "control" "target")
+                          (when hover? " hover")
+                          (when (= sel iii) " selected"))}
+          (if hover?
+            [:g
+             [:circle {:cx x :cy y :r (* coord-size 1.5)}]
+             [:text   {:x x :y y
+                       :fill "white"
+                       :font-size coord-size
+                       :text-anchor "middle"
+                       :dominant-baseline "middle"
+                       :style {:user-select "none"}}
+              (str/join " " xy)]]
+            [:circle {:cx x :cy y :r coord-size}])]]))))
 
 (defn plot-coords [opts pth-i pth-vecs pnt-tups]
   (for [[args i-pth-vec i-pnt0 k] (map first pnt-tups)
