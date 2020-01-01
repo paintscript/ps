@@ -45,7 +45,19 @@
                  [k & pnts]        (get path pth-vec-i-sel)]
              [:div.selection-stack
               [:div.selection-level.path
-               (pr-str opts)]
+               [:span (pr-str opts)]
+               [:div.controls.crud
+                [zc/button
+                 :label "add"
+                 :on-click #(do
+                              (println :append-path pth-i-sel)
+                              (reset! !sel nil)
+                              (swap! !script ops/append-pth pth-i-sel))]
+                [zc/button
+                 :label "del"
+                 :on-click #(do
+                              (reset! !sel nil)
+                              (swap! !script ops/del-pth pth-i-sel))]]]
 
               [:div.selection-level.path-vec
                [:span.pth-k (pr-str k)]

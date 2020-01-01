@@ -102,3 +102,12 @@
   [pth-vecs pth-i]
   (-> pth-vecs
       (vec-remove pth-i)))
+
+;; paths
+
+(defn append-pth
+  [script pth-i]
+  (-> script
+      (vec-append pth-i [:path {} [:M [10 10]]])))
+
+(defn del-pth [script pth-i] (-> script (vec-remove pth-i)))

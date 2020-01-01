@@ -8,7 +8,7 @@
    {:xx (fn [_ctx {:keys [title]} f] (testing title (f)))
     :x->
     (fn [ctx c args]
-      (let [{:keys [op pth-vecs pnt ii =>]}
+      (let [{:keys [op script pth-vecs pnt ii =>]}
             (merge (-> ctx :args) args)]
         (is (= =>
                (case op
@@ -17,12 +17,15 @@
                                (apply ops/append-pnt pth-vecs ii))
                  :del-pnt (apply ops/del-pnt pth-vecs ii)
                  :append-pth-vec (apply ops/append-pth-vec pth-vecs ii)
-                 :del-pth-vec (apply ops/del-pth-vec pth-vecs ii))
+                 :del-pth-vec (apply ops/del-pth-vec pth-vecs ii)
+                 :append-pth (apply ops/append-pth script ii)
+                 :del-pth (apply ops/del-pth script ii))
 
                ))))}})
 
 (def ops-xspace
-  [(xx {:= {:op :append-pnt}}
+  [;; pnt
+   (xx {:= {:op :append-pnt}}
 
        (xx {:title "infer pnt (|2|)"
             := {:pth-vecs [[:L [0 0] [5 5]]]
@@ -48,6 +51,7 @@
             :ii       [0 1]
             :=>       [[:L [0 0] [10 10]]]))
 
+   ;; pth-vec
    (xx {:= {:op :append-pth-vec}}
 
        (x-> :pth-vecs [[:L [0 0] [5 5]]]
@@ -58,7 +62,22 @@
 
        (x-> :pth-vecs [[:L [0 0] [5 5]] [:L [15 15]]]
             :ii       [0]
-            :=>       [[:L [15 15]]]))])
+            :=>       [[:L [15 15]]]))
+
+   ;; pth
+   (xx {:= {:op :append-pth}}
+
+       (x-> :script [[:path {} [:M [5 5]]]]
+            :ii     [0]
+            :=>     [[:path {} [:M [5 5]]]
+                     [:path {} [:M [10 10]]]]))
+
+   (xx {:= {:op :del-pth}}
+
+       (x-> :script [[:path {} [:M [5 5]]]
+                     [:path {} [:M [10 10]]]]
+            :ii     [1]
+            :=>     [[:path {} [:M [5 5]]]]))])
 
 (deftest ops-test
   (x/traverse-xspace ops-xspace-cfg
