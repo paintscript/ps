@@ -1,3 +1,5 @@
+@import "../../z-com/resources/scss/z-com";
+
 html, body {
   margin: 0; padding: 0;
 }
@@ -6,7 +8,7 @@ div.canvas {
   display: flex;
   * { box-sizing: border-box; }
 
-  --status-item-height: 40px;
+  --status-item-height: 50px;
   --status-height:    calc(var(--status-item-height) * 3);
   --target-col:       hsla(0,0%,50%,0.3); //hsla(240,100%,50%,0.3);
   --control-col:      hsla(120,100%,50%,0.3);
@@ -38,6 +40,11 @@ div.canvas {
     }
 
     div.status {
+      position: relative;
+      div.controls {
+        div.zc-button { box-sizing: border-box; --height: calc(var(--status-item-height) - 1px);; }
+        &.crud { position: absolute; right: 0; }
+      }
       div.selection-stack {
         display: flex; flex-direction: column;
         height: var(--status-height);

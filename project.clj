@@ -3,7 +3,8 @@
                  [org.clojure/clojurescript "1.10.520"]
                  [reagent "0.8.1"]
                  [svg-hiccup-kit "0.2.4"]
-                 [xspace "0.2.14"]]
+                 [xspace "0.2.14"]
+                 [z-com "0.8.22"]]
 
   :source-paths ["src/"]
   :plugins      [[lein-cljsbuild "1.1.7"]

@@ -4,6 +4,9 @@
             [svg-hiccup-kit.core :refer [d d2]]
             [paintscript.util :as u]))
 
+(def i-pth-vec0 2)
+(def i-pnt0 1)
+
 (defn- arcs
   [pth {:as opts :keys [mode ctd?] :or {mode :concave}}]
   (let [[head & tail] pth
@@ -197,8 +200,6 @@
       :q    (let [[c     tgt] args] [data (list "q" c      tgt)])
       :T    (let [[c1    tgt] args] [data (list "T" c1 tgt tgt)])
       :t    (let [[c1    tgt] args] [data (list "t" c1 tgt tgt)]))))
-
-(def i-pth-vec0 2)
 
 (defn path
   ([pth-vecs] (path nil pth-vecs))

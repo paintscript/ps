@@ -4,8 +4,10 @@
             [cljs.pprint :refer [pprint]]
             [cljs.reader :refer [read-string]]
             [reagent.core :as r]
+            [z-com.core :as zc]
             [paintscript.core :as ps]
-            [svg-hiccup-kit.core :refer [tf tf* d d2]]))
+            [svg-hiccup-kit.core :refer [tf tf* d d2]]
+            [paintscript.ops :as ops]))
 
 (defn- pprint' [edn] (with-out-str *out* (pprint edn)))
 
@@ -24,7 +26,7 @@
                report!' (fn [iii] (reset! !sel iii) (report! iii))]
     (let [[w h] (->> dims (mapv #(* % sc)))
           script @!script
-          [pth-i-sel pth-vec-i pnt-i :as sel] @!sel
+          [pth-i-sel pth-vec-i-sel pnt-i-sel :as sel] @!sel
 
           out-tups (->> script
                         (map-indexed
@@ -40,20 +42,30 @@
         [:div.status
          (when sel
            (let [[_ opts :as path] (get script pth-i-sel)
-                 [k & pnts]        (get path pth-vec-i)]
+                 [k & pnts]        (get path pth-vec-i-sel)]
              [:div.selection-stack
               [:div.selection-level.path
                (pr-str opts)]
 
               [:div.selection-level.path-vec
-               [:span.pth-k (pr-str k)]
-               (for [[i pnt] (map-indexed vector pnts)]
-                 ^{:key (hash [sel i pnt])}
-                 [:span {:class (when (= pnt-i (inc i)) "selected")}
-                  (pr-str pnt)])]
+               [:span.pth-k (pr-str k)]]
 
               [:div.selection-level.point
-               (pr-str (nth pnts (dec pnt-i)))]]))]]
+               [:span (pr-str (nth pnts (- pnt-i-sel ps/i-pnt0)))]
+               (when (contains? #{:L :arc} k)
+                 [:div.controls.crud
+                  [zc/button
+                   :label "add"
+                   :on-click #(do
+                                (reset! !sel nil)
+                                (swap! !script update-in [pth-i-sel]
+                                       ops/append-pnt pth-vec-i-sel))]
+                  [zc/button
+                   :label "del"
+                   :on-click #(do
+                                (reset! !sel nil)
+                                (swap! !script update-in [pth-i-sel]
+                                       ops/del-pnt pth-vec-i-sel (- pnt-i-sel ps/i-pnt0)))]])]]))]]
 
        [:div.paint
         [:svg (merge {:style {:width w :height h}}
@@ -66,14 +78,14 @@
              ^{:key pth-i}
              [ps/path-builder opts pth-i pth-vv])]
 
-          (when (and sel (> pth-vec-i ps/i-pth-vec0))
+          (when (and sel (> pth-vec-i-sel ps/i-pth-vec0))
             (let [pth-vv' (->> (get script pth-i-sel)
-                               (take (inc pth-vec-i))
+                               (take (inc pth-vec-i-sel))
                                (drop ps/i-pth-vec0)
                                ps/normalize-path)]
               [:g.sel
                [ps/path-builder {} pth-i-sel
-                (get-path-segment pth-vv' (- pth-vec-i ps/i-pth-vec0))]]))]
+                (get-path-segment pth-vv' (- pth-vec-i-sel ps/i-pth-vec0))]]))]
 
          [:g.coords
           (for [[pth-i opts pth-vv
