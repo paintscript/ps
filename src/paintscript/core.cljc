@@ -5,11 +5,6 @@
             [paintscript.util :as u]
             [paintscript.pth-vecs :as pth-vecs]))
 
-
-
-;; -----------------------------------------------------------------------------
-;; UI
-
 (defn- xy-mouse [ev]
   [(-> ev .-clientX)
    (-> ev .-clientY)])

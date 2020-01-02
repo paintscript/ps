@@ -21,12 +21,6 @@
     [k (first args) 2 (rest args)]
     [k nil 1 args]))
 
-(defn- flip-c2 [c2 tgt]
-  (let [delta (mapv - tgt c2)]
-    (mapv + tgt delta)))
-
-(defn- flip-bin [n] (case n 0 1 0))
-
 (defn- mirror-pnt  [width pnt]  (update pnt 0 #(- width %)))
 (defn- mirror-pnts [width pnts] (map #(mirror-pnt width %) pnts))
 
@@ -42,7 +36,7 @@
                 :A (let [[r [rot f1 f2] xy] pnts
 
                                ;; NOTE: needs to be undone when combined with reverse
-                               f2' (-> f2 flip-bin)]
+                               f2' (-> f2 pv/flip-bin)]
                            [:A r [rot f1 f2'] (mirror-pnt width xy)])
                 (cons pth-k
                       (mirror-pnts width pnts)))))))
@@ -75,53 +69,20 @@
        pth-vecs
        pth-vecs'))
 
-(defn- steal-next [pth-vv-tail]
-  (let [xy-1         (-> pth-vv-tail first last)
-        pth-v-next   (-> pth-vv-tail first drop-last)
-        pth-vv-tail' (-> pth-vv-tail rest (conj pth-v-next))]
-    [xy-1 pth-vv-tail']))
-
 (defn- reverse-pth-vec-pnts
   "drop last point (implicit) and redistribute the rest in reverse:
     ([:M 1] [:L 2 3] [:C 4 5 6] [:C 7 8 9])
     ~> ([:C 7 8 9] [:C 4 5 6] [:L 2 3] [:M 1])
     => ([:C 8 7 6] [:C 5 4 3] [:L 2 1])
   "
-  [pth-vv]
-  (loop [[[pth-k & pnts :as pth-v-curr] & pth-vv-tail] (reverse pth-vv)
-         acc []]
-    (if-not pth-v-curr
-      acc
-      (case pth-k
-        :arc  (let [i (cons :arc* (reverse pnts))]
-                (recur pth-vv-tail (-> acc (cond-> (seq pnts) (conj i)))))
-
-        :M (let [i (cons :M (reverse pnts))]
-             (recur pth-vv-tail (-> acc (cond-> (seq pnts) (conj i)))))
-
-        :L (let [[xy-1
-                  pth-vv-tail'] (steal-next pth-vv-tail)
-                 i (cons :L (concat (reverse pnts) [xy-1]))]
-             (recur pth-vv-tail' (conj acc i)))
-
-        :A (let [[r p _xy2] pnts
-                 p' (update p 2 flip-bin)
-                 [xy-1
-                  pth-vv-tail'] (steal-next pth-vv-tail)
-                 i              [:A r p' xy-1]]
-             (recur pth-vv-tail' (conj acc i)))
-
-        :C (let [[c1 c2 _xy]    pnts
-                 [xy-1
-                  pth-vv-tail'] (steal-next pth-vv-tail)
-                 i              [:C c2 c1 xy-1]]
-             (recur pth-vv-tail' (conj acc i)))
-
-        :Q (let [[c _xy] pnts
-                 [xy-1
-                  pth-vv-tail'] (steal-next pth-vv-tail)
-                 i              [:Q c xy-1]]
-             (recur pth-vv-tail' (conj acc i)))))))
+  [pvv]
+  (loop [[pv & pvv-tail] pvv
+         acc []
+         tgt-prev nil]
+    (if-not pv
+      (reverse acc)
+      (let [[pv' tgt] (pv/pv->reversed pv tgt-prev)]
+        (recur pvv-tail (-> acc (cond-> pv' (conj pv'))) tgt)))))
 
 (defn- reverse-pth-vecs
   [width pth-vecs]
@@ -140,29 +101,21 @@
 (defn scale-path-vecs [pth-vecs ctr n]
   (map-pnts #(u/tl-point-towards % ctr n) pth-vecs))
 
-(def ^:private s-curves
-  #{:S :s})
-
-(def ^:private lines-with-ctrl-pnts
-  #{:S :s
-    :C :c :C1 :c1
-    :Q :q
-    :T :t})
-
 (defn- add-ctrl-pnt-meta [args k i-pth-vec]
   (let [ctrl-cnt (dec (count args))]
     (map-indexed (fn [i-pnt pnt]
                    (if (< i-pnt ctrl-cnt)
-                     (vary-meta pnt merge {:i-tgt (if (and (= 2 ctrl-cnt)
-                                                           (= 0 i-pnt))
-                                                    (dec i-pth-vec)
-                                                    i-pth-vec)})
+                     (vary-meta pnt merge
+                                {:i-tgt (if (and (= 2 ctrl-cnt)
+                                                 (= 0 i-pnt))
+                                          (dec i-pth-vec)
+                                          i-pth-vec)})
                      pnt))
                  args)))
 
 (defn pth-vec-->svg-seq [i-pth-vec pth-vec]
   (let [[k opts i-pnt0 args] (parse-vec pth-vec)
-        args' (-> args (cond-> (lines-with-ctrl-pnts k)
+        args' (-> args (cond-> (pv/has-cp? k)
                                (add-ctrl-pnt-meta k i-pth-vec)))
         data [args' i-pth-vec i-pnt0 k]]
     (case k

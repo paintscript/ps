@@ -1,11 +1,12 @@
 (ns paintscript.pth-vec)
 
+(defn flip-bin [n] (case n 0 1 0))
+
 ;; -----------------------------------------------------------------------------
 ;; classes
 
-(def s-curves  #{:S :s})
 (def has-cp?   #{:S :s
-                 :C :c
+                 :C :c :C1 :c1
                  :Q :q})
 (def relative? #{:c :s})
 (def short?    #{:S :C1 :T :arc})
@@ -72,3 +73,31 @@
                    (when (short?    pv-k) [short->full])))
       (when (has-cp? pv-k) [curve->tgt-cp])
       [pv->tgt']))
+
+
+;; -----------------------------------------------------------------------------
+;; reverse
+
+(defmulti pv->reversed dispatch-on-k)
+
+(defmethod pv->reversed :M [[_ & pnts :as pv] tgt-prev]
+  [(when tgt-prev [:M tgt-prev])
+   (last pnts)])
+
+(defmethod pv->reversed :L [[_ & pnts] tgt-prev]
+  [(vec (->> pnts butlast (cons tgt-prev) reverse (cons :L)))
+   (last pnts)])
+
+(defmethod pv->reversed :arc [[_ & pnts] tgt-prev]
+  [(vec (-> pnts butlast (cons tgt-prev) reverse (cons :arc*)))
+   (last pnts)])
+
+(defmethod pv->reversed :A [[_ r p tgt] tgt-prev]
+  (let [p' (update p 2 flip-bin)]
+    [[:A r p' tgt-prev] tgt]))
+
+(defmethod pv->reversed :C [[_ c1 c2 tgt] tgt-prev]
+  [[:C c2 c1 tgt-prev] tgt])
+
+(defmethod pv->reversed :Q [[_ c tgt] tgt-prev]
+  [[:Q c tgt-prev] tgt])
