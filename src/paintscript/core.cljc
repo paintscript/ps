@@ -28,7 +28,7 @@
 
 (def ^:private relative? #{:c :s})
 
-(defn coord [{:keys [scaled report! coord-size controls?]
+(defn coord [{:keys [scaled report! report-hover! coord-size controls? hov]
               [i-pth-sel i-pth-vec-sel i-pnt-sel :as sel] :sel}
              k pth-vecs xy [i-pth i-pth-vec _ :as iii]]
   (#?(:cljs r/with-let :clj let) [!hover? (atom false)]
@@ -36,38 +36,51 @@
                        (-> xy pth-vecs/abs-meta)
                        xy)
                      (mapv #(* % scaled)))
-          i-tgt (-> xy meta :i-tgt)
-          hover? @!hover?]
-      (when (or (not i-tgt)
-                (and (= i-pth-sel     i-pth)
-                     (= i-pth-vec-sel i-pth-vec)))
+          i-tgt     (-> xy meta :i-tgt)
+          cp?       (some? i-tgt)
+          hover?    (= iii hov)
+          sel-pv?   (and (= i-pth-sel     i-pth)
+                         (= i-pth-vec-sel i-pth-vec))
+          sel-pnt?  (= iii sel)]
+      (when (or (not cp?) sel-pv?)
         [:g
-         (when-let [[x2 y2] (when i-tgt
-                              (-> pth-vecs
-                                  (nth i-tgt)
-                                  last
-                                  (cond-> (relative? k)
-                                          (#(-> % pth-vecs/abs-meta (or %))))
-                                  (->> (mapv #(* % scaled)))))]
-           [:line.ctrl-target {:x1 x :y1 y :x2 x2 :y2 y2}])
+         (when cp?
+           (let [[x2 y2] (-> pth-vecs
+                             (nth i-tgt)
+                             last
+                             (cond-> (relative? k)
+                                     (#(-> % pth-vecs/abs-meta (or %))))
+                             (->> (mapv #(* % scaled))))]
+            [:line.ctrl-target {:x1 x :y1 y :x2 x2 :y2 y2}]))
          [:g {:style {:cursor "pointer" :text-select "none"}
-              :on-mouse-down (fn [] (report! iii))
-              :on-mouse-over #(reset! !hover? true)
-              :on-mouse-out  #(reset! !hover? false)
+              :on-mouse-down #(report!       iii)
+              :on-mouse-over #(report-hover! iii true)
+              :on-mouse-out  #(report-hover! iii false)
               :class (str (if i-tgt "control" "target")
                           (when hover? " hover")
                           (when (= sel iii) " selected"))}
-          (if hover?
+          (if (or sel-pnt? hover?)
             [:g
-             [:circle {:cx x :cy y :r (* coord-size 1.5)}]
-             [:text   {:x x :y y
-                       :fill "white"
-                       :font-size coord-size
-                       :text-anchor "middle"
-                       :dominant-baseline "middle"
-                       :style {:user-select "none"}}
-              (str/join " " xy)]]
-            [:circle {:cx x :cy y :r coord-size}])]]))))
+             (if cp?
+               [:rect   {:x (- x (* coord-size 1.8))
+                         :y (- y (* coord-size 1.8))
+                         :width  (* coord-size 3.6)
+                         :height (* coord-size 3.6)}]
+               [:circle {:cx x :cy y :r (* coord-size 1.8)}])
+             (when-not sel-pnt?
+               [:text   {:x x :y y
+                         :fill "white"
+                         :font-size coord-size
+                         :text-anchor "middle"
+                         :dominant-baseline "middle"
+                         :style {:user-select "none"}}
+                (str/join " " xy)])]
+            (if cp?
+              [:rect   {:x (- x (/ coord-size 2))
+                        :y (- y (/ coord-size 2))
+                        :width  coord-size
+                        :height coord-size}]
+              [:circle {:cx x :cy y :r coord-size}]))]]))))
 
 (defn plot-coords [opts pth-i pth-vecs pnt-tups]
   (for [[args i-pth-vec i-pnt0 k] (map first pnt-tups)

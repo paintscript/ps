@@ -98,10 +98,10 @@ div.canvas {
       path { stroke-linecap: round; }
 
       g {
-        &.control  circle { fill: hsl(0,0%,90%); stroke: var(--sel-fg); stroke-width: 2; }
-        &.target   circle { fill: transparent; stroke: var(--target-col); stroke-width: 2; }
-        &.hover    circle { fill: black; }
-        &.selected circle { fill: var(--sel-fg); }
+        &.control  { rect, circle { fill: hsl(0,0%,90%); stroke: var(--sel-fg); stroke-width: 2; } }
+        &.target   { rect, circle { fill: transparent; stroke: var(--target-col); stroke-width: 2; } }
+        &.hover    { rect, circle { fill: black; } }
+        &.selected { rect, circle { fill: transparent; stroke: var(--sel-fg); } }
       }
     }
   }

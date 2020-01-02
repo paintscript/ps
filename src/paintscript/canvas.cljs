@@ -23,12 +23,20 @@
 (defn canvas [{:keys [dims script]}]
   (r/with-let [!script (r/atom script)
                !sel    (r/atom nil)
+               !hov    (r/atom nil)
                sc 4
-               [report! dnd-fns] (ps/drag-and-drop-fns [sc sc] !script)
-               report!' (fn [iii] (reset! !sel iii) (report! iii))]
+               [report!
+                dnd-fns]   (ps/drag-and-drop-fns [sc sc] !script)
+               report!'    (fn [iii] (reset! !sel iii) (report! iii))
+               report-hov! (fn [iii val]
+                             (swap! !hov #(cond
+                                            val iii
+                                            (= iii %) nil
+                                            :else %)))]
     (let [[w h] (->> dims (mapv #(* % sc)))
           script @!script
           [pth-i-sel pth-vec-i-sel pnt-i-sel :as sel] @!sel
+          hov @!hov
 
           out-tups (->> script
                         (map-indexed
@@ -122,9 +130,11 @@
                     [pnt-tups pnts] (ps/path (merge opts {:debug? true}) pth-vv')]
                 ^{:key pth-i}
                 [:g
-                 (ps/plot-coords {:scaled     sc
-                                  :coord-size 10
-                                  :report!    report!'
-                                  :sel        sel
-                                  :controls?  (= pth-i-sel pth-i)}
+                 (ps/plot-coords {:scaled        sc
+                                  :coord-size    10
+                                  :report!       report!'
+                                  :report-hover! report-hov!
+                                  :sel           sel
+                                  :hov           hov
+                                  :controls?     (= pth-i-sel pth-i)}
                                  pth-i pth-vv' pnt-tups)]))])]]])))
