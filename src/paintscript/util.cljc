@@ -1,5 +1,7 @@
 (ns paintscript.util)
 
+(defn round [n] #?(:cljs (js/Math.round n)))
+
 (defn sign [n] (if (neg? n) -1 1))
 
 (def PI #?(:cljs js/Math.PI :clj Math/PI))

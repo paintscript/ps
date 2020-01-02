@@ -19,11 +19,11 @@
           ;         :d (apply d =>)}]
           ]
 
-         #{:scale-path}
+         #{:scale-path-vecs}
          [:div
           [:svg {:width 100 :height 100}
            [core/path-builder opts' path]]
 
           [:svg {:width 100 :height 100}
-           [core/path-builder opts' (core/scale-path path center fract)]]]
+           [core/path-builder opts' (core/scale-path-vecs path center fract)]]]
          nil))]))

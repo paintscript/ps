@@ -1,7 +1,8 @@
-(ns paintscript.core-xspace
+ (ns paintscript.core-xspace
   (:require [clojure.test :refer [deftest testing is]]
-            [paintscript.core :as core]
-            [xspace.core :as x :refer [x-> xx x:=]]))
+            [xspace.core :as x :refer [x-> xx x:=]]
+            [paintscript.pth-vecs :as pth-vecs]
+            [paintscript.core :as core]))
 
 (def core-xspace-cfg
   {:fns
@@ -13,12 +14,12 @@
         (let [opts' (merge opts-base opts)]
           (is (= =>
                  (case op
-                   :path                 (core/path opts' path)
-                   :arcs                 (#'core/arcs arcs opts)
-                   :mirror-pnts          (#'core/mirror-pnts width pnts)
-                   :normalize-path       (#'core/normalize-path path)
-                   :reverse-pth-vec-pnts (#'core/reverse-pth-vec-pnts path)
-                   :scale-path           (core/scale-path path center fract)))))))}})
+                   :path                 (pth-vecs/path opts' path)
+                   :arcs                 (#'pth-vecs/arcs arcs opts)
+                   :mirror-pnts          (#'pth-vecs/mirror-pnts width pnts)
+                   :normalize-path-vecs  (#'pth-vecs/normalize-path-vecs path)
+                   :reverse-pth-vec-pnts (#'pth-vecs/reverse-pth-vec-pnts path)
+                   :scale-path-vecs      (pth-vecs/scale-path-vecs path center fract)))))))}})
 
 (def core-xspace
   [(xx "util"
@@ -30,7 +31,7 @@
                         ["A" [10  10] [0 "0,1"] [10 10]]
                         ["A" [10 -10] [0 "0,1"] [20  0]])))
 
-       (xx {:= {:op :normalize-path}}
+       (xx {:= {:op :normalize-path-vecs}}
 
            (x-> "C1"
                 :path '([:C1 [10 10] [20 20]])

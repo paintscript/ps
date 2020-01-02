@@ -2,258 +2,17 @@
   (:require #?(:cljs [reagent.core :as r :refer [atom]])
             [clojure.string :as str]
             [svg-hiccup-kit.core :refer [d d2]]
-            [paintscript.util :as u]))
+            [paintscript.util :as u]
+            [paintscript.pth-vecs :as pth-vecs]))
 
-(def i-pth-vec0 2)
-(def i-pnt0 1)
 
-(defn- arcs
-  [pth {:as opts :keys [mode ctd?] :or {mode :concave}}]
-  (let [[head & tail] pth
-        paired-with-prev (map vector tail (drop-last pth))
-        arc-middle (str (case mode :concave "0,1" :convex "0,0") )]
-    (concat (when-not ctd?
-              [["M" head]])
-            (for [[[x  y  :as pnt]
-                   [xp yp :as pnt-prev]] paired-with-prev]
-              ["A" [(- x xp) (- y yp)] [0 arc-middle] [x y]]))))
+
+;; -----------------------------------------------------------------------------
+;; UI
 
 (defn- xy-mouse [ev]
   [(-> ev .-clientX)
    (-> ev .-clientY)])
-
-(defn- round [n]
-  #?(:cljs (js/Math.round n)))
-
-(defn- parse-vec [[k & args]]
-  (if (map? (first args))
-    [k (first args) 2 (rest args)]
-    [k nil 1 args]))
-
-(defn- flip-c2 [c2 tgt]
-  (let [delta (mapv - tgt c2)]
-    (mapv + tgt delta)))
-
-(defn- flip-bin [n] (case n 0 1 0))
-
-(defn- mirror-pnt  [width pnt]  (update pnt 0 #(- width %)))
-(defn- mirror-pnts [width pnts] (map #(mirror-pnt width %) pnts))
-
-(defn- mirror-pth-vecs [width pth-vv]
-  (->> pth-vv
-       (map (fn [[pth-k & pnts :as pth-v]]
-              (case pth-k
-                :arc (let [[opts & pnts] pnts]
-                       (concat [pth-k (-> opts
-                                          (update :mode
-                                                  #(case % :convex :concave :convex)))]
-                               (mirror-pnts width pnts)))
-                :A (let [[r [rot f1 f2] xy] pnts
-
-                               ;; NOTE: needs to be undone when combined with reverse
-                               f2' (-> f2 flip-bin)]
-                           [:A r [rot f1 f2'] (mirror-pnt width xy)])
-                (cons pth-k
-                      (mirror-pnts width pnts)))))))
-
-(defn normalize-path [pth-vv]
-  (loop [[[pth-k & pnts :as pth-v] & pth-vv-tail] pth-vv
-         tgt-prev nil
-         c2-prev  nil
-         acc      []]
-    (if-not pth-k
-      acc
-      (case pth-k
-        :arc (let [[arg1 & args-rest] pnts
-                   arc' (if (map? arg1) pth-v (concat [:arc {}] pnts))]
-               (recur pth-vv-tail (last pth-v) nil (conj acc arc')))
-
-        :M  (recur pth-vv-tail (last pth-v) nil (conj acc pth-v))
-        :L  (recur pth-vv-tail (last pth-v) nil (conj acc pth-v))
-
-        :A  (let [[_ _  tgt] pnts] (recur pth-vv-tail tgt nil (conj acc pth-v)))
-        :Q  (let [[_    tgt] pnts] (recur pth-vv-tail tgt nil (conj acc pth-v)))
-        :C  (let [[_ c2 tgt] pnts] (recur pth-vv-tail tgt c2  (conj acc pth-v)))
-
-        ;; normalize to :C
-
-        :c  (let [[c1 c2 tgt :as pnts'] (map #(mapv + % tgt-prev) pnts)]
-              (recur pth-vv-tail tgt c2 (conj acc [:C c1 c2 tgt])))
-
-        :C1 (let [[c1 tgt] pnts
-                  curve-C [:C c1 tgt tgt]]
-              (recur pth-vv-tail tgt nil (conj acc curve-C)))
-
-        :S  (let [[c2 tgt] pnts
-                  c1 (flip-c2 c2-prev tgt-prev)
-                  curve-C [:C c1 c2 tgt]]
-              (recur pth-vv-tail tgt c2 (conj acc curve-C)))
-
-        :s  (let [[c2 tgt] (map #(mapv + % tgt-prev) pnts)
-                  c1 (flip-c2 c2-prev tgt-prev)
-                  curve-C [:C c1 c2 tgt]]
-              (recur pth-vv-tail tgt c2 (conj acc curve-C)))))))
-
-(defn- with-abs-meta [pnt1 pnt2] (with-meta pnt1 {:abs pnt2}))
-(defn abs-meta [pnt] (-> pnt meta :abs))
-
-(defn attach-normalized-meta [pth-vecs pth-vecs']
-  (map (fn [[k & pnts :as pth-vec] [k' & pnts']]
-         (case k
-           :c (vec (cons k (map with-abs-meta pnts pnts')))
-           :s (let [[  c2  tgt]  pnts
-                    [_ c2' tgt'] pnts']
-                [k (with-abs-meta c2 c2') (with-abs-meta tgt tgt')])
-           pth-vec))
-       pth-vecs
-       pth-vecs'))
-
-(defn- steal-next [pth-vv-tail]
-  (let [xy-1         (-> pth-vv-tail first last)
-        pth-v-next   (-> pth-vv-tail first drop-last)
-        pth-vv-tail' (-> pth-vv-tail rest (conj pth-v-next))]
-    [xy-1 pth-vv-tail']))
-
-(defn- reverse-pth-vec-pnts
-  "drop last point and redistribute the rest in reverse:
-    ([:M 1] [:L 2 3] [:C 4 5 6] [:C 7 8 9])
-    ~> ([:C 7 8 9] [:C 4 5 6] [:L 2 3] [:M 1])
-    => ([:C 8 7 6] [:C 5 4 3] [:L 2 1])
-  "
-  [pth-vv]
-  (loop [[[pth-k & pnts :as pth-v-curr] & pth-vv-tail] (reverse pth-vv)
-         acc []]
-    (if-not pth-v-curr
-      acc
-      (case pth-k
-        :arc  (let [i (cons :arc* (reverse pnts))]
-                (recur pth-vv-tail (-> acc (cond-> (seq pnts) (conj i)))))
-
-        :M (let [i (cons :M (reverse pnts))]
-             (recur pth-vv-tail (-> acc (cond-> (seq pnts) (conj i)))))
-
-        :L (let [[xy-1
-                  pth-vv-tail'] (steal-next pth-vv-tail)
-                 i (cons :L (concat (reverse pnts) [xy-1]))]
-             (recur pth-vv-tail' (conj acc i)))
-
-        :A (let [[r p _xy2] pnts
-                 p' (update p 2 flip-bin)
-                 [xy-1
-                  pth-vv-tail'] (steal-next pth-vv-tail)
-                 i              [:A r p' xy-1]]
-             (recur pth-vv-tail' (conj acc i)))
-
-        :C (let [[c1 c2 _xy]    pnts
-                 [xy-1
-                  pth-vv-tail'] (steal-next pth-vv-tail)
-                 i              [:C c2 c1 xy-1]]
-             (recur pth-vv-tail' (conj acc i)))
-
-        :Q (let [[c _xy] pnts
-                 [xy-1
-                  pth-vv-tail'] (steal-next pth-vv-tail)
-                 i              [:Q c xy-1]]
-             (recur pth-vv-tail' (conj acc i)))))))
-
-(defn- reverse-pth-vecs
-  [width pth-vecs]
-  (->> pth-vecs
-       normalize-path
-       reverse-pth-vec-pnts))
-
-(defn- map-pnts [f pth-vecs]
-  (->> pth-vecs
-       (map (fn [[op-k & pnts :as pth-vec]]
-              (case op-k
-                :A (-> pth-vec (update 3 f))
-                (cons op-k
-                      (map f pnts)))))))
-
-(defn scale-path [pth-vecs ctr n]
-  (map-pnts #(u/tl-point-towards % ctr n) pth-vecs))
-
-(def ^:private s-curves
-  #{:S :s})
-
-(def ^:private lines-with-ctrl-pnts
-  #{:S :s
-    :C :c :C1 :c1
-    :Q :q
-    :T :t})
-
-(defn- add-ctrl-pnt-meta [args k i-pth-vec]
-  (let [ctrl-cnt (dec (count args))]
-    (map-indexed (fn [i-pnt pnt]
-                   (if (< i-pnt ctrl-cnt)
-                     (vary-meta pnt merge {:i-tgt (if (and (= 2 ctrl-cnt)
-                                                           (= 0 i-pnt))
-                                                    (dec i-pth-vec)
-                                                    i-pth-vec)})
-                     pnt))
-                 args)))
-
-(defn pth-vec-->svg-seq [i-pth-vec pth-vec]
-  (let [[k opts i-pnt0 args] (parse-vec pth-vec)
-        args' (-> args (cond-> (lines-with-ctrl-pnts k)
-                               (add-ctrl-pnt-meta k i-pth-vec)))
-        data [args' i-pth-vec i-pnt0 k]]
-    (case k
-      :arc  [data (arcs args opts)]
-      :arc* [data (arcs args (assoc opts :ctd? true))]
-      :M    [data (cons "M" args)]
-      :L    [data (cons "L" args)]
-      :A    (let [[r  p  tgt] args] [data (list "A" r  p   tgt)])
-      :S    (let [[   c2 tgt] args] [data (list "S"    c2  tgt)])
-      :s    (let [[   c2 tgt] args] [data (list "s"    c2  tgt)])
-      :C    (let [[c1 c2 tgt] args] [data (list "C" c1 c2  tgt)])
-      :c    (let [[c1 c2 tgt] args] [data (list "c" c1 c2  tgt)])
-      :C1   (let [[c1    tgt] args] [data (list "C" c1 tgt tgt)])
-      :c1   (let [[c1    tgt] args] [data (list "c" c1 tgt tgt)])
-      :Q    (let [[c     tgt] args] [data (list "Q" c      tgt)])
-      :q    (let [[c     tgt] args] [data (list "q" c      tgt)])
-      :T    (let [[c1    tgt] args] [data (list "T" c1 tgt tgt)])
-      :t    (let [[c1    tgt] args] [data (list "t" c1 tgt tgt)]))))
-
-(defn path
-  ([pth-vecs] (path nil pth-vecs))
-  ([{:keys [mode debug? close? cutout? draw? width mirror]
-     [scale-ctr scale-fract :as scale] :scale
-     :or   {width 100
-            mode  :concave}}
-    pth-vecs]
-   (let [pth-vecs' (-> pth-vecs
-                       (cond-> scale
-                               (scale-path scale-ctr scale-fract)))
-         pnt-tups
-         (for [[pth-vec-i pth-vec] (map-indexed vector pth-vecs')]
-           (pth-vec-->svg-seq pth-vec-i pth-vec))
-
-         points
-         (-> pnt-tups
-             (->> (map second))
-             (cond-> mirror
-                     (as-> pnts
-                           (->> (case mirror
-                                  nil       pth-vecs'
-                                  :merged   (->> pth-vecs' (reverse-pth-vecs width))
-                                  :separate (->> pth-vecs' normalize-path))
-                                (mirror-pth-vecs width)
-                                (path {:debug? true})
-                                first
-                                (map second)
-                                (concat pnts))))
-             (cond-> close? (concat ["Z"]))
-             flatten)]
-
-     (if debug?
-       [pnt-tups points]
-       (if draw?
-         [:path {:d (apply d points)}]
-         points)))))
-
-;; -----------------------------------------------------------------------------
-;; UI
 
 (defn drag-and-drop-fns [scaled !pth-vecs]
   (let [!xy-ii (atom nil)
@@ -267,7 +26,7 @@
                          (let [m1  (xy-mouse ev)
                                d   (mapv - m1 m0)
                                d'  (mapv / d scaled)
-                               d'  (mapv round d')
+                               d'  (mapv u/round d')
                                xy' (mapv + xy0 d')]
                            (upd! xy'))))
       :on-mouse-up   #(reset! !snap nil)}]))
@@ -279,7 +38,7 @@
              k pth-vecs xy [i-pth i-pth-vec _ :as iii]]
   (#?(:cljs r/with-let :clj let) [!hover? (atom false)]
     (let [[x y] (->> (if (relative? k)
-                       (-> xy abs-meta)
+                       (-> xy pth-vecs/abs-meta)
                        xy)
                      (mapv #(* % scaled)))
           i-tgt (-> xy meta :i-tgt)
@@ -293,7 +52,7 @@
                                   (nth i-tgt)
                                   last
                                   (cond-> (relative? k)
-                                          (#(-> % abs-meta (or %))))
+                                          (#(-> % pth-vecs/abs-meta (or %))))
                                   (->> (mapv #(* % scaled)))))]
            [:line.ctrl-target {:x1 x :y1 y :x2 x2 :y2 y2}])
          [:g {:style {:cursor "pointer" :text-select "none"}
@@ -318,13 +77,15 @@
 (defn plot-coords [opts pth-i pth-vecs pnt-tups]
   (for [[args i-pth-vec i-pnt0 k] (map first pnt-tups)
         [i-pnt pnt] (map-indexed vector args)
-        :let [iii [pth-i (+ i-pth-vec i-pth-vec0) (+ i-pnt0 i-pnt)]]]
+        :let [iii [pth-i (+ i-pth-vec pth-vecs/i-pth-vec0) (+ i-pnt0 i-pnt)]]]
     ^{:key (hash iii)}
     [coord opts k pth-vecs pnt iii]))
 
+(def path pth-vecs/path)
+
 (defn path-builder [{:as opts :keys [debug? attrs]}
                     pth-i pth-vecs]
-  (let [[pnt-tups points] (path (assoc opts :debug? true) pth-vecs)]
+  (let [[pnt-tups points] (pth-vecs/path (assoc opts :debug? true) pth-vecs)]
     [:g
      (if debug?
        (plot-coords opts pth-i pth-vecs pnt-tups)

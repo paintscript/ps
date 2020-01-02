@@ -5,9 +5,11 @@
             [cljs.reader :refer [read-string]]
             [reagent.core :as r]
             [z-com.core :as zc]
-            [paintscript.core :as ps]
             [svg-hiccup-kit.core :refer [tf tf* d d2]]
-            [paintscript.ops :as ops]))
+
+            [paintscript.ops :as ops]
+            [paintscript.pth-vecs :as pth-vecs]
+            [paintscript.core :as ps]))
 
 (defn- pprint' [edn] (with-out-str *out* (pprint edn)))
 
@@ -75,7 +77,7 @@
                                      ops/del-pth-vec pth-vec-i-sel))]]]
 
               [:div.selection-level.point
-               [:span (pr-str (nth pnts (- pnt-i-sel ps/i-pnt0)))]
+               [:span (pr-str (nth pnts (- pnt-i-sel pth-vecs/i-pnt0)))]
                (when (contains? #{:L :arc} k)
                  [:div.controls.crud
                   [zc/button
@@ -89,7 +91,8 @@
                    :on-click #(do
                                 (reset! !sel nil)
                                 (swap! !script update-in [pth-i-sel]
-                                       ops/del-pnt pth-vec-i-sel (- pnt-i-sel ps/i-pnt0)))]])]]))]]
+                                       ops/del-pnt pth-vec-i-sel
+                                       (- pnt-i-sel pth-vecs/i-pnt0)))]])]]))]]
 
        [:div.paint
         [:svg (merge {:style {:width w :height h}}
@@ -102,20 +105,20 @@
              ^{:key pth-i}
              [ps/path-builder opts pth-i pth-vv])]
 
-          (when (and sel (> pth-vec-i-sel ps/i-pth-vec0))
+          (when (and sel (> pth-vec-i-sel pth-vecs/i-pth-vec0))
             (let [pth-vv' (->> (get script pth-i-sel)
                                (take (inc pth-vec-i-sel))
-                               (drop ps/i-pth-vec0)
-                               ps/normalize-path)]
+                               (drop pth-vecs/i-pth-vec0)
+                               pth-vecs/normalize-path-vecs)]
               [:g.sel
                [ps/path-builder {} pth-i-sel
-                (get-path-segment pth-vv' (- pth-vec-i-sel ps/i-pth-vec0))]]))]
+                (get-path-segment pth-vv' (- pth-vec-i-sel pth-vecs/i-pth-vec0))]]))]
 
          (let []
            [:g.coords
             (for [[pth-i opts pth-vv _] out-tups]
-              (let [pth-vv' (ps/attach-normalized-meta pth-vv
-                                                       (ps/normalize-path pth-vv))
+              (let [pth-vv' (pth-vecs/attach-normalized-meta pth-vv
+                                                       (pth-vecs/normalize-path-vecs pth-vv))
                     [pnt-tups pnts] (ps/path (merge opts {:debug? true}) pth-vv')]
                 ^{:key pth-i}
                 [:g
