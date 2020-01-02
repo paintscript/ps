@@ -67,8 +67,8 @@
 
 ;; pv->tgt
 
-(defn pv->tgt  [pv] (last pv))
-(defn pv->tgt' [pv _ _] [pv (last pv)])
+(defn pv->tgt  [pv] (-> pv rest last)) ;; NOTE: rest for singleton-vecs like [:z]
+(defn pv->tgt' [pv _ _] [pv (pv->tgt pv)])
 
 ;; ------------------------------------
 ;; dispatch

@@ -17,9 +17,10 @@
 (defn get-path-segment [pth-vecs pth-vec-i]
   (let [pth-vec-prev    (get pth-vecs (dec pth-vec-i))
         [k :as pth-vec] (get pth-vecs pth-vec-i)]
-    (list
-     [:M (last pth-vec-prev)]
-     pth-vec)))
+    (concat
+     (when-not (= :M (first pth-vec))
+       (list [:M (last pth-vec-prev)]))
+     (list pth-vec))))
 
 (defn canvas [{:keys [dims script]}]
   (r/with-let [!script (r/atom script)
@@ -106,9 +107,11 @@
 
          [:g.coords
           (for [[pth-i opts pth-vv _] out-tups]
-            (let [pth-vv' (pth-vecs/attach-normalized-meta pth-vv
-                                                           (pth-vecs/normalize-path-vecs pth-vv))
-                  [pnt-tups pnts] (ps/path (merge opts {:debug? true}) pth-vv')]
+            (let [pth-vv'   (pth-vecs/attach-normalized-meta
+                             pth-vv
+                             (pth-vecs/normalize-path-vecs pth-vv))
+                  [pnt-tups
+                   pnts]    (ps/path (merge opts {:debug? true :coords? true}) pth-vv')]
               ^{:key pth-i}
               [:g
                (ps/plot-coords {:scaled        sc

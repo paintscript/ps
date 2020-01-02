@@ -134,18 +134,38 @@
       :Q    (let [[c     tgt] args] [data (list "Q" c      tgt)])
       :q    (let [[c     tgt] args] [data (list "q" c      tgt)])
       :T    (let [[c1    tgt] args] [data (list "T" c1 tgt tgt)])
-      :t    (let [[c1    tgt] args] [data (list "t" c1 tgt tgt)]))))
+      :t    (let [[c1    tgt] args] [data (list "t" c1 tgt tgt)])
+      :z    [data (list "z")])))
+
+(defn mirror-pth-vecs* [mode width pth-vecs]
+  (sequence
+   (comp
+    (partition-by #{[:z]})
+    (mapcat
+     (fn [pth-vecs-i]
+       (if (= (list [:z]) pth-vecs-i)
+         pth-vecs-i
+         (concat
+          pth-vecs-i
+          (->> (case mode
+                 :merged   (->> pth-vecs-i (reverse-pth-vecs width))
+                 :separate (->> pth-vecs-i normalize-path-vecs))
+               (mirror-pth-vecs width)))))))
+   pth-vecs))
 
 (defn path
   ([pth-vecs] (path nil pth-vecs))
-  ([{:keys [mode debug? close? cutout? draw? width mirror]
+  ([{:keys [mode debug? close? cutout? draw? width mirror coords? coord-size]
      [scale-ctr scale-fract :as scale] :scale
      :or   {width 100
             mode  :concave}}
     pth-vecs]
-   (let [pth-vecs' (-> pth-vecs
-                       (cond-> scale
-                               (scale-path-vecs scale-ctr scale-fract)))
+   (let [pth-vecs'
+         (-> pth-vecs
+             (cond-> scale  (scale-path-vecs scale-ctr scale-fract)
+                     (and mirror
+                          (not coords?)) (->> (mirror-pth-vecs* mirror width))))
+
          pnt-tups
          (for [[pth-vec-i pth-vec] (map-indexed vector pth-vecs')]
            (pth-vec-->svg-seq pth-vec-i pth-vec))
@@ -153,17 +173,6 @@
          points
          (-> pnt-tups
              (->> (map second))
-             (cond-> mirror
-                     (as-> pnts
-                           (->> (case mirror
-                                  nil       pth-vecs'
-                                  :merged   (->> pth-vecs' (reverse-pth-vecs width))
-                                  :separate (->> pth-vecs' normalize-path-vecs))
-                                (mirror-pth-vecs width)
-                                (path {:debug? true})
-                                first
-                                (map second)
-                                (concat pnts))))
              (cond-> close? (concat ["Z"]))
              flatten)]
 
