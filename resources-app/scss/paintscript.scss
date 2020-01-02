@@ -76,9 +76,7 @@ div.canvas {
 
       g.main {
         path {
-          stroke: black;
-          // fill: var(--light-grey);
-          fill: none;
+          stroke: black; fill: none;
         }
       }
 
@@ -88,9 +86,17 @@ div.canvas {
       }
 
       g.coords {
+
+        g.cp rect {
+          stroke: hsl(0,0%,80%); fill: hsl(0,0%,100%); stroke-width: 2;
+          &:hover { fill: var(--sel-fg); }
+        }
+        g.selected g.cp rect {
+          stroke: var(--sel-fg); fill: hsl(0,0%,100%); stroke-width: 2;
+        }
         line.ctrl-target {
-          stroke: var(--light-grey-alpha);
-          stroke-width: 1.5;
+          stroke-linecap: round;
+          stroke: hsl(0,0%,80%); stroke-width: 2;
         }
       }
 
@@ -98,10 +104,10 @@ div.canvas {
       path { stroke-linecap: round; }
 
       g {
-        &.control  { rect, circle { fill: hsl(0,0%,90%); stroke: var(--sel-fg); stroke-width: 2; } }
-        &.target   { rect, circle { fill: transparent; stroke: var(--target-col); stroke-width: 2; } }
-        &.hover    { rect, circle { fill: black; } }
-        &.selected { rect, circle { fill: transparent; stroke: var(--sel-fg); } }
+        &.control  { circle { fill: hsl(0,0%,90%); stroke: var(--sel-fg); stroke-width: 2; } }
+        &.target   { circle { fill: transparent; stroke: var(--target-col); stroke-width: 2; } }
+        &.hover    { circle { fill: var(--sel-fg); } }
+        &.selected { circle { fill: transparent; stroke: var(--sel-fg); } }
       }
     }
   }

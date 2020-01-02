@@ -51,7 +51,9 @@
                              (cond-> (relative? k)
                                      (#(-> % pth-vecs/abs-meta (or %))))
                              (->> (mapv #(* % scaled))))]
-            [:line.ctrl-target {:x1 x :y1 y :x2 x2 :y2 y2}]))
+            [:g
+             [:line.ctrl-target.under {:x1 x :y1 y :x2 x2 :y2 y2}]
+             [:line.ctrl-target.over  {:x1 x :y1 y :x2 x2 :y2 y2}]]))
          [:g {:style {:cursor "pointer" :text-select "none"}
               :on-mouse-down #(report!       iii)
               :on-mouse-over #(report-hover! iii true)
@@ -59,27 +61,25 @@
               :class (str (if i-tgt "control" "target")
                           (when hover? " hover")
                           (when (= sel iii) " selected"))}
-          (if (or sel-pnt? hover?)
-            [:g
-             (if cp?
-               [:rect   {:x (- x (* coord-size 1.8))
-                         :y (- y (* coord-size 1.8))
-                         :width  (* coord-size 3.6)
-                         :height (* coord-size 3.6)}]
-               [:circle {:cx x :cy y :r (* coord-size 1.8)}])
-             (when-not sel-pnt?
-               [:text   {:x x :y y
+          (if cp?
+            [:g.cp
+             [:rect {:x (- x (/ coord-size 2))
+                     :y (- y (/ coord-size 2))
+                     :width  coord-size
+                     :height coord-size}]]
+
+            (if (or sel-pnt? hover?)
+              [:g
+               [:circle {:cx x :cy y :r (* coord-size 1.8)}]
+               (when-not (or sel-pnt? cp?)
+                 [:text {:x x :y y
                          :fill "white"
                          :font-size coord-size
                          :text-anchor "middle"
                          :dominant-baseline "middle"
                          :style {:user-select "none"}}
-                (str/join " " xy)])]
-            (if cp?
-              [:rect   {:x (- x (/ coord-size 2))
-                        :y (- y (/ coord-size 2))
-                        :width  coord-size
-                        :height coord-size}]
+                  (str/join " " xy)])]
+
               [:circle {:cx x :cy y :r coord-size}]))]]))))
 
 (defn plot-coords [opts pth-i pth-vecs pnt-tups]
@@ -107,7 +107,7 @@
    (for [[pth-i {:as path-opts :keys [class-k]} pth-vv]
          (->> script
               (map-indexed
-               (fn [pth-i [_ {:as path-opts} & pth-vv :as path]]
+               (fn [pth-i [_ path-opts & pth-vv :as path]]
                  [pth-i path-opts pth-vv])))
          :let [path-opts' (-> path-opts
                               (cond-> class-k
