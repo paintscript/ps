@@ -8,7 +8,7 @@
 (def has-cp?   #{:S :s
                  :C :c :C1 :c1
                  :Q :q})
-(def relative? #{:c :s})
+(def relative? #{:c :s :l})
 (def short?    #{:S :C1 :T :arc})
 
 
@@ -33,6 +33,10 @@
   (let [[c2 tgt] (map #(mapv + % tgt-prev) pnts)
         c1 (flip-c2 cp-prev tgt-prev)]
     [[:C c1 c2 tgt] tgt c2]))
+
+(defmethod rel->abs :l [[k & pnts :as pv] tgt-prev _]
+  (let [pnts' (map #(mapv + % tgt-prev) pnts)]
+    [(vec (cons :L pnts')) (last pnts') nil]))
 
 ;; short->full
 

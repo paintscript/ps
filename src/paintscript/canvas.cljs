@@ -6,6 +6,7 @@
             [reagent.core :as r]
             [z-com.core :as zc]
             [svg-hiccup-kit.core :refer [tf tf* d d2]]
+            [keybind.core :as key]
 
             [paintscript.ops :as ops]
             [paintscript.pth-vecs :as pth-vecs]
@@ -25,17 +26,27 @@
                !sel    (r/atom nil)
                !hov    (r/atom nil)
                sc 4
-               [report!
-                dnd-fns]   (ps/drag-and-drop-fns [sc sc] !script)
-               report!'    (fn [iii] (reset! !sel iii) (report! iii))
+               report!     (fn [iii] (reset! !sel iii))
+               dispatch!   (partial ps/dispatch! !script !sel)
+               dnd-fns     (ps/drag-and-drop-fns [sc sc] !script !sel dispatch!)
+               kb-fns      (ps/keybind-fns       [sc sc] !script !sel dispatch!)
                report-hov! (fn [iii val]
                              (swap! !hov #(cond
                                             val iii
                                             (= iii %) nil
-                                            :else %)))]
+                                            :else %)))
+
+               _ (doseq [[k f] kb-fns]
+                   (key/bind! k (keyword k) f))]
+
     (let [[w h] (->> dims (mapv #(* % sc)))
+
           script @!script
-          [pth-i-sel pth-vec-i-sel pnt-i-sel :as sel] @!sel
+
+          [pth-i-sel
+           pth-vec-i-sel
+           pnt-i-sel :as sel] @!sel
+
           hov @!hov
 
           out-tups (->> script
@@ -57,50 +68,21 @@
               [:div.selection-level.path
                [:span (pr-str opts)]
                [:div.controls.crud
-                [zc/button
-                 :label "add"
-                 :on-click #(do
-                              (reset! !sel nil)
-                              (swap! !script ops/append-pth pth-i-sel))]
-                [zc/button
-                 :label "del"
-                 :on-click #(do
-                              (reset! !sel nil)
-                              (swap! !script ops/del-pth pth-i-sel))]]]
+                [zc/button :label "add" :on-click #(dispatch! [:pth-append])]
+                [zc/button :label "del" :on-click #(dispatch! [:pth-del])]]]
 
               [:div.selection-level.path-vec
                [:span.pth-k (pr-str k)]
                [:div.controls.crud
-                [zc/button
-                 :label "add"
-                 :on-click #(do
-                              (reset! !sel nil)
-                              (swap! !script update-in [pth-i-sel]
-                                     ops/append-pth-vec pth-vec-i-sel))]
-                [zc/button
-                 :label "del"
-                 :on-click #(do
-                              (reset! !sel nil)
-                              (swap! !script update-in [pth-i-sel]
-                                     ops/del-pth-vec pth-vec-i-sel))]]]
+                [zc/button :label "add" :on-click #(dispatch! [:pth-vec-append])]
+                [zc/button :label "del" :on-click #(dispatch! [:pth-vec-del])]]]
 
               [:div.selection-level.point
                [:span (pr-str (nth pnts (- pnt-i-sel pth-vecs/i-pnt0)))]
                (when (contains? #{:L :arc} k)
                  [:div.controls.crud
-                  [zc/button
-                   :label "add"
-                   :on-click #(do
-                                (reset! !sel nil)
-                                (swap! !script update-in [pth-i-sel]
-                                       ops/append-pnt pth-vec-i-sel))]
-                  [zc/button
-                   :label "del"
-                   :on-click #(do
-                                (reset! !sel nil)
-                                (swap! !script update-in [pth-i-sel]
-                                       ops/del-pnt pth-vec-i-sel
-                                       (- pnt-i-sel pth-vecs/i-pnt0)))]])]]))]]
+                  [zc/button :label "add" :on-click #(dispatch! [:pnt-append])]
+                  [zc/button :label "del" :on-click #(dispatch! [:pnt-del])]])]]))]]
 
        [:div.paint
         [:svg (merge {:style {:width w :height h}}
@@ -122,19 +104,18 @@
                [ps/path-builder {} pth-i-sel
                 (get-path-segment pth-vv' (- pth-vec-i-sel pth-vecs/i-pth-vec0))]]))]
 
-         (let []
-           [:g.coords
-            (for [[pth-i opts pth-vv _] out-tups]
-              (let [pth-vv' (pth-vecs/attach-normalized-meta pth-vv
-                                                       (pth-vecs/normalize-path-vecs pth-vv))
-                    [pnt-tups pnts] (ps/path (merge opts {:debug? true}) pth-vv')]
-                ^{:key pth-i}
-                [:g
-                 (ps/plot-coords {:scaled        sc
-                                  :coord-size    10
-                                  :report!       report!'
-                                  :report-hover! report-hov!
-                                  :sel           sel
-                                  :hov           hov
-                                  :controls?     (= pth-i-sel pth-i)}
-                                 pth-i pth-vv' pnt-tups)]))])]]])))
+         [:g.coords
+          (for [[pth-i opts pth-vv _] out-tups]
+            (let [pth-vv' (pth-vecs/attach-normalized-meta pth-vv
+                                                           (pth-vecs/normalize-path-vecs pth-vv))
+                  [pnt-tups pnts] (ps/path (merge opts {:debug? true}) pth-vv')]
+              ^{:key pth-i}
+              [:g
+               (ps/plot-coords {:scaled        sc
+                                :coord-size    10
+                                :report!       report!
+                                :report-hover! report-hov!
+                                :sel           sel
+                                :hov           hov
+                                :controls?     (= pth-i-sel pth-i)}
+                               pth-i pth-vv' pnt-tups)]))]]]])))

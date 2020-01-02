@@ -3,28 +3,65 @@
             [clojure.string :as str]
             [svg-hiccup-kit.core :refer [d d2]]
             [paintscript.util :as u]
-            [paintscript.pth-vecs :as pth-vecs]))
+            [paintscript.pth-vecs :as pth-vecs]
+            [paintscript.ops :as ops]))
 
 (defn- xy-mouse [ev]
   [(-> ev .-clientX)
    (-> ev .-clientY)])
 
-(defn drag-and-drop-fns [scaled !pth-vecs]
-  (let [!xy-ii (atom nil)
-        !snap  (atom nil)
-        upd!   #(swap! !pth-vecs assoc-in @!xy-ii %)
-        get!   #(get-in @!pth-vecs @!xy-ii)]
-    [#(reset! !xy-ii %)
-     {:on-mouse-down #(reset! !snap {:xy0 (get!) :m0 (xy-mouse %)})
-      :on-mouse-move (fn [ev]
-                       (if-let [{:as snap :keys [xy0 m0]} @!snap]
-                         (let [m1  (xy-mouse ev)
-                               d   (mapv - m1 m0)
-                               d'  (mapv / d scaled)
-                               d'  (mapv u/round d')
-                               xy' (mapv + xy0 d')]
-                           (upd! xy'))))
-      :on-mouse-up   #(reset! !snap nil)}]))
+(defn dispatch! [!script !sel [k & [arg :as args]]]
+  (let [[pth-i-sel
+         pth-vec-i-sel
+         pnt-i-sel :as sel] @!sel]
+    (case k
+      :set-xy         (swap! !script assoc-in @!sel arg)
+      :pth-append     (do
+                        (reset! !sel nil)
+                        (swap! !script ops/append-pth pth-i-sel))
+      :pth-del        (do
+                        (reset! !sel nil)
+                        (swap! !script ops/del-pth pth-i-sel))
+      :pth-vec-append (do
+                        (reset! !sel nil)
+                        (swap! !script update-in [pth-i-sel]
+                               ops/append-pth-vec pth-vec-i-sel))
+      :pth-vec-del    (do
+                        (reset! !sel nil)
+                        (swap! !script update-in [pth-i-sel]
+                               ops/del-pth-vec pth-vec-i-sel))
+      :pnt-append     (do
+                        (reset! !sel nil)
+                        (swap! !script update-in [pth-i-sel]
+                               ops/append-pnt pth-vec-i-sel))
+      :pnt-del        (do
+                        (reset! !sel nil)
+                        (swap! !script update-in [pth-i-sel]
+                               ops/del-pnt pth-vec-i-sel
+                               (- pnt-i-sel pth-vecs/i-pnt0))))))
+
+(defn drag-and-drop-fns [scaled !script !sel dispatch!]
+  (let [!snap  (atom nil)
+        get!   #(get-in @!script @!sel)]
+    {:on-mouse-down #(reset! !snap {:xy0 (get!) :m0 (xy-mouse %)})
+     :on-mouse-move (fn [ev]
+                      (when-let [{:as snap :keys [xy0 m0]} @!snap]
+                        (let [m1  (xy-mouse ev)
+                              d   (mapv - m1 m0)
+                              d'  (mapv / d scaled)
+                              d'  (mapv u/round d')
+                              xy' (mapv + xy0 d')]
+                          (dispatch! [:set-xy xy']))))
+     :on-mouse-up   #(reset! !snap nil)}))
+
+(defn keybind-fns [scaled !script !sel dispatch!]
+  (let [upd! #(swap! !script assoc-in @!sel %)
+        get! #(get-in @!script @!sel)]
+    {"left"      #(when-let [[x y] (get!)] (dispatch! [:set-xy [(- x 1) y]]))
+     "right"     #(when-let [[x y] (get!)] (dispatch! [:set-xy [(+ x 1) y]]))
+     "up"        #(when-let [[x y] (get!)] (dispatch! [:set-xy [x (- y 1)]]))
+     "down"      #(when-let [[x y] (get!)] (dispatch! [:set-xy [x (+ y 1)]]))
+     "backspace" #(when-let [[x y] (get!)] (dispatch! [:pnt-del]))}))
 
 (def ^:private relative? #{:c :s})
 

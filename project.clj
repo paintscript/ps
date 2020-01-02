@@ -4,7 +4,8 @@
                  [reagent "0.8.1"]
                  [svg-hiccup-kit "0.2.4"]
                  [xspace "0.2.14"]
-                 [z-com "0.8.22"]]
+                 [z-com "0.8.22"]
+                 [keybind "2.2.0"]]
 
   :source-paths ["src/"]
   :plugins      [[lein-cljsbuild "1.1.7"]
