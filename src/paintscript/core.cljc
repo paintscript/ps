@@ -91,11 +91,26 @@
 
 (def path pth-vecs/path)
 
-(defn path-builder [{:as opts :keys [debug? attrs]}
-                    pth-i pth-vecs]
-  (let [[pnt-tups points] (pth-vecs/path (assoc opts :debug? true) pth-vecs)]
-    [:g
-     (if debug?
-       (plot-coords opts pth-i pth-vecs pnt-tups)
-       [:path (merge attrs
-                     {:d (apply d points)})])]))
+(defn path-builder
+  ([opts pth-vecs] (path-builder opts 0 pth-vecs))
+  ([{:as opts :keys [debug? attrs]}
+    pth-i pth-vecs]
+   (let [[pnt-tups points] (pth-vecs/path (assoc opts :debug? true) pth-vecs)]
+     [:g
+      (if debug?
+        (plot-coords opts pth-i pth-vecs pnt-tups)
+        [:path (merge attrs
+                      {:d (apply d points)})])])))
+
+(defn paint [{:as script-opts :keys [styles]} script]
+  [:g
+   (for [[pth-i {:as path-opts :keys [class-k]} pth-vv]
+         (->> script
+              (map-indexed
+               (fn [pth-i [_ {:as path-opts} & pth-vv :as path]]
+                 [pth-i path-opts pth-vv])))
+         :let [path-opts' (-> path-opts
+                              (cond-> class-k
+                                      (update :attrs merge (get styles class-k))))]]
+     ^{:key pth-i}
+     [path-builder path-opts' pth-i pth-vv])])

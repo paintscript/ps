@@ -59,6 +59,7 @@
 
 (defmulti ^:private curve->tgt-cp dispatch-on-k)
 (defmethod curve->tgt-cp :C [[_ _ c2 tgt :as pv] _ _] [pv tgt c2])
+(defmethod curve->tgt-cp :Q [[_   c  tgt :as pv] _ _] [pv tgt c])
 
 ;; pv->tgt
 
