@@ -3,42 +3,43 @@
             [clojure.string :as str]
             [svg-hiccup-kit.core :refer [d d2]]
             [paintscript.util :as u]
-            [paintscript.pth-vecs :as pth-vecs]
-            [paintscript.ops :as ops]))
+            [paintscript.els :as els]
+            [paintscript.ops :as ops]
+            [paintscript.nav :as nav]))
 
 (defn- xy-mouse [ev]
   [(-> ev .-clientX)
    (-> ev .-clientY)])
 
-(defn dispatch! [!script !sel [k & [arg :as args]]]
-  (let [[pth-i-sel
-         pth-vec-i-sel
-         pnt-i-sel :as sel] @!sel]
-    (case k
-      :set-xy         (swap! !script assoc-in (cons :script @!sel) arg)
-      :pth-append     (do
-                        (reset! !sel nil)
-                        (swap! !script update :script ops/append-pth pth-i-sel))
-      :pth-del        (do
-                        (reset! !sel nil)
-                        (swap! !script update :script ops/del-pth pth-i-sel))
-      :pth-vec-append (do
-                        (reset! !sel nil)
-                        (swap! !script update-in [:script pth-i-sel]
-                               ops/append-pth-vec pth-vec-i-sel))
-      :pth-vec-del    (do
-                        (reset! !sel nil)
-                        (swap! !script update-in [:script pth-i-sel]
-                               ops/del-pth-vec pth-vec-i-sel))
-      :pnt-append     (do
-                        (reset! !sel nil)
-                        (swap! !script update-in [:script pth-i-sel]
-                               ops/append-pnt pth-vec-i-sel))
-      :pnt-del        (do
-                        (reset! !sel nil)
-                        (swap! !script update-in [:script pth-i-sel]
-                               ops/del-pnt pth-vec-i-sel
-                               (- pnt-i-sel pth-vecs/i-pnt0))))))
+(defn dispatch! [!script !sel [op-k & [arg :as args]]]
+  (let [[pi-sel
+         eli-sel
+         xyi-sel :as sel] @!sel]
+    (case op-k
+      :set-xy     (swap! !script assoc-in (cons :script @!sel) arg)
+      :pth-append (do
+                    (reset! !sel nil)
+                    (swap! !script update :script ops/append-pth pi-sel))
+      :pth-del    (do
+                    (reset! !sel nil)
+                    (swap! !script update :script ops/del-pth pi-sel))
+      :el-append  (do
+                    (reset! !sel nil)
+                    (swap! !script update-in [:script pi-sel]
+                           ops/append-el eli-sel))
+      :el-del     (do
+                    (reset! !sel nil)
+                    (swap! !script update-in [:script pi-sel]
+                           ops/del-el eli-sel))
+      :xy-append  (do
+                     (reset! !sel nil)
+                     (swap! !script update-in [:script pi-sel]
+                            ops/append-pnt eli-sel))
+      :xy-del     (do
+                     (reset! !sel nil)
+                     (swap! !script update-in [:script pi-sel]
+                            ops/del-pnt eli-sel
+                            (- xyi-sel nav/xyi0))))))
 
 (defn drag-and-drop-fns [scaled !script !sel dispatch!]
   (let [!snap  (atom nil)
@@ -61,32 +62,34 @@
      "right"     #(when-let [[x y] (get!)] (dispatch! [:set-xy [(+ x 1) y]]))
      "up"        #(when-let [[x y] (get!)] (dispatch! [:set-xy [x (- y 1)]]))
      "down"      #(when-let [[x y] (get!)] (dispatch! [:set-xy [x (+ y 1)]]))
-     "backspace" #(when-let [[x y] (get!)] (dispatch! [:pnt-del]))}))
+     "backspace" #(when-let [[x y] (get!)] (dispatch! [:xy-del]))}))
 
 (def ^:private relative? #{:c :s})
 
 (defn coord [{:keys [scaled report! report-hover! coord-size controls? hov]
-              [i-pth-sel i-pth-vec-sel i-pnt-sel :as sel] :sel}
-             k pth-vecs xy [i-pth i-pth-vec _ :as iii]]
+              [pi-sel eli-sel xyi-sel :as sel] :sel}
+             el-k els xy [pi eli _ :as iii]]
   (#?(:cljs r/with-let :clj let) [!hover? (atom false)]
-    (let [[x y] (->> (if (relative? k)
-                       (-> xy pth-vecs/abs-meta)
+    (let [[x y] (->> (if (relative? el-k)
+                       (let [out (-> xy els/abs-meta)]
+                         (assert out)
+                         out)
                        xy)
                      (mapv #(* % scaled)))
           i-tgt     (-> xy meta :i-tgt)
           cp?       (some? i-tgt)
           hover?    (= iii hov)
-          sel-pv?   (and (= i-pth-sel     i-pth)
-                         (= i-pth-vec-sel i-pth-vec))
+          sel-pv?   (and (= pi-sel  pi)
+                         (= eli-sel eli))
           sel-pnt?  (= iii sel)]
       (when (or (not cp?) sel-pv?)
         [:g
          (when cp?
-           (let [[x2 y2] (-> pth-vecs
+           (let [[x2 y2] (-> els
                              (nth i-tgt)
                              last
-                             (cond-> (relative? k)
-                                     (#(-> % pth-vecs/abs-meta (or %))))
+                             (cond-> (relative? el-k)
+                                     (#(-> % els/abs-meta (or %))))
                              (->> (mapv #(* % scaled))))]
             [:g
              [:line.ctrl-target.under {:x1 x :y1 y :x2 x2 :y2 y2}]
@@ -119,35 +122,35 @@
 
               [:circle {:cx x :cy y :r coord-size}]))]]))))
 
-(defn plot-coords [opts pth-i pth-vecs pnt-tups]
-  (for [[args i-pth-vec i-pnt0 k] (map first pnt-tups)
-        [i-pnt pnt] (map-indexed vector args)
-        :let [iii [pth-i (+ i-pth-vec pth-vecs/i-pth-vec0) (+ i-pnt0 i-pnt)]]]
+(defn plot-coords [opts pi els pnt-tups]
+  (for [[args eli xyi0 el-k] (map first pnt-tups)
+        [xyi xy] (map-indexed vector args)
+        :let [iii [pi (+ eli nav/eli0) (+ xyi xyi0)]]]
     ^{:key (hash iii)}
-    [coord opts k pth-vecs pnt iii]))
+    [coord opts el-k els xy iii]))
 
-(def path pth-vecs/path)
+(def path els/path)
 
 (defn path-builder
-  ([opts pth-vecs] (path-builder opts 0 pth-vecs))
+  ([opts els] (path-builder opts 0 els))
   ([{:as opts :keys [debug? attrs]}
-    pth-i pth-vecs]
-   (let [[pnt-tups points] (pth-vecs/path (assoc opts :debug? true) pth-vecs)]
+    pi els]
+   (let [[pnt-tups points] (els/path (assoc opts :debug? true) els)]
      [:g
       (if debug?
-        (plot-coords opts pth-i pth-vecs pnt-tups)
+        (plot-coords opts pi els pnt-tups)
         [:path (merge attrs
                       {:d (apply d points)})])])))
 
 (defn paint [{:as script-opts :keys [styles]} script]
   [:g
-   (for [[pth-i {:as path-opts :keys [class-k]} pth-vv]
+   (for [[pi {:as path-opts :keys [class-k]} els]
          (->> script
               (map-indexed
-               (fn [pth-i [_ path-opts & pth-vv :as path]]
-                 [pth-i path-opts pth-vv])))
+               (fn [pi [_ path-opts & els :as path]]
+                 [pi path-opts els])))
          :let [path-opts' (-> path-opts
                               (cond-> class-k
                                       (update :attrs merge (get styles class-k))))]]
-     ^{:key pth-i}
-     [path-builder path-opts' pth-i pth-vv])])
+     ^{:key pi}
+     [path-builder path-opts' pi els])])

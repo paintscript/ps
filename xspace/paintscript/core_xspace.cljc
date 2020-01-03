@@ -1,7 +1,7 @@
  (ns paintscript.core-xspace
   (:require [clojure.test :refer [deftest testing is]]
             [xspace.core :as x :refer [x-> xx x:=]]
-            [paintscript.pth-vecs :as pth-vecs]
+            [paintscript.els :as els]
             [paintscript.core :as core]))
 
 (def core-xspace-cfg
@@ -9,17 +9,17 @@
    {:xx (fn [_ctx {:keys [title]} f] (testing title (f)))
     :x->
     (fn [ctx c args]
-      (let [{:keys [op opts-base opts arcs pnts center fract width path =>]}
+      (let [{:keys [op opts-base opts arcs xys center fract width path =>]}
             (merge (-> ctx :args) args)]
         (let [opts' (merge opts-base opts)]
           (is (= =>
                  (case op
-                   :path                 (pth-vecs/path opts' path)
-                   :arcs                 (#'pth-vecs/arcs arcs opts)
-                   :mirror-pnts          (#'pth-vecs/mirror-pnts width pnts)
-                   :normalize-path-vecs  (#'pth-vecs/normalize-path-vecs path)
-                   :reverse-pth-vec-pnts (#'pth-vecs/reverse-pth-vec-pnts path)
-                   :scale-path-vecs      (pth-vecs/scale-path-vecs path center fract)))))))}})
+                   :path           (els/path opts' path)
+                   :arcs           (#'els/arcs arcs opts)
+                   :mirror-xys     (#'els/mirror-xys width xys)
+                   :normalize-els  (#'els/normalize-els path)
+                   :reverse-el-xys (#'els/reverse-el-xys path)
+                   :scale-els      (els/scale-els path center fract)))))))}})
 
 (def core-xspace
   [(xx "util"
@@ -31,7 +31,7 @@
                         ["A" [10  10] [0 "0,1"] [10 10]]
                         ["A" [10 -10] [0 "0,1"] [20  0]])))
 
-       (xx {:= {:op :normalize-path-vecs}}
+       (xx {:= {:op :normalize-els}}
 
            (x-> "C1"
                 :path '([:C1 [10 10] [20 20]])
@@ -43,7 +43,7 @@
                 :=>   '([:C [0 0] [10 15] [20 25]]
                         [:C [30 35] [25 25] [35 35]])))
 
-       (xx {:= {:op :reverse-pth-vec-pnts}}
+       (xx {:= {:op :reverse-el-xys}}
 
            (x-> :path '([:M 1] [:L 2] [:C 3 4 5] [:C 6 7 8])
                 :=>   '([:C 7 6 5] [:C 4 3 2] [:L 1]))

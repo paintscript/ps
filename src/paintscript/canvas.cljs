@@ -9,24 +9,26 @@
             [keybind.core :as key]
 
             [paintscript.ops :as ops]
-            [paintscript.pth-vecs :as pth-vecs]
-            [paintscript.core :as ps]))
+            [paintscript.els :as els]
+            [paintscript.core :as ps]
+            [paintscript.nav :as nav]))
 
 (defn- pprint' [edn] (with-out-str *out* (pprint edn)))
 
-(defn get-path-segment [pth-vecs pth-vec-i]
-  (let [pth-vec-prev    (get pth-vecs (dec pth-vec-i))
-        [k :as pth-vec] (get pth-vecs pth-vec-i)]
+(defn get-path-segment [els eli]
+  (let [el-prev    (nav/els-prev els :eli eli)
+        [k :as el] (nav/els>     els :eli eli)]
     (concat
-     (when-not (= :M (first pth-vec))
-       (list [:M (last pth-vec-prev)]))
-     (list pth-vec))))
+     (when (and el-prev
+                (not= :M (first el)))
+       (list [:M (last el-prev)]))
+     (list el))))
 
 (defn canvas [{:keys [dims script]}]
-  (r/with-let [!script (r/atom script)
-               !sel    (r/atom nil)
-               !hov    (r/atom nil)
-               sc 4
+  (r/with-let [!script     (r/atom script)
+               !sel        (r/atom nil)
+               !hov        (r/atom nil)
+               sc          4
                report!     (fn [iii] (reset! !sel iii))
                dispatch!   (partial ps/dispatch! !script !sel)
                dnd-fns     (ps/drag-and-drop-fns [sc sc] !script !sel dispatch!)
@@ -44,17 +46,17 @@
 
           script @!script
 
-          [pth-i-sel
-           pth-vec-i-sel
-           pnt-i-sel :as sel] @!sel
+          [pi-sel
+           eli-sel
+           xyi-sel :as sel] @!sel
 
           hov @!hov
 
           out-tups (->> (:script script)
                         (map-indexed
-                         (fn [pth-i [_ opts & pth-vv :as path]]
-                           [pth-i opts pth-vv
-                            (ps/path (merge opts {:debug? true}) pth-vv)])))]
+                         (fn [pi [_ opts & els :as path]]
+                           [pi opts els
+                            (ps/path (merge opts {:debug? true}) els)])))]
       [:div.canvas
        [:div.script
         [:textarea
@@ -63,8 +65,8 @@
 
         [:div.status
          (when sel
-           (let [[_ opts :as path] (get-in script [:script pth-i-sel])
-                 [k & pnts]        (get path pth-vec-i-sel)]
+           (let [[_ opts :as p] (nav/script> script :pi  pi-sel)
+                 [k & xys]      (nav/p>      p      :eli eli-sel)]
              [:div.selection-stack
               [:div.selection-level.path
                [:span (pr-str opts)]
@@ -75,15 +77,15 @@
               [:div.selection-level.path-vec
                [:span.pth-k (pr-str k)]
                [:div.controls.crud
-                [zc/button :label "add" :on-click #(dispatch! [:pth-vec-append])]
-                [zc/button :label "del" :on-click #(dispatch! [:pth-vec-del])]]]
+                [zc/button :label "add" :on-click #(dispatch! [:el-append])]
+                [zc/button :label "del" :on-click #(dispatch! [:el-del])]]]
 
               [:div.selection-level.point
-               [:span (pr-str (nth pnts (- pnt-i-sel pth-vecs/i-pnt0)))]
+               [:span (pr-str (nav/xys> xys :xyi xyi-sel))]
                (when (contains? #{:L :arc} k)
                  [:div.controls.crud
-                  [zc/button :label "add" :on-click #(dispatch! [:pnt-append])]
-                  [zc/button :label "del" :on-click #(dispatch! [:pnt-del])]])]]))]]
+                  [zc/button :label "add" :on-click #(dispatch! [:xy-append])]
+                  [zc/button :label "del" :on-click #(dispatch! [:xy-del])]])]]))]]
 
        [:div.paint
         [:svg (merge {:style {:width w :height h}}
@@ -91,28 +93,28 @@
          [tf* {:sc [sc sc]}
 
           [:g.main
-           (for [[pth-i opts pth-vv
-                  [pnt-tups pnts] :as out-tup] out-tups]
-             ^{:key pth-i}
-             [ps/path-builder opts pth-i pth-vv])]
+           (for [[pi opts els
+                  [pnt-tups xys] :as out-tup] out-tups]
+             ^{:key pi}
+             [ps/path-builder opts pi els])]
 
-          (when (and sel (> pth-vec-i-sel pth-vecs/i-pth-vec0))
-            (let [pth-vv' (->> (get-in script [:script pth-i-sel])
-                               (take (inc pth-vec-i-sel))
-                               (drop pth-vecs/i-pth-vec0)
-                               pth-vecs/normalize-path-vecs)]
+          (when (and sel (> eli-sel nav/eli0))
+            (let [els' (->> (nav/script> script :pi pi-sel)
+                               (take (inc eli-sel))
+                               (drop nav/eli0)
+                               els/normalize-els)]
               [:g.sel
-               [ps/path-builder {} pth-i-sel
-                (get-path-segment pth-vv' (- pth-vec-i-sel pth-vecs/i-pth-vec0))]]))]
+               [ps/path-builder {} pi-sel
+                (get-path-segment els' eli-sel)]]))]
 
          [:g.coords
-          (for [[pth-i opts pth-vv _] out-tups]
-            (let [pth-vv'   (pth-vecs/attach-normalized-meta
-                             pth-vv
-                             (pth-vecs/normalize-path-vecs pth-vv))
+          (for [[pi opts els _] out-tups]
+            (let [els' (els/attach-normalized-meta
+                        els
+                        (-> els els/normalize-els))
                   [pnt-tups
-                   pnts]    (ps/path (merge opts {:debug? true :coords? true}) pth-vv')]
-              ^{:key pth-i}
+                   xys]     (ps/path (merge opts {:debug? true :coords? true}) els')]
+              ^{:key pi}
               [:g
                (ps/plot-coords {:scaled        sc
                                 :coord-size    10
@@ -120,5 +122,5 @@
                                 :report-hover! report-hov!
                                 :sel           sel
                                 :hov           hov
-                                :controls?     (= pth-i-sel pth-i)}
-                               pth-i pth-vv' pnt-tups)]))]]]])))
+                                :controls?     (= pi-sel pi)}
+                               pi els' pnt-tups)]))]]]])))

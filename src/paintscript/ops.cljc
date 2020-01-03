@@ -21,70 +21,70 @@
 
 (defn has-pred? [pth-i] (pos? pth-i))
 
-(defn pth-vec-len [pth-vec]
-  (-> pth-vec count dec))
+(defn el-len [el]
+  (-> el count dec))
 
-(defn get-tgt [pth-vec]
-  (last pth-vec))
+(defn get-tgt [el]
+  (last el))
 
 (defn offset-pnt [pnt delta] (mapv + pnt delta))
-(defn pnt-delta  [pnt1 pnt2] (mapv - pnt1 pnt2))
+(defn xy-delta  [pnt1 pnt2] (mapv - pnt1 pnt2))
 
-(defn get-pnt [pth-vecs [pth-i pnt-i-abs :as ii]] (get-in pth-vecs ii))
+(defn get-pnt [els [pth-i pnt-i-abs :as ii]] (get-in els ii))
 
-(defn get-pred-tgt [pth-vecs pth-i]
-  (-> (get pth-vecs (-> pth-i (- 1))) get-tgt))
+(defn get-pred-tgt [els pth-i]
+  (-> (get els (-> pth-i (- 1))) get-tgt))
 
 ;; points
 
 (def pnt-i-offset 1)
-(def pth-vec-i-offset 2)
+(def el-i-offset 2)
 
 (defn infer-succ-pnt
-  [pth-vecs pth-i pnt-i]
-  (let [pth-vec (get pth-vecs pth-i)
+  [els pth-i pnt-i]
+  (let [el (get els pth-i)
         pnt-i'  (+ pnt-i pnt-i-offset)
-        pnt-0   (get-pnt pth-vecs [pth-i pnt-i'])]
-    (case (pth-vec-len pth-vec)
+        pnt-0   (get-pnt els [pth-i pnt-i'])]
+    (case (el-len el)
       0 (if (has-pred? pth-i)
-          (offset-pnt (get-pred-tgt pth-vecs pth-i)
+          (offset-pnt (get-pred-tgt els pth-i)
                       [10 10])
           [0 0])
 
       1 (if (has-pred? pth-i)
-          (let [pnt-1 (-> (get pth-vecs (-> pth-i (- 1))) get-tgt)]
-            (offset-pnt pnt-0 (pnt-delta pnt-0 pnt-1)))
-          (offset-pnt pnt-0 (pnt-delta pnt-0 [0 0])))
+          (let [pnt-1 (-> (get els (-> pth-i (- 1))) get-tgt)]
+            (offset-pnt pnt-0 (xy-delta pnt-0 pnt-1)))
+          (offset-pnt pnt-0 (xy-delta pnt-0 [0 0])))
 
-      (let [pnt-1 (get-pnt pth-vecs [pth-i (-> pnt-i' (- 1))])]
+      (let [pnt-1 (get-pnt els [pth-i (-> pnt-i' (- 1))])]
         (offset-pnt pnt-0
-                    (pnt-delta pnt-0 pnt-1))))))
+                    (xy-delta pnt-0 pnt-1))))))
 
 (defn append-pnt
-  ([pth-vecs pth-i]
-   (append-pnt pth-vecs pth-i (-> (get pth-vecs pth-i) pth-vec-len dec)))
+  ([els pth-i]
+   (append-pnt els pth-i (-> (get els pth-i) el-len dec)))
 
   ;; infer successor
-  ([pth-vecs pth-i pnt-i]
-   (append-pnt pth-vecs pth-i pnt-i
-               (infer-succ-pnt pth-vecs pth-i pnt-i)))
+  ([els pth-i pnt-i]
+   (append-pnt els pth-i pnt-i
+               (infer-succ-pnt els pth-i pnt-i)))
 
   ;; explicit:
-  ([pth-vecs pth-i pnt-i pnt]
+  ([els pth-i pnt-i pnt]
    (let [pnt-i' (+ pnt-i pnt-i-offset)]
-     (-> pth-vecs
+     (-> els
          (update pth-i vec-append pnt-i' pnt)))))
 
 (defn del-pnt
-  [pth-vecs pth-i pnt-i]
+  [els pth-i pnt-i]
   (let [pnt-i' (+ pnt-i pnt-i-offset)]
-    (-> pth-vecs
+    (-> els
         (update pth-i vec-remove pnt-i'))))
 
-;; path-vecs
+;; els
 
-(defn infer-succ-pth-vec [pth-vecs pth-i]
-  (let [[k & pnts :as pth-vec-1] (get pth-vecs pth-i)]
+(defn infer-succ-el [els pth-i]
+  (let [[k & pnts :as el-1] (get els pth-i)]
     (case k
       :M [:L (offset-pnt (last pnts) [10 10])]
       :L [:L (offset-pnt (last pnts) [10 10])]
@@ -93,14 +93,14 @@
       :S (let [tgt (offset-pnt (last pnts) [10 10])]
            [:S tgt tgt]))))
 
-(defn append-pth-vec
-  [pth-vecs pth-i]
-  (-> pth-vecs
-      (vec-append pth-i (infer-succ-pth-vec pth-vecs pth-i))))
+(defn append-el
+  [els pth-i]
+  (-> els
+      (vec-append pth-i (infer-succ-el els pth-i))))
 
-(defn del-pth-vec
-  [pth-vecs pth-i]
-  (-> pth-vecs
+(defn del-el
+  [els pth-i]
+  (-> els
       (vec-remove pth-i)))
 
 ;; paths
