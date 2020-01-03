@@ -15,34 +15,34 @@
          pth-vec-i-sel
          pnt-i-sel :as sel] @!sel]
     (case k
-      :set-xy         (swap! !script assoc-in @!sel arg)
+      :set-xy         (swap! !script assoc-in (cons :script @!sel) arg)
       :pth-append     (do
                         (reset! !sel nil)
-                        (swap! !script ops/append-pth pth-i-sel))
+                        (swap! !script update :script ops/append-pth pth-i-sel))
       :pth-del        (do
                         (reset! !sel nil)
-                        (swap! !script ops/del-pth pth-i-sel))
+                        (swap! !script update :script ops/del-pth pth-i-sel))
       :pth-vec-append (do
                         (reset! !sel nil)
-                        (swap! !script update-in [pth-i-sel]
+                        (swap! !script update-in [:script pth-i-sel]
                                ops/append-pth-vec pth-vec-i-sel))
       :pth-vec-del    (do
                         (reset! !sel nil)
-                        (swap! !script update-in [pth-i-sel]
+                        (swap! !script update-in [:script pth-i-sel]
                                ops/del-pth-vec pth-vec-i-sel))
       :pnt-append     (do
                         (reset! !sel nil)
-                        (swap! !script update-in [pth-i-sel]
+                        (swap! !script update-in [:script pth-i-sel]
                                ops/append-pnt pth-vec-i-sel))
       :pnt-del        (do
                         (reset! !sel nil)
-                        (swap! !script update-in [pth-i-sel]
+                        (swap! !script update-in [:script pth-i-sel]
                                ops/del-pnt pth-vec-i-sel
                                (- pnt-i-sel pth-vecs/i-pnt0))))))
 
 (defn drag-and-drop-fns [scaled !script !sel dispatch!]
   (let [!snap  (atom nil)
-        get!   #(get-in @!script @!sel)]
+        get!   #(get-in @!script (cons :script @!sel))]
     {:on-mouse-down #(reset! !snap {:xy0 (get!) :m0 (xy-mouse %)})
      :on-mouse-move (fn [ev]
                       (when-let [{:as snap :keys [xy0 m0]} @!snap]
@@ -56,7 +56,7 @@
 
 (defn keybind-fns [scaled !script !sel dispatch!]
   (let [upd! #(swap! !script assoc-in @!sel %)
-        get! #(get-in @!script @!sel)]
+        get! #(get-in @!script (cons :script @!sel))]
     {"left"      #(when-let [[x y] (get!)] (dispatch! [:set-xy [(- x 1) y]]))
      "right"     #(when-let [[x y] (get!)] (dispatch! [:set-xy [(+ x 1) y]]))
      "up"        #(when-let [[x y] (get!)] (dispatch! [:set-xy [x (- y 1)]]))

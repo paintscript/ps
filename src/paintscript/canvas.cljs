@@ -50,7 +50,7 @@
 
           hov @!hov
 
-          out-tups (->> script
+          out-tups (->> (:script script)
                         (map-indexed
                          (fn [pth-i [_ opts & pth-vv :as path]]
                            [pth-i opts pth-vv
@@ -63,7 +63,7 @@
 
         [:div.status
          (when sel
-           (let [[_ opts :as path] (get script pth-i-sel)
+           (let [[_ opts :as path] (get-in script [:script pth-i-sel])
                  [k & pnts]        (get path pth-vec-i-sel)]
              [:div.selection-stack
               [:div.selection-level.path
@@ -97,7 +97,7 @@
              [ps/path-builder opts pth-i pth-vv])]
 
           (when (and sel (> pth-vec-i-sel pth-vecs/i-pth-vec0))
-            (let [pth-vv' (->> (get script pth-i-sel)
+            (let [pth-vv' (->> (get-in script [:script pth-i-sel])
                                (take (inc pth-vec-i-sel))
                                (drop pth-vecs/i-pth-vec0)
                                pth-vecs/normalize-path-vecs)]
