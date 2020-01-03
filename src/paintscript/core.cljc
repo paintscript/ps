@@ -12,11 +12,13 @@
    (-> ev .-clientY)])
 
 (defn dispatch! [!script !sel [op-k & [arg :as args]]]
-  (let [[pi-sel
+  (let [[src-k-sel
+         pi-sel
          eli-sel
          xyi-sel :as sel] @!sel]
     (case op-k
-      :set-xy     (swap! !script assoc-in (cons :script @!sel) arg)
+      :set-xy     (do
+                    (swap! !script assoc-in @!sel arg))
       :pth-append (do
                     (reset! !sel nil)
                     (swap! !script update :script ops/append-pth pi-sel))
@@ -41,9 +43,9 @@
                             ops/del-pnt eli-sel
                             (- xyi-sel nav/xyi0))))))
 
-(defn drag-and-drop-fns [scaled !script !sel dispatch!]
+(defn drag-and-drop-fns [scaled !params !sel dispatch!]
   (let [!snap  (atom nil)
-        get!   #(get-in @!script (cons :script @!sel))]
+        get!   #(get-in @!params @!sel)]
     {:on-mouse-down #(reset! !snap {:xy0 (get!) :m0 (xy-mouse %)})
      :on-mouse-move (fn [ev]
                       (when-let [{:as snap :keys [xy0 m0]} @!snap]
@@ -55,9 +57,9 @@
                           (dispatch! [:set-xy xy']))))
      :on-mouse-up   #(reset! !snap nil)}))
 
-(defn keybind-fns [scaled !script !sel dispatch!]
-  (let [upd! #(swap! !script assoc-in @!sel %)
-        get! #(get-in @!script (cons :script @!sel))]
+(defn keybind-fns [scaled !params !sel dispatch!]
+  (let [upd! #(swap! !params assoc-in @!sel %)
+        get! #(get-in @!params @!sel)]
     {"left"      #(when-let [[x y] (get!)] (dispatch! [:set-xy [(- x 1) y]]))
      "right"     #(when-let [[x y] (get!)] (dispatch! [:set-xy [(+ x 1) y]]))
      "up"        #(when-let [[x y] (get!)] (dispatch! [:set-xy [x (- y 1)]]))
@@ -67,13 +69,12 @@
 (def ^:private relative? #{:c :s})
 
 (defn coord [{:keys [scaled report! report-hover! coord-size controls? hov]
-              [pi-sel eli-sel xyi-sel :as sel] :sel}
-             el-k els xy [pi eli _ :as iii]]
+              [src-k-sel pi-sel eli-sel xyi-sel :as sel] :sel}
+             els el-k el
+             xy [src-k pi eli _ :as iii]]
   (#?(:cljs r/with-let :clj let) [!hover? (atom false)]
     (let [[x y] (->> (if (relative? el-k)
-                       (let [out (-> xy els/abs-meta)]
-                         (assert out)
-                         out)
+                       (-> xy els/abs-meta)
                        xy)
                      (mapv #(* % scaled)))
           i-tgt     (-> xy meta :i-tgt)
@@ -122,12 +123,13 @@
 
               [:circle {:cx x :cy y :r coord-size}]))]]))))
 
-(defn plot-coords [opts pi els pnt-tups]
-  (for [[args eli xyi0 el-k] (map first pnt-tups)
+(defn plot-coords [opts pi els data-svg-tups]
+  (for [[args _eli xyi0 el-k el] (map first data-svg-tups)
         [xyi xy] (map-indexed vector args)
-        :let [iii [pi (+ eli nav/eli0) (+ xyi xyi0)]]]
+        :let [iii (some-> el meta :ii (concat [(+ xyi xyi0)]))
+              _   (assert iii)]]
     ^{:key (hash iii)}
-    [coord opts el-k els xy iii]))
+    [coord opts els el-k el xy iii]))
 
 (def path els/path)
 
@@ -135,22 +137,22 @@
   ([opts els] (path-builder opts 0 els))
   ([{:as opts :keys [debug? attrs]}
     pi els]
-   (let [[pnt-tups points] (els/path (assoc opts :debug? true) els)]
+   (let [[data-svg-tups svg-seq] (els/path (assoc opts :debug? true) els)]
      [:g
       (if debug?
-        (plot-coords opts pi els pnt-tups)
-        [:path (merge attrs
-                      {:d (apply d points)})])])))
+        (plot-coords opts pi els data-svg-tups)
+        [:path (merge attrs {:d (apply d svg-seq)})])])))
 
-(defn paint [{:as script-opts :keys [styles]} script]
+(defn paint [{:as script-opts :keys [defs styles script]}]
   [:g
-   (for [[pi {:as path-opts :keys [class-k]} els]
+   (for [[pi {:as p-opts :keys [class-k]} els]
          (->> script
               (map-indexed
-               (fn [pi [_ path-opts & els :as path]]
-                 [pi path-opts els])))
-         :let [path-opts' (-> path-opts
-                              (cond-> class-k
-                                      (update :attrs merge (get styles class-k))))]]
+               (fn [pi [_ p-opts & els :as path]]
+                 [pi p-opts els])))
+         :let [p-opts' (-> p-opts
+                           (merge script-opts)
+                           (cond-> class-k
+                                   (update :attrs merge (get styles class-k))))]]
      ^{:key pi}
-     [path-builder path-opts' pi els])])
+     [path-builder p-opts' pi els])])

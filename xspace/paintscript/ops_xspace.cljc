@@ -15,11 +15,11 @@
                  :append-pnt (if pnt
                                (apply ops/append-pnt els (concat ii [pnt]))
                                (apply ops/append-pnt els ii))
-                 :del-pnt    (apply ops/del-pnt els ii)
-                 :append-el  (apply ops/append-el els ii)
-                 :del-el     (apply ops/del-el els ii)
+                 :del-pnt    (apply ops/del-pnt    els ii)
+                 :append-el  (apply ops/append-el  els ii)
+                 :del-el     (apply ops/del-el     els ii)
                  :append-pth (apply ops/append-pth script ii)
-                 :del-pth    (apply ops/del-pth script ii))))))}})
+                 :del-pth    (apply ops/del-pth    script ii))))))}})
 
 (def ops-xspace
   [;; pnt

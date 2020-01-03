@@ -15,24 +15,24 @@
 
 (defn- pprint' [edn] (with-out-str *out* (pprint edn)))
 
-(defn get-path-segment [els eli]
-  (let [el-prev    (nav/els-prev els :eli eli)
-        [k :as el] (nav/els>     els :eli eli)]
+(defn get-path-segment [src-k-sel els eli]
+  (let [el-prev    (nav/els-prev els (case src-k-sel :defs :eln :eli) eli)
+        [k :as el] (nav/els>     els (case src-k-sel :defs :eln :eli) eli)]
     (concat
      (when (and el-prev
                 (not= :M (first el)))
        (list [:M (last el-prev)]))
      (list el))))
 
-(defn canvas [{:keys [dims script]}]
-  (r/with-let [!script     (r/atom script)
+(defn canvas [params-init]
+  (r/with-let [!params     (r/atom params-init)
                !sel        (r/atom nil)
                !hov        (r/atom nil)
                sc          4
                report!     (fn [iii] (reset! !sel iii))
-               dispatch!   (partial ps/dispatch! !script !sel)
-               dnd-fns     (ps/drag-and-drop-fns [sc sc] !script !sel dispatch!)
-               kb-fns      (ps/keybind-fns       [sc sc] !script !sel dispatch!)
+               dispatch!   (partial ps/dispatch! !params !sel)
+               dnd-fns     (ps/drag-and-drop-fns [sc sc] !params !sel dispatch!)
+               kb-fns      (ps/keybind-fns       [sc sc] !params !sel dispatch!)
                report-hov! (fn [iii val]
                              (swap! !hov #(cond
                                             val iii
@@ -42,30 +42,37 @@
                _ (doseq [[k f] kb-fns]
                    (key/bind! k (keyword k) f))]
 
-    (let [[w h] (->> dims (mapv #(* % sc)))
+    (let [{:as params
+           :keys [dims]
+           :or {dims [100 100]}} (-> @!params
+                                     (update :script els/attach-iii-meta*))
 
-          script @!script
+          [w h] (->> dims (mapv #(* % sc)))
 
-          [pi-sel
+          [src-k-sel
+           pi-sel
            eli-sel
            xyi-sel :as sel] @!sel
 
           hov @!hov
 
-          out-tups (->> (:script script)
+          out-tups (->> (:script params)
                         (map-indexed
-                         (fn [pi [_ opts & els :as path]]
-                           [pi opts els
-                            (ps/path (merge opts {:debug? true}) els)])))]
+                         (fn [pi [_ p-opts & els :as path]]
+                           (let [p-opts' (-> p-opts
+                                             (assoc :defs (:defs params)))]
+                             [pi p-opts' els
+                              (ps/path (merge p-opts' {:debug? true})
+                                       els)]))))]
       [:div.canvas
        [:div.script
         [:textarea
-         {:value     (str/trim (pprint' script))
-          :on-change #(reset! !script (-> % .-target .-value read-string))}]
+         {:value     (str/trim (pprint' params))
+          :on-change #(reset! !params (-> % .-target .-value read-string))}]
 
         [:div.status
          (when sel
-           (let [[_ opts :as p] (nav/script> script :pi  pi-sel)
+           (let [[_ opts :as p] (nav/params> params :src-k src-k-sel :pi  pi-sel)
                  [k & xys]      (nav/p>      p      :eli eli-sel)]
              [:div.selection-stack
               [:div.selection-level.path
@@ -93,27 +100,32 @@
          [tf* {:sc [sc sc]}
 
           [:g.main
-           (for [[pi opts els
-                  [pnt-tups xys] :as out-tup] out-tups]
-             ^{:key pi}
-             [ps/path-builder opts pi els])]
+           ; (for [[pi p-opts els
+           ;        [pnt-tups xys] :as out-tup] out-tups]
+           ;   ^{:key pi}
+           ;   [ps/path-builder p-opts pi els])
+           [ps/paint (-> params
+                         (update :styles #(or % {:fill "none" :stroke "black"})))]]
 
-          (when (and sel (> eli-sel nav/eli0))
-            (let [els' (->> (nav/script> script :pi pi-sel)
-                               (take (inc eli-sel))
-                               (drop nav/eli0)
-                               els/normalize-els)]
+          (when (and sel (or (= :defs src-k-sel)
+                             (> eli-sel nav/eli0)))
+            (let [els' (->> (nav/params> params :src-k src-k-sel :pi pi-sel)
+                            (take (inc eli-sel))
+                            (drop (if (= :defs src-k-sel) 0 nav/eli0))
+                            els/normalize-els)
+                  els-seg (get-path-segment src-k-sel els' eli-sel)]
               [:g.sel
-               [ps/path-builder {} pi-sel
-                (get-path-segment els' eli-sel)]]))]
+               [ps/path-builder {} pi-sel els-seg]]))]
 
          [:g.coords
-          (for [[pi opts els _] out-tups]
-            (let [els' (els/attach-normalized-meta
-                        els
-                        (-> els els/normalize-els))
-                  [pnt-tups
-                   xys]     (ps/path (merge opts {:debug? true :coords? true}) els')]
+          (for [[pi p-opts els _] out-tups]
+            (let [els'           (->> els
+                                      (els/resolve-refs (:defs p-opts))
+                                      (els/attach-normalized-meta))
+                  [data-svg-tups
+                   _svg-seq]     (ps/path (merge p-opts {:debug? true
+                                                         :coords? true})
+                                          els')]
               ^{:key pi}
               [:g
                (ps/plot-coords {:scaled        sc
@@ -123,4 +135,4 @@
                                 :sel           sel
                                 :hov           hov
                                 :controls?     (= pi-sel pi)}
-                               pi els' pnt-tups)]))]]]])))
+                               pi els' data-svg-tups)]))]]]])))

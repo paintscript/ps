@@ -1,4 +1,4 @@
-(defproject paintscript "0.1.7"
+(defproject paintscript "0.1.8"
   :dependencies [[org.clojure/clojure "1.10.0"]
                  [org.clojure/clojurescript "1.10.520"]
                  [reagent "0.8.1"]
@@ -10,6 +10,9 @@
   :source-paths ["src/"]
   :plugins      [[lein-cljsbuild "1.1.7"]
                  [lein-figwheel "0.5.19"]]
+
+  :clean-targets ^{:protect false} ["resources-app/public/js/compiled/"
+                                    "resources-docs/public/js/compiled/"]
 
   :profiles
   {:xx     {:test-paths ["xspace/"]}

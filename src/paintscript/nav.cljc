@@ -3,10 +3,10 @@
 (def eli0 2)
 (def xyi0 1)
 
-(defn script> [script & {:keys [pi ii iii]}]
-  (cond pi  (get-in script [:script pi])
-        ii  (get-in script (cons :script ii))
-        iii (get-in script (cons :script iii))))
+(defn params> [params & {:keys [src-k pi ii iii] :or {src-k :script}}]
+  (cond pi  (get-in params [src-k pi])
+        ii  (get-in params (cons src-k ii))
+        iii (get-in params (cons src-k iii))))
 
 (defn p> [p & {:keys [eli eln]}]
   (cond eli (get p eli)
@@ -26,8 +26,9 @@
 
 ;; rels
 
-(defn els-prev [els & {:keys [eli]}]
-  (nth els (-> eli (- eli0) (- 1))))
+(defn els-prev [els & {:keys [eli eln]}]
+  (get els (cond eli (-> eli (- eli0) (- 1))
+                 eln (-> eln (- 1)))))
 
-(defn els-next [els & {:keys [eli]}]
-  (nth els (-> eli (- eli0) (+ 1))))
+(defn els-next [els & {:keys [eli eln]}]
+  (get els (-> eli (- eli0) (+ 1))))
