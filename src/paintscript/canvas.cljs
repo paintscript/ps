@@ -25,19 +25,20 @@
      (list el))))
 
 (defn canvas [params-init]
-  (r/with-let [!config     (r/atom {:dims [100 100]
+  (r/with-let [!config     (r/atom {:canvas {:dims [100 100]
+                                             :scale 4}
                                     :styles
                                     {:outline {:stroke "black" :fill "none"}
                                      :solid   {:stroke "none"  :fill "black"}}})
+               !scale      (r/cursor !config [:canvas :scale])
                !params     (r/atom params-init)
                !sel        (r/atom nil)
                !hov        (r/atom nil)
                !tab        (r/atom :script)
-               sc          4
                report!     (fn [iii] (reset! !sel iii))
                dispatch!   (partial ps/dispatch! !params !sel)
-               dnd-fns     (ps/drag-and-drop-fns [sc sc] !params !sel dispatch!)
-               kb-fns      (ps/keybind-fns       [sc sc] !params !sel dispatch!)
+               dnd-fns     (ps/drag-and-drop-fns !scale !params !sel dispatch!)
+               kb-fns      (ps/keybind-fns              !params !sel dispatch!)
                report-hov! (fn [iii val]
                              (swap! !hov #(cond
                                             val iii
@@ -47,16 +48,20 @@
                _ (doseq [[k f] kb-fns]
                    (key/bind! k (keyword k) f))]
 
-    (let [{:as params
-           :keys [dims variant]
-           :or {dims [100 100]}
-           {:keys [variants]} :canvas}
-          (-> @!params
+    (let [config @!config
+          params @!params
+
+          {:as   params'
+           :keys [variant]
+           {:as   canvas
+            :keys [scale variants dims]
+            :or   {dims [100 100]}} :canvas}
+          (-> (merge-with merge
+                          config
+                          params)
               (update :script els/attach-iii-meta*))
 
-          config @!config
-
-          [w h] (->> dims (mapv #(* % sc)))
+          [w h] (->> dims (mapv #(* % scale)))
 
           tab @!tab
 
@@ -67,11 +72,11 @@
 
           hov @!hov
 
-          out-tups (->> (:script params)
+          out-tups (->> (:script params')
                         (map-indexed
                          (fn [pi [_ p-opts & els :as path]]
                            (let [p-opts' (-> p-opts
-                                             (assoc :defs (:defs params)))]
+                                             (assoc :defs (:defs params')))]
                              [pi p-opts' els
                               (ps/path (merge p-opts' {:debug? true})
                                        els)]))))]
@@ -95,8 +100,8 @@
 
         [:div.status
          (when sel
-           (let [[_ opts :as p] (nav/params> params :src-k src-k-sel :pi  pi-sel)
-                 [k & xys]      (nav/p>      p      :eli   eli-sel)]
+           (let [[_ opts :as p] (nav/params> params' :src-k src-k-sel :pi  pi-sel)
+                 [k & xys]      (nav/p>      p       :eli   eli-sel)]
              [:div.selection-stack
               [:div.selection-level.path
                [:span (pr-str opts)]
@@ -121,19 +126,19 @@
         (for [variant (or variants
                           (some-> variant list)
                           [nil])
-              :let [params (-> params
+              :let [params' (-> params'
                                (assoc :variant variant))]]
           ^{:key variant}
           [:svg (merge {:style {:width w :height h}}
                        dnd-fns)
-           [tf* {:sc [sc sc]}
+           [tf* {:sc [scale scale]}
 
             [:g.main
-             [ps/paint (merge config params)]]
+             [ps/paint params']]
 
             (when (and sel (or (= :defs src-k-sel)
                                (> eli-sel nav/eli0)))
-              (let [els' (->> (nav/params> params :src-k src-k-sel :pi pi-sel)
+              (let [els' (->> (nav/params> params' :src-k src-k-sel :pi pi-sel)
                               (take (inc eli-sel))
                               (drop (if (= :defs src-k-sel) 0 nav/eli0))
                               els/normalize-els)
@@ -154,7 +159,7 @@
                                             els')]
                 ^{:key pi}
                 [:g
-                 (ps/plot-coords {:scaled        sc
+                 (ps/plot-coords {:scaled        scale
                                   :coord-size    10
                                   :report!       report!
                                   :report-hover! report-hov!

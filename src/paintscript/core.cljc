@@ -43,16 +43,17 @@
                             ops/del-pnt eli-sel
                             (- xyi-sel nav/xyi0))))))
 
-(defn drag-and-drop-fns [scaled !params !sel dispatch!]
+(defn drag-and-drop-fns [!scale !params !sel dispatch!]
   (let [!snap  (atom nil)
         get!   #(get-in @!params @!sel)]
     {:on-mouse-down #(swap! !snap merge {:sel @!sel :xy0 (get!) :m0 (xy-mouse %)})
      :on-mouse-move (fn [ev]
-                      (let [{:as snap :keys [xy0 m0]} @!snap]
+                      (let [{:as snap :keys [xy0 m0]} @!snap
+                            scale @!scale]
                         (when xy0
                           (let [m1  (xy-mouse ev)
                                 d   (mapv - m1 m0)
-                                d'  (mapv / d scaled)
+                                d'  (mapv / d [scale scale])
                                 d'  (mapv u/round d')
                                 xy' (mapv + xy0 d')]
                             (dispatch! [:set-xy xy'])))))
@@ -65,7 +66,7 @@
                          (reset! !sel  nil)
                          (reset! !snap nil)))}))
 
-(defn keybind-fns [scaled !params !sel dispatch!]
+(defn keybind-fns [!params !sel dispatch!]
   (let [upd! #(swap! !params assoc-in @!sel %)
         get! #(get-in @!params @!sel)]
     {"left"      #(when-let [[x y] (get!)] (dispatch! [:set-xy [(- x 1) y]]))
