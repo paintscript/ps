@@ -3,9 +3,7 @@
             [paintscript.canvas :refer [canvas]]))
 
 (defn- root []
-  [canvas {:canvas {:variants [:one :two]}
-
-           :defs   {"head" [[:M [50 38.5]]
+  [canvas {:defs   {"head" [[:M [50 38.5]]
                             [:L [32 38.5]]
                             [:c [0 0] [-0.5 -3.5] [2.5 -6.5]]
                             [:s [9 -4] [9 -4]]
@@ -26,12 +24,12 @@
                     ;  [:S [10 54] [74 89]]]
 
                     [:path
-                     {:variant-k :one :mirror :merged :class-k :solid}
+                     {:variant-k :outline :mirror :merged :class-k :outline}
                      [:ref "head"]
                      [:ref "body"]]
 
                     [:path
-                     {:variant-k :two :mirror :merged :class-k :outline}
+                     {:variant-k :solid :mirror :merged :class-k :solid}
                      [:ref "head"]
                      [:ref "body"]]]}])
 

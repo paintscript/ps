@@ -25,8 +25,12 @@
      (list el))))
 
 (defn canvas [params-init]
-  (r/with-let [!config     (r/atom {:canvas {:dims [100 100]
-                                             :scale 4}
+  (r/with-let [!config     (r/atom {:canvas
+                                    {:dims [100 100]
+                                     :scale 4
+                                     :variants [{:variant :solid :scale 2 :coords? false}
+                                                {:variant :outline :scale 3}]}
+
                                     :styles
                                     {:outline {:stroke "black" :fill "none"}
                                      :solid   {:stroke "none"  :fill "black"}}})
@@ -54,14 +58,11 @@
           {:as   params'
            :keys [variant]
            {:as   canvas
-            :keys [scale variants dims]
-            :or   {dims [100 100]}} :canvas}
+            :keys [variants]} :canvas}
           (-> (merge-with merge
                           config
                           params)
               (update :script els/attach-iii-meta*))
-
-          [w h] (->> dims (mapv #(* % scale)))
 
           tab @!tab
 
@@ -126,9 +127,18 @@
         (for [variant (or variants
                           (some-> variant list)
                           [nil])
-              :let [params' (-> params'
-                               (assoc :variant variant))]]
-          ^{:key variant}
+              :let [{:as params'
+                     {:as   canvas
+                      :keys [scale dims coords?]
+                      :or   {dims [100 100] coords? true}} :canvas}
+                    (-> params'
+                        (cond-> (keyword? variant) (assoc :variant variant)
+                                (map?     variant) (-> (assoc :variant (:variant variant))
+                                                       (update :canvas merge variant))))
+
+                    [w h] (->> dims (mapv #(* % scale)))]]
+
+          ^{:key (hash variant)}
           [:svg (merge {:style {:width w :height h}}
                        dnd-fns)
            [tf* {:sc [scale scale]}
@@ -146,24 +156,25 @@
                 [:g.sel
                  [ps/path-builder {} pi-sel els-seg]]))]
 
-           [:g.coords
-            (for [[pi {:as p-opts :keys [variant-k]} els _] out-tups
-                  :when (or (not variant)
-                            (= variant variant-k))]
-              (let [els'           (->> els
-                                        (els/resolve-refs (:defs p-opts))
-                                        (els/attach-normalized-meta))
-                    [data-svg-tups
-                     _svg-seq]     (ps/path (merge p-opts {:debug? true
-                                                           :coords? true})
-                                            els')]
-                ^{:key pi}
-                [:g
-                 (ps/plot-coords {:scaled        scale
-                                  :coord-size    10
-                                  :report!       report!
-                                  :report-hover! report-hov!
-                                  :sel           sel
-                                  :hov           hov
-                                  :controls?     (= pi-sel pi)}
-                                 pi els' data-svg-tups)]))]])]])))
+           (when coords?
+             [:g.coords
+              (for [[pi {:as p-opts :keys [variant-k]} els _] out-tups
+                    :when (or (not (:variant params'))
+                              (= (:variant params') variant-k))]
+                (let [els'           (->> els
+                                          (els/resolve-refs (:defs p-opts))
+                                          (els/attach-normalized-meta))
+                      [data-svg-tups
+                       _svg-seq]     (ps/path (merge p-opts {:debug? true
+                                                             :coords? true})
+                                              els')]
+                  ^{:key pi}
+                  [:g
+                   (ps/plot-coords {:scaled        scale
+                                    :coord-size    10
+                                    :report!       report!
+                                    :report-hover! report-hov!
+                                    :sel           sel
+                                    :hov           hov
+                                    :controls?     (= pi-sel pi)}
+                                   pi els' data-svg-tups)]))])])]])))
