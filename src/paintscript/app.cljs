@@ -8,7 +8,16 @@
                             [:c [0 0] [-0.5 -3.5] [2.5 -6.5]]
                             [:s [9 -4] [9 -4]]
                             [:s [-4.5 -4] [-4.5 -9.5]]
-                            [:c [0 -5.5] [4.5 -10.5] [11 -11]]]}
+                            [:c [0 -5.5] [4.5 -10.5] [11 -11]]]
+                    "body" [[:M [50 92]]
+                            [:L [20 92]]
+                            [:c [0 0] [-0.5 -7] [3 -12]]
+                            [:s [11 -6] [11 -6]]
+                            [:s [5.5 -9] [8 -17]]
+                            [:c [2.5 -7.5] [3 -18.5] [3 -18.5]]
+                            [:s [5 0] [5 0]]]}
+
+           :canvas {:variants [:one :two]}
 
            :script [; [:path
                     ;  {:mirror :separate}
@@ -17,16 +26,14 @@
                     ;  [:S [10 54] [74 89]]]
 
                     [:path
-                     {:mirror :merged :class-k :bg-fill}
+                     {:variant-k :one :mirror :merged :class-k :solid}
                      [:ref "head"]
+                     [:ref "body"]]
 
-                     [:M [50 92]]
-                     [:L [20 92]]
-                     [:c [0 0] [-0.5 -7] [3 -12]]
-                     [:s [11 -6] [11 -6]]
-                     [:s [5.5 -9] [8 -17]]
-                     [:c [2.5 -7.5] [3 -18.5] [3 -18.5]]
-                     [:s [5 0] [5 0]]]]}])
+                    [:path
+                     {:variant-k :two :mirror :merged :class-k :outline}
+                     [:ref "head"]
+                     [:ref "body"]]]}])
 
 (defn- mount-root! []
   (r/render [#'root]

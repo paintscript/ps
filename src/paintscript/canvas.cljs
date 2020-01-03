@@ -48,9 +48,11 @@
                    (key/bind! k (keyword k) f))]
 
     (let [{:as params
-           :keys [dims]
-           :or {dims [100 100]}} (-> @!params
-                                     (update :script els/attach-iii-meta*))
+           :keys [dims variant]
+           :or {dims [100 100]}
+           {:keys [variants]} :canvas}
+          (-> @!params
+              (update :script els/attach-iii-meta*))
 
           config @!config
 
@@ -116,39 +118,47 @@
                   [zc/button :label "del" :on-click #(dispatch! [:xy-del])]])]]))]]
 
        [:div.paint
-        [:svg (merge {:style {:width w :height h}}
-                     dnd-fns)
-         [tf* {:sc [sc sc]}
+        (for [variant (or variants
+                          (some-> variant list)
+                          [nil])
+              :let [params (-> params
+                               (assoc :variant variant))]]
+          ^{:key variant}
+          [:svg (merge {:style {:width w :height h}}
+                       dnd-fns)
+           [tf* {:sc [sc sc]}
 
-          [:g.main
-           [ps/paint (merge config params)]]
+            [:g.main
+             [ps/paint (merge config params)]]
 
-          (when (and sel (or (= :defs src-k-sel)
-                             (> eli-sel nav/eli0)))
-            (let [els' (->> (nav/params> params :src-k src-k-sel :pi pi-sel)
-                            (take (inc eli-sel))
-                            (drop (if (= :defs src-k-sel) 0 nav/eli0))
-                            els/normalize-els)
-                  els-seg (get-path-segment src-k-sel els' eli-sel)]
-              [:g.sel
-               [ps/path-builder {} pi-sel els-seg]]))]
+            (when (and sel (or (= :defs src-k-sel)
+                               (> eli-sel nav/eli0)))
+              (let [els' (->> (nav/params> params :src-k src-k-sel :pi pi-sel)
+                              (take (inc eli-sel))
+                              (drop (if (= :defs src-k-sel) 0 nav/eli0))
+                              els/normalize-els)
+                    els-seg (get-path-segment src-k-sel els' eli-sel)]
+                [:g.sel
+                 [ps/path-builder {} pi-sel els-seg]]))]
 
-         [:g.coords
-          (for [[pi p-opts els _] out-tups]
-            (let [els'           (->> els
-                                      (els/resolve-refs (:defs p-opts))
-                                      (els/attach-normalized-meta))
-                  [data-svg-tups
-                   _svg-seq]     (ps/path (merge p-opts {:debug? true
-                                                         :coords? true})
-                                          els')]
-              ^{:key pi}
-              [:g
-               (ps/plot-coords {:scaled        sc
-                                :coord-size    10
-                                :report!       report!
-                                :report-hover! report-hov!
-                                :sel           sel
-                                :hov           hov
-                                :controls?     (= pi-sel pi)}
-                               pi els' data-svg-tups)]))]]]])))
+           [:g.coords
+            (for [[pi {:as p-opts :keys [variant-k]} els _] out-tups
+                  :when (or (not variant)
+                            (= variant variant-k))]
+              (let [els'           (->> els
+                                        (els/resolve-refs (:defs p-opts))
+                                        (els/attach-normalized-meta))
+                    [data-svg-tups
+                     _svg-seq]     (ps/path (merge p-opts {:debug? true
+                                                           :coords? true})
+                                            els')]
+                ^{:key pi}
+                [:g
+                 (ps/plot-coords {:scaled        sc
+                                  :coord-size    10
+                                  :report!       report!
+                                  :report-hover! report-hov!
+                                  :sel           sel
+                                  :hov           hov
+                                  :controls?     (= pi-sel pi)}
+                                 pi els' data-svg-tups)]))]])]])))
