@@ -46,16 +46,24 @@
 (defn drag-and-drop-fns [scaled !params !sel dispatch!]
   (let [!snap  (atom nil)
         get!   #(get-in @!params @!sel)]
-    {:on-mouse-down #(reset! !snap {:xy0 (get!) :m0 (xy-mouse %)})
+    {:on-mouse-down #(swap! !snap merge {:sel @!sel :xy0 (get!) :m0 (xy-mouse %)})
      :on-mouse-move (fn [ev]
-                      (when-let [{:as snap :keys [xy0 m0]} @!snap]
-                        (let [m1  (xy-mouse ev)
-                              d   (mapv - m1 m0)
-                              d'  (mapv / d scaled)
-                              d'  (mapv u/round d')
-                              xy' (mapv + xy0 d')]
-                          (dispatch! [:set-xy xy']))))
-     :on-mouse-up   #(reset! !snap nil)}))
+                      (let [{:as snap :keys [xy0 m0]} @!snap]
+                        (when xy0
+                          (let [m1  (xy-mouse ev)
+                                d   (mapv - m1 m0)
+                                d'  (mapv / d scaled)
+                                d'  (mapv u/round d')
+                                xy' (mapv + xy0 d')]
+                            (dispatch! [:set-xy xy'])))))
+     :on-mouse-up   #(let [{:keys [sel sel-prev xy0]} @!snap
+                           xy (get!)]
+                       (reset! !snap {:sel-prev sel})
+                       (when (and sel sel-prev xy0
+                                  (= sel sel-prev)
+                                  (= xy0 xy))
+                         (reset! !sel  nil)
+                         (reset! !snap nil)))}))
 
 (defn keybind-fns [scaled !params !sel dispatch!]
   (let [upd! #(swap! !params assoc-in @!sel %)
@@ -73,9 +81,7 @@
              els el-k el
              xy [src-k pi eli _ :as iii]]
   (#?(:cljs r/with-let :clj let) [!hover? (atom false)]
-    (let [[x y] (->> (if (relative? el-k)
-                       (-> xy els/abs-meta)
-                       xy)
+    (let [[x y] (->> (-> xy (cond-> (relative? el-k) els/abs-meta))
                      (mapv #(* % scaled)))
           i-tgt     (-> xy meta :i-tgt)
           cp?       (some? i-tgt)
@@ -153,6 +159,8 @@
          :let [p-opts' (-> p-opts
                            (merge script-opts)
                            (cond-> class-k
-                                   (update :attrs merge (get styles class-k))))]]
+                                   (update :attrs merge
+                                           (get styles class-k
+                                                (get styles :outline)))))]]
      ^{:key pi}
      [path-builder p-opts' pi els])])

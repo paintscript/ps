@@ -3,10 +3,7 @@
             [paintscript.canvas :refer [canvas]]))
 
 (defn- root []
-  [canvas {:dims   [100 100]
-           :styles {:bg-fill {:fill "black"
-                              :stroke "white"}}
-           :defs   {"head" [[:M [50 38.5]]
+  [canvas {:defs   {"head" [[:M [50 38.5]]
                             [:L [32 38.5]]
                             [:c [0 0] [-0.5 -3.5] [2.5 -6.5]]
                             [:s [9 -4] [9 -4]]

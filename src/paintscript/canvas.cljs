@@ -25,9 +25,14 @@
      (list el))))
 
 (defn canvas [params-init]
-  (r/with-let [!params     (r/atom params-init)
+  (r/with-let [!config     (r/atom {:dims [100 100]
+                                    :styles
+                                    {:outline {:stroke "black" :fill "none"}
+                                     :solid   {:stroke "none"  :fill "black"}}})
+               !params     (r/atom params-init)
                !sel        (r/atom nil)
                !hov        (r/atom nil)
+               !tab        (r/atom :script)
                sc          4
                report!     (fn [iii] (reset! !sel iii))
                dispatch!   (partial ps/dispatch! !params !sel)
@@ -47,7 +52,11 @@
            :or {dims [100 100]}} (-> @!params
                                      (update :script els/attach-iii-meta*))
 
+          config @!config
+
           [w h] (->> dims (mapv #(* % sc)))
+
+          tab @!tab
 
           [src-k-sel
            pi-sel
@@ -65,15 +74,27 @@
                               (ps/path (merge p-opts' {:debug? true})
                                        els)]))))]
       [:div.canvas
-       [:div.script
-        [:textarea
-         {:value     (str/trim (pprint' params))
-          :on-change #(reset! !params (-> % .-target .-value read-string))}]
+       [:div.script {:class (when sel "with-status")}
+        [:div.controls
+         (for [tab-k [:script :config]]
+           ^{:key tab-k}
+           [zc/button
+            :label (name tab-k)
+            :active? (= tab-k tab)
+            :on-click #(reset! !tab tab-k)])]
+
+        (case tab
+          :script [:textarea
+                   {:value     (str/trim (pprint' params))
+                    :on-change #(reset! !params (-> % .-target .-value read-string))}]
+          :config [:textarea
+                   {:value     (str/trim (pprint' config))
+                    :on-change #(reset! !config (-> % .-target .-value read-string))}])
 
         [:div.status
          (when sel
            (let [[_ opts :as p] (nav/params> params :src-k src-k-sel :pi  pi-sel)
-                 [k & xys]      (nav/p>      p      :eli eli-sel)]
+                 [k & xys]      (nav/p>      p      :eli   eli-sel)]
              [:div.selection-stack
               [:div.selection-level.path
                [:span (pr-str opts)]
@@ -100,12 +121,7 @@
          [tf* {:sc [sc sc]}
 
           [:g.main
-           ; (for [[pi p-opts els
-           ;        [pnt-tups xys] :as out-tup] out-tups]
-           ;   ^{:key pi}
-           ;   [ps/path-builder p-opts pi els])
-           [ps/paint (-> params
-                         (update :styles #(or % {:fill "none" :stroke "black"})))]]
+           [ps/paint (merge config params)]]
 
           (when (and sel (or (= :defs src-k-sel)
                              (> eli-sel nav/eli0)))

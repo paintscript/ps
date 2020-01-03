@@ -2,62 +2,86 @@
 
 html, body {
   margin: 0; padding: 0;
+  font-family: sans-serif;
 }
 
 div.canvas {
   display: flex;
   * { box-sizing: border-box; }
 
-  --status-item-height: 50px;
-  --status-height:    calc(var(--status-item-height) * 3);
-  --target-col:       hsla(0,0%,50%,0.3); //hsla(240,100%,50%,0.3);
-  --control-col:      hsla(120,100%,50%,0.3);
-  --path-bg:          hsl(0,0%,80%);
-  --sel-fg:           hsl(240,100%,50%);
-  --sel-bg:           hsl(240,100%,95%);
-  --light-grey:       hsl(0,0%,95%);
-  --light-grey-alpha: hsla(0,0%,0%,0.10);
+  --status-item-height:  50px;
+  --status-height:       calc(var(--status-item-height) * 3);
+  --target-col:          hsla(0,0%,50%,0.3); //hsla(240,100%,50%,0.3);
+  --control-col:         hsla(120,100%,50%,0.3);
+  --path-bg:             hsl(0,0%,80%);
+  --sel-fg:              hsl(240,100%,50%);
+  --sel-bg:              hsl(240,100%,95%);
+  --light-grey:          hsl(0,0%,95%);
+  --light-grey-alpha:    hsla(0,0%,0%,0.10);
 
-  --sidebar: 30vw;
+  --sidebar:             30vw;
+  --sidebar-min:         220px;
+  --controls-height:     50px;
+  --script-height:       calc(100vh - var(--controls-height));
+  --script-height-short: calc(var(--script-height) - var(--status-height));
 
   div.script {
-    border-width: 0 5px 0 0;
+    border-width: 0 3px 0 0;
     border-style: solid;
     border-color: hsl(0,0%,0%);
-    height: 100vh;
-    // width: var(--sidebar);
+    height:       100vh;
 
-    textarea {
-      // box-sizing: border-box;
-      padding: 5px;
-      width: var(--sidebar);
-      display: block;
-      height: calc(100vh - var(--status-height));
-      margin: 0;
-      outline: none !important;
-      resize: none;
-      border: 0;
+    > div.controls {
+      height: var(--controls-height);
+      background-color: hsl(0,0%,95%);
+      div.zc.zc-button { --height: var(--controls-height); }
     }
 
-    div.status {
-      position: relative;
-      width: var(--sidebar);
+    textarea {
+      display:   block;
+      padding:   5px;
+      margin:    0;
+      border:    0;
+      outline:   none !important;
+      resize:    none;
+      width:     var(--sidebar);
+      min-width: var(--sidebar-min);
+      height:    var(--script-height);
+    }
+
+    &.with-status textarea {
+      height: var(--script-height-short);
+    }
+
+    > div.status {
+      position:  relative;
+      width:     var(--sidebar);
+      min-width: var(--sidebar-min);
+
       div.controls {
-        div.zc-button { box-sizing: border-box; --height: calc(var(--status-item-height) - 1px);; }
+        div.zc-button {
+          box-sizing: border-box;
+          --height:   calc(var(--status-item-height) - 1px);
+        }
         &.crud { position: absolute; right: 0; }
       }
+
       div.selection-stack {
-        display: flex; flex-direction: column;
-        height: var(--status-height);
-        background-color: var(--light-grey); color: black;
+        display:          flex;
+        flex-direction:   column;
+        height:           var(--status-height);
+        background-color: var(--light-grey);
+        color:            black;
+
         > div.selection-level {
-          overflow: hidden;
-          border-top: 1px solid hsl(0,0%,90%);
-          white-space: nowrap;
-          height: var(--status-item-height);
+          overflow:     hidden;
+          border-top:   1px solid hsl(0,0%,90%);
+          white-space:  nowrap;
+          height:       var(--status-item-height);
           padding-left: 10px;
-          display: flex; align-items: center;
-          font-family: sans-serif;
+          display:      flex;
+          align-items:  center;
+          color: var(--sel-fg);
           > * + * { margin-left: 5px; }
           > span.selected { color: var(--sel-fg); }
         }
@@ -83,22 +107,29 @@ div.canvas {
       }
 
       g.sel {
-        stroke: var(--sel-fg); fill: none;
+        stroke:       var(--sel-fg);
+        fill:         none;
         stroke-width: 1.5;
       }
 
       g.coords {
 
         g.cp rect {
-          stroke: hsl(0,0%,80%); fill: hsl(0,0%,100%); stroke-width: 2;
+          stroke-width: 2;
+          stroke:       hsl(0,0%,80%);
+          fill:         hsl(0,0%,100%);
+
           &:hover { fill: var(--sel-fg); }
         }
         g.selected g.cp rect {
-          stroke: var(--sel-fg); fill: hsl(0,0%,100%); stroke-width: 2;
+          stroke:       var(--sel-fg);
+          fill:         hsl(0,0%,100%);
+          stroke-width: 2;
         }
         line.ctrl-target {
           stroke-linecap: round;
-          stroke: hsl(0,0%,80%); stroke-width: 2;
+          stroke: hsl(0,0%,80%);
+          stroke-width: 2;
         }
       }
 
