@@ -157,7 +157,7 @@
 
 (defn plot-coords [opts pi els data-svg-tups]
   (for [[args _eli xyi0 el-k el] (map first data-svg-tups)
-        [xyi xy] (map-indexed vector args)
+        [xyi xy] (reverse (map-indexed vector args))
         :let [iii (some-> el meta :ii (concat [(+ xyi xyi0)]))
               _   (assert iii)]]
     ^{:key (hash iii)}

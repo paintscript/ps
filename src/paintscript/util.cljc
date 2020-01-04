@@ -1,6 +1,6 @@
 (ns paintscript.util)
 
-(defn round [n] #?(:cljs (js/Math.round n) :clj n))
+(defn round  [n] #?(:cljs (js/Math.round n) :clj n))
 (defn round1 [n] #?(:cljs (-> n (+ js/Number.EPSILON) (* 10) js/Math.round (/ 10))
                     :clj  n))
 (defn round2 [n] #?(:cljs (-> n (+ js/Number.EPSILON) (* 100) js/Math.round (/ 100))
