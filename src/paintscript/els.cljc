@@ -91,13 +91,14 @@
        normalize-els
        reverse-el-xys))
 
-(defn- map-xys [f els]
+(defn map-xys [f els]
   (->> els
        (map (fn [[el-k & xys :as el]]
               (case el-k
                 :A (-> el (update 3 f))
-                (cons el-k
-                      (map f xys)))))))
+                (vec
+                 (cons el-k
+                       (map f xys))))))))
 
 (defn scale-els [els ctr n]
   (map-xys #(u/tl-point-towards % ctr n) els))
@@ -179,7 +180,7 @@
 
 (defn path
   ([els] (path nil els))
-  ([{:keys [defs mode debug? close? cutout? draw? width mirror coords? coord-size]
+  ([{:keys [defs mode debug? close? width mirror coords?]
      [scale-ctr scale-fract :as scale] :scale
      :or   {width 100
             mode  :concave}}

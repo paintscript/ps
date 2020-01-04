@@ -18,27 +18,25 @@
 
 (defn- dispatch-on-k [[k] & _] k)
 
-(def v+ (partial mapv (comp u/round2 +)))
-
 (defn- flip-c2 [c2 tgt]
   (let [delta (mapv - tgt c2)]
-    (v+ tgt delta)))
+    (u/v+ tgt delta)))
 
 ;; rel->abs
 
 (defmulti ^:private rel->abs dispatch-on-k)
 
 (defmethod rel->abs :c [[k & pnts :as el] tgt-prev _cp-prev]
-  (let [[c1 c2 tgt :as pnts'] (map #(v+ % tgt-prev) pnts)]
+  (let [[c1 c2 tgt :as pnts'] (map #(u/v+ % tgt-prev) pnts)]
     [[:C c1 c2 tgt] tgt c2]))
 
 (defmethod rel->abs :s [[k & pnts :as el] tgt-prev cp-prev]
-  (let [[c2 tgt] (map #(v+ % tgt-prev) pnts)
+  (let [[c2 tgt] (map #(u/v+ % tgt-prev) pnts)
         c1 (flip-c2 cp-prev tgt-prev)]
     [[:C c1 c2 tgt] tgt c2]))
 
 (defmethod rel->abs :l [[k & pnts :as el] tgt-prev _]
-  (let [pnts' (map #(v+ % tgt-prev) pnts)]
+  (let [pnts' (map #(u/v+ % tgt-prev) pnts)]
     [(vec (cons :L pnts')) (last pnts') nil]))
 
 ;; short->full

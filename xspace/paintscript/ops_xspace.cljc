@@ -8,7 +8,7 @@
    {:xx (fn [_ctx {:keys [title]} f] (testing title (f)))
     :x->
     (fn [ctx c args]
-      (let [{:keys [op script els pnt ii =>]}
+      (let [{:keys [op params script els pnt ii tl =>]}
             (merge (-> ctx :args) args)]
         (is (= =>
                (case op
@@ -19,7 +19,8 @@
                  :append-el  (apply ops/append-el  els ii)
                  :del-el     (apply ops/del-el     els ii)
                  :append-pth (apply ops/append-pth script ii)
-                 :del-pth    (apply ops/del-pth    script ii))))))}})
+                 :del-pth    (apply ops/del-pth    script ii)
+                 :tl-pth     (ops/tl-pth params ii tl))))))}})
 
 (def ops-xspace
   [;; pnt
@@ -75,7 +76,18 @@
        (x-> :script [[:path {} [:M [5 5]]]
                      [:path {} [:M [10 10]]]]
             :ii     [1]
-            :=>     [[:path {} [:M [5 5]]]]))])
+            :=>     [[:path {} [:M [5 5]]]]))
+
+   (xx {:= {:op :tl-pth}}
+
+       (x-> :params {:script
+                     [[:path {} [:M [5 5]]]
+                      [:path {} [:M [10 10]]]]}
+            :ii     [:script 0]
+            :tl     [1 2]
+            :=>     {:script
+                     [[:path {} [:M [6 7]]]
+                      [:path {} [:M [10 10]]]]}))])
 
 (deftest ops-test
   (x/traverse-xspace ops-xspace-cfg

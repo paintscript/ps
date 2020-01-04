@@ -31,6 +31,8 @@
   (sqrt (+ (pow (- y2 y1) 2)
            (pow (- x2 x1) 2))))
 
+(def v+ (partial mapv (comp round2 +)))
+
 (defn tl-point
   ([[x y] [dx dy]]
    [(+ x dx) (+ y dy)])

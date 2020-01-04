@@ -1,5 +1,6 @@
 (ns paintscript.core
   (:require #?(:cljs [reagent.core :as r :refer [atom]])
+            #?(:cljs [cljs.reader :refer [read-string]])
             [clojure.string :as str]
             [clojure.walk :as w]
             [svg-hiccup-kit.core :refer [d d2]]
@@ -12,29 +13,29 @@
   [(-> ev .-clientX)
    (-> ev .-clientY)])
 
-(defn dispatch! [!script !sel [op-k & [arg :as args]]]
+(defn read-xy-str [[x y]]
+  [(or (some-> x read-string) 0)
+   (or (some-> y read-string) 0)])
+
+(defn dispatch! [!params !sel [op-k & [arg :as args]]]
   (let [[src-k-sel
          pi-sel
          eli-sel
          xyi-sel :as sel] @!sel]
     (case op-k
       :set-xy     (do
-                    (swap! !script assoc-in @!sel arg))
+                    (swap! !params assoc-in @!sel arg))
       :cmd        (let [[cmd & args] (str/split arg #" ")]
                     (case cmd
                       "absolute"
                       (let [iii @!sel]
-                        (swap! !script update-in (take 2 iii)
-                               (fn [p]
-                                 (case (first iii)
-                                   :defs   (els/normalize-els p :op :absolute)
-                                   :script (ops/update-els p els/normalize-els
-                                                           :op :absolute)))))
+                        (swap! !params ops/update-px (take 2 iii)
+                               els/normalize-els :op :absolute))
 
                       "round"
                       (let [n   (first args)
                             iii @!sel]
-                        (swap! !script
+                        (swap! !params
                                (fn [s]
                                  (w/prewalk (case n
                                               "1" #(-> % (cond-> (number? %) u/round1))
@@ -42,29 +43,33 @@
                                                #(-> % (cond-> (number? %) u/round)))
                                             s))))
 
+                      "translate"
+                      (let [iii @!sel]
+                        (swap! !params ops/tl-pth (take 2 iii) (read-xy-str args)))
+
                       (println (str "command not found: " cmd))))
 
       :pth-append (do
                     (reset! !sel nil)
-                    (swap! !script update :script ops/append-pth pi-sel))
+                    (swap! !params update :script ops/append-pth pi-sel))
       :pth-del    (do
                     (reset! !sel nil)
-                    (swap! !script update :script ops/del-pth pi-sel))
+                    (swap! !params update :script ops/del-pth pi-sel))
       :el-append  (do
                     (reset! !sel nil)
-                    (swap! !script update-in [:script pi-sel]
+                    (swap! !params update-in [:script pi-sel]
                            ops/append-el eli-sel))
       :el-del     (do
                     (reset! !sel nil)
-                    (swap! !script update-in [:script pi-sel]
+                    (swap! !params update-in [:script pi-sel]
                            ops/del-el eli-sel))
       :xy-append  (do
                      (reset! !sel nil)
-                     (swap! !script update-in [:script pi-sel]
+                     (swap! !params update-in [:script pi-sel]
                             ops/append-pnt eli-sel))
       :xy-del     (do
                      (reset! !sel nil)
-                     (swap! !script update-in [:script pi-sel]
+                     (swap! !params update-in [:script pi-sel]
                             ops/del-pnt eli-sel
                             (- xyi-sel nav/xyi0))))))
 

@@ -1,4 +1,6 @@
-(ns paintscript.ops)
+(ns paintscript.ops
+  (:require [paintscript.util :as u]
+            [paintscript.els :as els]))
 
 ;; generic
 
@@ -103,12 +105,19 @@
   (-> els
       (vec-remove pi)))
 
-;; paths
+;; lift
 
-(defn update-els [p f & args]
+(defn update-p-els [p f & args]
   (vec
    (concat (take 2 p)
            (apply f (drop 2 p) args))))
+
+(defn update-px [params [src-k px] f & args]
+  (case src-k
+    :defs   (apply update-in params [src-k px] f args)
+    :script (apply update-in params [src-k px] update-p-els f args)))
+
+;; params
 
 (defn append-pth
   [script pi]
@@ -116,3 +125,7 @@
       (vec-append pi [:path {} [:M [10 10]]])))
 
 (defn del-pth [script pi] (-> script (vec-remove pi)))
+
+(defn tl-pth [params ii tl]
+  (-> params
+      (update-px ii #(els/map-xys (partial u/v+ tl) %))))
