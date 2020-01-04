@@ -1,6 +1,7 @@
 (ns paintscript.core
   (:require #?(:cljs [reagent.core :as r :refer [atom]])
             [clojure.string :as str]
+            [clojure.walk :as w]
             [svg-hiccup-kit.core :refer [d d2]]
             [paintscript.util :as u]
             [paintscript.els :as els]
@@ -19,15 +20,30 @@
     (case op-k
       :set-xy     (do
                     (swap! !script assoc-in @!sel arg))
-      :cmd        (do
-                    (case arg
-                      "absolute" (let [iii @!sel]
-                                   (swap! !script update-in (take 2 iii)
-                                          (fn [p]
-                                            (case (first iii)
-                                              :defs   (els/normalize-els p :op :absolute)
-                                              :script (ops/update-els p els/normalize-els :op :absolute)))))
-                      (println "command not found")))
+      :cmd        (let [[cmd & args] (str/split arg #" ")]
+                    (case cmd
+                      "absolute"
+                      (let [iii @!sel]
+                        (swap! !script update-in (take 2 iii)
+                               (fn [p]
+                                 (case (first iii)
+                                   :defs   (els/normalize-els p :op :absolute)
+                                   :script (ops/update-els p els/normalize-els
+                                                           :op :absolute)))))
+
+                      "round"
+                      (let [n   (first args)
+                            iii @!sel]
+                        (swap! !script
+                               (fn [s]
+                                 (w/prewalk (case n
+                                              "1" #(-> % (cond-> (number? %) u/round1))
+                                              "2" #(-> % (cond-> (number? %) u/round2))
+                                               #(-> % (cond-> (number? %) u/round)))
+                                            s))))
+
+                      (println (str "command not found: " cmd))))
+
       :pth-append (do
                     (reset! !sel nil)
                     (swap! !script update :script ops/append-pth pi-sel))

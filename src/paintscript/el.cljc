@@ -1,4 +1,5 @@
-(ns paintscript.el)
+(ns paintscript.el
+  (:require [paintscript.util :as u]))
 
 (defn flip-bin [n] (case n 0 1 0))
 
@@ -17,25 +18,27 @@
 
 (defn- dispatch-on-k [[k] & _] k)
 
+(def v+ (partial mapv (comp u/round2 +)))
+
 (defn- flip-c2 [c2 tgt]
   (let [delta (mapv - tgt c2)]
-    (mapv + tgt delta)))
+    (v+ tgt delta)))
 
 ;; rel->abs
 
 (defmulti ^:private rel->abs dispatch-on-k)
 
 (defmethod rel->abs :c [[k & pnts :as el] tgt-prev _cp-prev]
-  (let [[c1 c2 tgt :as pnts'] (map #(mapv + % tgt-prev) pnts)]
+  (let [[c1 c2 tgt :as pnts'] (map #(v+ % tgt-prev) pnts)]
     [[:C c1 c2 tgt] tgt c2]))
 
 (defmethod rel->abs :s [[k & pnts :as el] tgt-prev cp-prev]
-  (let [[c2 tgt] (map #(mapv + % tgt-prev) pnts)
+  (let [[c2 tgt] (map #(v+ % tgt-prev) pnts)
         c1 (flip-c2 cp-prev tgt-prev)]
     [[:C c1 c2 tgt] tgt c2]))
 
 (defmethod rel->abs :l [[k & pnts :as el] tgt-prev _]
-  (let [pnts' (map #(mapv + % tgt-prev) pnts)]
+  (let [pnts' (map #(v+ % tgt-prev) pnts)]
     [(vec (cons :L pnts')) (last pnts') nil]))
 
 ;; short->full
@@ -64,6 +67,7 @@
 (defmulti ^:private curve->tgt-cp dispatch-on-k)
 (defmethod curve->tgt-cp :C [[_ _ c2 tgt :as el] _ _] [el tgt c2])
 (defmethod curve->tgt-cp :Q [[_   c  tgt :as el] _ _] [el tgt c])
+(defmethod curve->tgt-cp :S [[_   c  tgt :as el] _ _] [el tgt c])
 
 ;; el->tgt
 
