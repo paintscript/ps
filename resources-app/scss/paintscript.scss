@@ -10,8 +10,10 @@ div.canvas {
 
   * { box-sizing: border-box; }
 
+  --pd:                  10px;
+  --pd-half:             5px;
   --status-item-height:  50px;
-  --status-height:       calc(var(--status-item-height) * 3);
+  --status-height:       calc(var(--status-item-height) * 4);
   --target-col:          hsla(0,0%,50%,0.3); //hsla(240,100%,50%,0.3);
   --control-col:         hsla(120,100%,50%,0.3);
   --path-bg:             hsl(0,0%,80%);
@@ -29,6 +31,16 @@ div.canvas {
   --script-height-short: calc(var(--script-height) - var(--status-height));
 
   * { box-sizing: border-box; }
+
+  textarea {
+    display:   block;
+    padding:   var(--pd-half);
+    margin:    0;
+    border:    0;
+    outline:   none !important;
+    resize:    none;
+    width:     100%;
+  }
 
   div.sidebar {
     min-width: var(--sidebar-min);
@@ -54,32 +66,17 @@ div.canvas {
       div.zc.zc-button { --height: var(--controls-height); }
     }
 
-    textarea {
-      display:   block;
-      padding:   5px;
-      margin:    0;
-      border:    0;
-      outline:   none !important;
-      resize:    none;
-      width:     100%;
-      height:    var(--script-height);
+    > textarea {
+      height: var(--script-height);
     }
 
-    &.with-status textarea {
+    &.with-status > textarea {
       height: var(--script-height-short);
     }
 
     > div.status {
       position:  relative;
       width: 100%;
-
-      div.controls {
-        div.zc-button {
-          box-sizing: border-box;
-          --height:   calc(var(--status-item-height) - 1px);
-        }
-        &.crud { position: absolute; right: 0; }
-      }
 
       div.selection-stack {
         display:          flex;
@@ -99,6 +96,24 @@ div.canvas {
           color: var(--sel-fg);
           > * + * { margin-left: 5px; }
           > span.selected { color: var(--sel-fg); }
+
+          div.controls {
+            div.zc-button {
+              box-sizing: border-box;
+              --height:   calc(var(--status-item-height) - 1px);
+            }
+            &.crud { position: absolute; right: 0; }
+          }
+        }
+
+        > div.selection-level.shell {
+          padding: 0;
+          textarea {
+            padding: var(--pd);
+            height: 100%;
+            line-height: calc(var(--status-item-height) - (2 * var(--pd)));
+            font-size: inherit;
+          }
         }
       }
     }

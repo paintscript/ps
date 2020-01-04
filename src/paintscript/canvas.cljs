@@ -39,6 +39,7 @@
                !sel        (r/atom nil)
                !hov        (r/atom nil)
                !tab        (r/atom :script)
+               !shell      (r/atom "")
                report!     (fn [iii] (reset! !sel iii))
                dispatch!   (partial ps/dispatch! !params !sel)
                dnd-fns     (ps/drag-and-drop-fns !scale !params !sel dispatch!)
@@ -105,6 +106,20 @@
            (let [[_ opts :as p] (nav/params> params' :src-k src-k-sel :pi  pi-sel)
                  [k & xys]      (nav/p>      p       :eli   eli-sel)]
              [:div.selection-stack
+              [:div.selection-level.shell
+               [:textarea
+                {:value       @!shell
+                 :placeholder "enter command..."
+                 :on-change   #(reset! !shell (-> % .-target .-value))
+                 :on-key-down (fn [e]
+                                (let [k (max (.-keyCode e)
+                                             (.-which e))
+                                      cmd @!shell]
+                                  (when (= 13 k)
+                                    (reset! !shell "")
+                                    (dispatch! [:cmd (str/trim cmd)])
+                                    (-> e (.preventDefault)))))}]]
+
               [:div.selection-level.path
                [:span (pr-str opts)]
                [:div.controls.crud

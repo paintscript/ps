@@ -19,6 +19,15 @@
     (case op-k
       :set-xy     (do
                     (swap! !script assoc-in @!sel arg))
+      :cmd        (do
+                    (case arg
+                      "absolute" (let [iii @!sel]
+                                   (swap! !script update-in (take 2 iii)
+                                          (fn [p]
+                                            (case (first iii)
+                                              :defs   (els/normalize-els p :op :absolute)
+                                              :script (ops/update-els p els/normalize-els :op :absolute)))))
+                      (println "command not found")))
       :pth-append (do
                     (reset! !sel nil)
                     (swap! !script update :script ops/append-pth pi-sel))

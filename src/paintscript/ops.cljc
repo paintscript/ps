@@ -19,7 +19,7 @@
 
 ;; info
 
-(defn has-pred? [pth-i] (pos? pth-i))
+(defn has-pred? [pi] (pos? pi))
 
 (defn el-len [el]
   (-> el count dec))
@@ -30,61 +30,61 @@
 (defn offset-pnt [pnt delta] (mapv + pnt delta))
 (defn xy-delta  [pnt1 pnt2] (mapv - pnt1 pnt2))
 
-(defn get-pnt [els [pth-i pnt-i-abs :as ii]] (get-in els ii))
+(defn get-pnt [els [pi xyi-abs :as ii]] (get-in els ii))
 
-(defn get-pred-tgt [els pth-i]
-  (-> (get els (-> pth-i (- 1))) get-tgt))
+(defn get-pred-tgt [els pi]
+  (-> (get els (-> pi (- 1))) get-tgt))
 
 ;; points
 
-(def pnt-i-offset 1)
+(def xyi-offset 1)
 (def el-i-offset 2)
 
 (defn infer-succ-pnt
-  [els pth-i pnt-i]
-  (let [el (get els pth-i)
-        pnt-i'  (+ pnt-i pnt-i-offset)
-        pnt-0   (get-pnt els [pth-i pnt-i'])]
+  [els pi xyi]
+  (let [el (get els pi)
+        xyi'  (+ xyi xyi-offset)
+        pnt-0   (get-pnt els [pi xyi'])]
     (case (el-len el)
-      0 (if (has-pred? pth-i)
-          (offset-pnt (get-pred-tgt els pth-i)
+      0 (if (has-pred? pi)
+          (offset-pnt (get-pred-tgt els pi)
                       [10 10])
           [0 0])
 
-      1 (if (has-pred? pth-i)
-          (let [pnt-1 (-> (get els (-> pth-i (- 1))) get-tgt)]
+      1 (if (has-pred? pi)
+          (let [pnt-1 (-> (get els (-> pi (- 1))) get-tgt)]
             (offset-pnt pnt-0 (xy-delta pnt-0 pnt-1)))
           (offset-pnt pnt-0 (xy-delta pnt-0 [0 0])))
 
-      (let [pnt-1 (get-pnt els [pth-i (-> pnt-i' (- 1))])]
+      (let [pnt-1 (get-pnt els [pi (-> xyi' (- 1))])]
         (offset-pnt pnt-0
                     (xy-delta pnt-0 pnt-1))))))
 
 (defn append-pnt
-  ([els pth-i]
-   (append-pnt els pth-i (-> (get els pth-i) el-len dec)))
+  ([els pi]
+   (append-pnt els pi (-> (get els pi) el-len dec)))
 
   ;; infer successor
-  ([els pth-i pnt-i]
-   (append-pnt els pth-i pnt-i
-               (infer-succ-pnt els pth-i pnt-i)))
+  ([els pi xyi]
+   (append-pnt els pi xyi
+               (infer-succ-pnt els pi xyi)))
 
   ;; explicit:
-  ([els pth-i pnt-i pnt]
-   (let [pnt-i' (+ pnt-i pnt-i-offset)]
+  ([els pi xyi pnt]
+   (let [xyi' (+ xyi xyi-offset)]
      (-> els
-         (update pth-i vec-append pnt-i' pnt)))))
+         (update pi vec-append xyi' pnt)))))
 
 (defn del-pnt
-  [els pth-i pnt-i]
-  (let [pnt-i' (+ pnt-i pnt-i-offset)]
+  [els pi xyi]
+  (let [xyi' (+ xyi xyi-offset)]
     (-> els
-        (update pth-i vec-remove pnt-i'))))
+        (update pi vec-remove xyi'))))
 
 ;; els
 
-(defn infer-succ-el [els pth-i]
-  (let [[k & pnts :as el-1] (get els pth-i)]
+(defn infer-succ-el [els pi]
+  (let [[k & pnts :as el-1] (get els pi)]
     (case k
       :M [:L (offset-pnt (last pnts) [10 10])]
       :L [:L (offset-pnt (last pnts) [10 10])]
@@ -94,20 +94,25 @@
            [:S tgt tgt]))))
 
 (defn append-el
-  [els pth-i]
+  [els pi]
   (-> els
-      (vec-append pth-i (infer-succ-el els pth-i))))
+      (vec-append pi (infer-succ-el els pi))))
 
 (defn del-el
-  [els pth-i]
+  [els pi]
   (-> els
-      (vec-remove pth-i)))
+      (vec-remove pi)))
 
 ;; paths
 
-(defn append-pth
-  [script pth-i]
-  (-> script
-      (vec-append pth-i [:path {} [:M [10 10]]])))
+(defn update-els [p f & args]
+  (vec
+   (concat (take 2 p)
+           (apply f (drop 2 p) args))))
 
-(defn del-pth [script pth-i] (-> script (vec-remove pth-i)))
+(defn append-pth
+  [script pi]
+  (-> script
+      (vec-append pi [:path {} [:M [10 10]]])))
+
+(defn del-pth [script pi] (-> script (vec-remove pi)))

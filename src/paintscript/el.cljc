@@ -73,9 +73,9 @@
 ;; ------------------------------------
 ;; dispatch
 
-(defn normalization-steps [el-k]
-  (or (seq (concat (when (relative? el-k) [rel->abs])
-                   (when (short?    el-k) [short->full])))
+(defn normalization-steps [el-k op]
+  (or (seq (concat (when (and (#{:all :absolute} op) (relative? el-k)) [rel->abs])
+                   (when (and (#{:all :full} op)     (short?    el-k)) [short->full])))
       (when (has-cp? el-k) [curve->tgt-cp])
       [el->tgt']))
 

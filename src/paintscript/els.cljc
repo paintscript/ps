@@ -39,7 +39,7 @@
                 (cons el-k
                       (mirror-xys width xys)))))))
 
-(defn normalize-els [els]
+(defn normalize-els [els & {:keys [op] :or {op :all}}]
   (loop [[[el-k :as el] & els-tail] els
          tgt-prev nil
          cp-prev  nil
@@ -50,7 +50,7 @@
             (reduce (fn [[el tgt-prev cp-prev] f-step]
                       (f-step el tgt-prev cp-prev))
                     [el tgt-prev cp-prev]
-                    (el/normalization-steps el-k))
+                    (el/normalization-steps el-k op))
             el'' (with-meta el' (meta el))]
         (recur els-tail tgt' cp' (conj acc el''))))))
 
