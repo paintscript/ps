@@ -82,7 +82,8 @@
                               (ps/path (merge p-opts' {:debug? true})
                                        els)]))))]
       [:div.canvas
-       [:div.script {:class (when sel "with-status")}
+       [:div.sidebar.script-phantom]
+       [:div.sidebar.script {:class (when sel "with-status")}
         [:div.controls
          (for [tab-k [:script :config]]
            ^{:key tab-k}

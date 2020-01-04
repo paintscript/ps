@@ -6,7 +6,8 @@ html, body {
 }
 
 div.canvas {
-  display: flex;
+  display: flex; flex-shrink: 0;
+
   * { box-sizing: border-box; }
 
   --status-item-height:  50px;
@@ -21,15 +22,31 @@ div.canvas {
 
   --sidebar:             30vw;
   --sidebar-min:         220px;
+  --sidebar-max:         300px;
+
   --controls-height:     50px;
   --script-height:       calc(100vh - var(--controls-height));
   --script-height-short: calc(var(--script-height) - var(--status-height));
 
-  div.script {
+  * { box-sizing: border-box; }
+
+  div.sidebar {
+    min-width: var(--sidebar-min);
+    max-width: var(--sidebar-max);
+    width:     var(--sidebar);
+    height:    100vh;
+    flex-shrink: 0;
+  }
+
+  div.script-phantom.sidebar {
+    height:    100vh;
+  }
+
+  div.script.sidebar {
+    position: fixed;
     border-width: 0 3px 0 0;
     border-style: solid;
     border-color: hsl(0,0%,0%);
-    height:       100vh;
 
     > div.controls {
       height: var(--controls-height);
@@ -44,8 +61,7 @@ div.canvas {
       border:    0;
       outline:   none !important;
       resize:    none;
-      width:     var(--sidebar);
-      min-width: var(--sidebar-min);
+      width:     100%;
       height:    var(--script-height);
     }
 
@@ -55,8 +71,7 @@ div.canvas {
 
     > div.status {
       position:  relative;
-      width:     var(--sidebar);
-      min-width: var(--sidebar-min);
+      width: 100%;
 
       div.controls {
         div.zc-button {
