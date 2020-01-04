@@ -28,6 +28,10 @@
                      [:ref "head"]
                      [:ref "body"]]
 
+                    [:circle
+                     {:variant-k :outline :class-k :outline
+                      :cx 50 :cy 19 :r 5}]
+
                     [:path
                      {:variant-k :solid :mirror :merged :class-k :solid}
                      [:ref "head"]

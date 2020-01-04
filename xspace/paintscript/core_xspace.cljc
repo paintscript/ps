@@ -9,7 +9,7 @@
    {:xx (fn [_ctx {:keys [title]} f] (testing title (f)))
     :x->
     (fn [ctx c args]
-      (let [{:keys [op opts-base opts arcs xys center fract width path =>]}
+      (let [{:keys [op params opts-base opts arcs xys center fract width path =>]}
             (merge (-> ctx :args) args)]
         (let [opts' (merge opts-base opts)]
           (is (= =>
@@ -19,7 +19,8 @@
                    :mirror-xys     (#'els/mirror-xys width xys)
                    :normalize-els  (#'els/normalize-els path)
                    :reverse-el-xys (#'els/reverse-el-xys path)
-                   :scale-els      (els/scale-els path center fract)))))))}})
+                   :scale-els      (els/scale-els path center fract)
+                   :paint          (core/paint params)))))))}})
 
 (def core-xspace
   [(xx "util"
@@ -76,8 +77,7 @@
                (x-> :path [[:M [0  0]] [:L [30 30]] [:z]
                            [:M [0 50]] [:L [30 80]] [:z]]
                     :=>   '("M" 0  0 "L" 30 30 "M" 100  0 "L" 70 30 "z"
-                            "M" 0 50 "L" 30 80 "M" 100 50 "L" 70 80 "z"))
-               )
+                            "M" 0 50 "L" 30 80 "M" 100 50 "L" 70 80 "z")))
 
            (xx {:= {:opts {:mirror :merged}}}
 
@@ -156,7 +156,15 @@
                (x-> :opts {:scale [[15 15] (/ 1 2)]
                            :mirror :separate}
 
-                    :=>   '("M" 11.792893218813452 11.792893218813452 "A" 10 5 0 0 1 23.207106781186546 23.207106781186546 "M" 88.20710678118655 11.792893218813452 "A" 10 5 0 0 0 76.79289321881345 23.207106781186546)))))])
+                    :=>   '("M" 11.792893218813452 11.792893218813452 "A" 10 5 0 0 1 23.207106781186546 23.207106781186546 "M" 88.20710678118655 11.792893218813452 "A" 10 5 0 0 0 76.79289321881345 23.207106781186546))))
+
+       (xx {:= {:op :paint}}
+
+           (x-> :params {:script [[:path {} [:M [0 0]]]]}
+                :=>     '[:g ([:g [:path {:d "M 0 0"}]])])
+
+           (x-> :params {:script [[:circle {:cx 10 :cy 10 :r 10}]]}
+                :=>     '[:g ([:circle {:cx 10 :cy 10 :r 10}])])))])
 
 (deftest core-test
   (x/traverse-xspace core-xspace-cfg

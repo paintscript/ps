@@ -180,20 +180,27 @@
         (plot-coords opts pi els data-svg-tups)
         [:path (merge attrs {:d (apply d svg-seq)})])])))
 
-(defn paint [{:as script-opts :keys [variant defs styles script]}]
+(defn paint [{:as script-opts :keys [variant defs styles attrs script data?]}]
   [:g
-   (for [[pi {:as p-opts :keys [variant-k class-k]} els]
-         (->> script
-              (map-indexed
-               (fn [pi [_ p-opts & els :as path]]
-                 [pi p-opts els])))
+   (for [[pi [obj-k {:as p-opts :keys [variant-k class-k]} & els :as obj]]
+         (map-indexed vector script)
          :when (or (not variant)
+                   (not variant-k)
                    (= variant variant-k))
-         :let [p-opts' (-> p-opts
+         :let [styles-attrs (when class-k
+                              (get styles class-k
+                                   (get styles :outline)))
+               p-opts' (-> p-opts
                            (merge script-opts)
                            (cond-> class-k
-                                   (update :attrs merge
-                                           (get styles class-k
-                                                (get styles :outline)))))]]
-     ^{:key pi}
-     [path-builder p-opts' pi els])])
+                                   (update :attrs merge styles-attrs)))]]
+
+     (with-meta
+       (case obj-k
+         :path (path-builder p-opts' pi els)
+         (-> obj
+             (update 1 #(-> %
+                            (dissoc :class-k :variant-k)
+                            (merge attrs
+                                   styles-attrs)))))
+       {:key pi}))])
