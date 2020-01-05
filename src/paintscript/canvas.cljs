@@ -24,16 +24,8 @@
        (list [:M (last el-prev)]))
      (list el))))
 
-(defn canvas [params-init]
-  (r/with-let [!config     (r/atom {:canvas
-                                    {:dims [100 100]
-                                     :scale 4
-                                     :variants [{:variant :solid :scale 2 :coords? false}
-                                                {:variant :outline :scale 3}]}
-
-                                    :styles
-                                    {:outline {:stroke "black" :fill "none"}
-                                     :solid   {:stroke "none"  :fill "black"}}})
+(defn canvas [params-init cfg-init]
+  (r/with-let [!config     (r/atom cfg-init)
                !scale      (r/cursor !config [:canvas :scale])
                !params     (r/atom params-init)
                !sel        (r/atom nil)
@@ -167,7 +159,8 @@
             [:g.main
              [ps/paint params']]
 
-            (when (and sel (or (= :defs src-k-sel)
+            (when (and sel (or (and (= :defs src-k-sel)
+                                    (get sel 2))
                                (> eli-sel nav/eli0)))
               (let [els' (->> (nav/params> params' :src-k src-k-sel :pi pi-sel)
                               (take (inc eli-sel))
@@ -181,6 +174,8 @@
              [:g.coords
               (for [[pi {:as p-opts :keys [variant-k]} els _] out-tups
                     :when (or (not (:variant params'))
+                              (not variant-k)
+                              (= (:variant params') variant-k)
                               (= (:variant params') variant-k))]
                 (let [els'           (->> els
                                           (els/resolve-refs (:defs p-opts))

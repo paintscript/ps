@@ -103,7 +103,10 @@
 
 (defn append-el
   ([els eli] (append-el els eli (infer-succ-el els eli)))
-  ([els eli el] (-> els (vec-append eli el))))
+  ([els eli el]
+   (if eli
+     (-> els (vec-append eli el))
+     [el])))
 
 (defn del-el
   [els eli]

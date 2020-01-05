@@ -33,8 +33,10 @@
                             el   (vec (cons cmd vecs))
                             [src-k px eli :as sel] (or @!sel
                                                        (ops/tail-iii @!params))]
-                        (swap! !params update-in [src-k px]
-                               ops/append-el eli el))
+                        (do
+                          (swap! !params update-in [src-k px]
+                                 ops/append-el eli el)
+                          (reset! !sel [src-k px (or (some-> eli inc) 0)])))
 
                       (case cmd
                         :absolute
@@ -59,10 +61,25 @@
                           (swap! !params ops/tl-pth (take 2 iii) (read-xy-str args)))
 
                         :clear
-                        (swap! !params merge
-                               {:defs {}
-                                :script [[:path {:variant-k :outline :class-k :outline}
-                                          [:M [10 10]]]]})
+                        (do
+                          (reset! !sel nil)
+                          (swap! !params merge
+                                 {:defs {}
+                                  :script [[:path {:variant-k :outline :class-k :outline}
+                                            [:M [10 10]]]]}))
+
+                        :def
+                        (let [[pk] args
+                              {:keys [defs]} @!params]
+                          (if-let [els (get defs pk)]
+                            (let [eli (-> els count (- 1) (max 0))]
+                              (reset! !sel [:defs pk eli]))
+                            (do
+                              (swap! !params
+                                     #(-> %
+                                          (assoc-in [:defs pk] [])
+                                          (update :script conj [:path {} [:ref pk]])))
+                              (reset! !sel [:defs pk nil]))))
 
                         (println (str "command not found: " cmd)))))
 
@@ -74,11 +91,11 @@
                     (swap! !params update :script ops/del-pth pi-sel))
       :el-append  (do
                     (reset! !sel nil)
-                    (swap! !params update-in [:script pi-sel]
+                    (swap! !params update-in [src-k-sel pi-sel]
                            ops/append-el eli-sel))
       :el-del     (do
                     (reset! !sel nil)
-                    (swap! !params update-in [:script pi-sel]
+                    (swap! !params update-in [src-k-sel pi-sel]
                            ops/del-el eli-sel))
       :xy-append  (do
                      (reset! !sel nil)
@@ -204,13 +221,13 @@
          :when (or (not variant)
                    (not variant-k)
                    (= variant variant-k))
-         :let [styles-attrs (when class-k
+         :let [styles-attrs (if class-k
                               (get styles class-k
-                                   (get styles :outline)))
+                                   (get styles :outline))
+                              (get styles :outline))
                p-opts' (-> p-opts
                            (merge script-opts)
-                           (cond-> class-k
-                                   (update :attrs merge styles-attrs)))]]
+                           (update :attrs merge styles-attrs))]]
 
      (with-meta
        (case obj-k
