@@ -58,3 +58,6 @@
     (tl-point pnt
               (angle-between pnt ctr)
               dist-mv)))
+
+(defn map-vals [f coll]
+  (into {} (map (fn [[k v]] [k (f v)])) coll))

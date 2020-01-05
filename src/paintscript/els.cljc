@@ -100,6 +100,21 @@
                  (cons el-k
                        (map f xys))))))))
 
+(defn update-p-els [p f & args]
+  (vec
+   (concat (take 2 p)
+           (apply f (drop 2 p) args))))
+
+(defn update-px [params [src-k px] f & args]
+  (case src-k
+    :defs   (apply update-in params [src-k px] f args)
+    :script (apply update-in params [src-k px] update-p-els f args)))
+
+(defn update-px-all [params f & args]
+  (-> params
+      (update :defs   (fn [dd] (u/map-vals #(apply f % args) dd)))
+      (update :script (fn [s]  (mapv #(apply update-p-els % f args) s)))))
+
 (defn scale-els [els ctr n]
   (map-xys #(u/tl-point-towards % ctr n) els))
 

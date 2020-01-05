@@ -105,18 +105,6 @@
   (-> els
       (vec-remove pi)))
 
-;; lift
-
-(defn update-p-els [p f & args]
-  (vec
-   (concat (take 2 p)
-           (apply f (drop 2 p) args))))
-
-(defn update-px [params [src-k px] f & args]
-  (case src-k
-    :defs   (apply update-in params [src-k px] f args)
-    :script (apply update-in params [src-k px] update-p-els f args)))
-
 ;; params
 
 (defn append-pth
@@ -128,4 +116,10 @@
 
 (defn tl-pth [params ii tl]
   (-> params
-      (update-px ii #(els/map-xys (partial u/v+ tl) %))))
+      (els/update-px ii #(els/map-xys (partial u/v+ tl) %))))
+
+(defn absolute
+  ([params ii]
+   (-> params (els/update-px ii  els/normalize-els :op :absolute)))
+  ([params]
+   (-> params (els/update-px-all els/normalize-els :op :absolute))))

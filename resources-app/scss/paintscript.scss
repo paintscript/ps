@@ -13,7 +13,7 @@ div.canvas {
   --pd:                  10px;
   --pd-half:             5px;
   --status-item-height:  50px;
-  --status-height:       calc(var(--status-item-height) * 4);
+  --status-height:       calc(var(--status-item-height) * 3);
   --target-col:          hsla(0,0%,50%,0.3); //hsla(240,100%,50%,0.3);
   --control-col:         hsla(120,100%,50%,0.3);
   --path-bg:             hsl(0,0%,80%);
@@ -27,7 +27,7 @@ div.canvas {
   --sidebar-max:         300px;
 
   --controls-height:     50px;
-  --script-height:       calc(100vh - var(--controls-height));
+  --script-height:       calc(100vh - var(--controls-height) - var(--status-item-height));
   --script-height-short: calc(var(--script-height) - var(--status-height));
 
   * { box-sizing: border-box; }
@@ -74,6 +74,18 @@ div.canvas {
       height: var(--script-height-short);
     }
 
+    > div.shell {
+      padding: 0;
+      height: var(--status-item-height);
+      border-top: 1px solid hsl(0,0%,90%);
+      textarea {
+        padding: var(--pd);
+        height: 100%;
+        line-height: calc(var(--status-item-height) - (2 * var(--pd)));
+        font-size: inherit;
+      }
+    }
+
     > div.status {
       position:  relative;
       width: 100%;
@@ -103,16 +115,6 @@ div.canvas {
               --height:   calc(var(--status-item-height) - 1px);
             }
             &.crud { position: absolute; right: 0; }
-          }
-        }
-
-        > div.selection-level.shell {
-          padding: 0;
-          textarea {
-            padding: var(--pd);
-            height: 100%;
-            line-height: calc(var(--status-item-height) - (2 * var(--pd)));
-            font-size: inherit;
           }
         }
       }

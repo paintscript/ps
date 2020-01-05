@@ -20,7 +20,8 @@
                  :del-el     (apply ops/del-el     els ii)
                  :append-pth (apply ops/append-pth script ii)
                  :del-pth    (apply ops/del-pth    script ii)
-                 :tl-pth     (ops/tl-pth params ii tl))))))}})
+                 :tl-pth     (ops/tl-pth params ii tl)
+                 :absolute   (ops/absolute params))))))}})
 
 (def ops-xspace
   [;; pnt
@@ -87,6 +88,16 @@
             :tl     [1 2]
             :=>     {:script
                      [[:path {} [:M [6 7]]]
+                      [:path {} [:M [10 10]]]]}))
+
+   (xx {:= {:op :absolute}}
+
+       (x-> :params {:script
+                     [[:path {} [:M [5 5]] [:l [5 5]]]
+                      [:path {} [:M [10 10]]]]}
+            :=>     {:defs {}
+                     :script
+                     [[:path {} [:M [5 5]] [:L [10 10]]]
                       [:path {} [:M [10 10]]]]}))])
 
 (deftest ops-test

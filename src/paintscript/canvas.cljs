@@ -96,30 +96,35 @@
         (case tab
           :script [:textarea
                    {:value     (str/trim (pprint' params))
+                    :on-focus  #(key/disable!)
+                    :on-blur   #(key/enable!)
                     :on-change #(reset! !params (-> % .-target .-value read-string))}]
           :config [:textarea
                    {:value     (str/trim (pprint' config))
+                    :on-focus  #(key/disable!)
+                    :on-blur   #(key/enable!)
                     :on-change #(reset! !config (-> % .-target .-value read-string))}])
 
+        [:div.shell
+         [:textarea
+          {:value       @!shell
+           :placeholder "enter command..."
+           :on-focus    #(key/disable!)
+           :on-blur     #(key/enable!)
+           :on-change   #(reset! !shell (-> % .-target .-value))
+           :on-key-down (fn [e]
+                          (let [k (max (.-keyCode e)
+                                       (.-which e))
+                                cmd @!shell]
+                            (when (= 13 k)
+                              (reset! !shell "")
+                              (dispatch! [:cmd (str/trim cmd)])
+                              (-> e (.preventDefault)))))}]]
         [:div.status
          (when sel
            (let [[_ opts :as p] (nav/params> params' :src-k src-k-sel :pi  pi-sel)
                  [k & xys]      (nav/p>      p       :eli   eli-sel)]
              [:div.selection-stack
-              [:div.selection-level.shell
-               [:textarea
-                {:value       @!shell
-                 :placeholder "enter command..."
-                 :on-change   #(reset! !shell (-> % .-target .-value))
-                 :on-key-down (fn [e]
-                                (let [k (max (.-keyCode e)
-                                             (.-which e))
-                                      cmd @!shell]
-                                  (when (= 13 k)
-                                    (reset! !shell "")
-                                    (dispatch! [:cmd (str/trim cmd)])
-                                    (-> e (.preventDefault)))))}]]
-
               [:div.selection-level.path
                [:span (pr-str opts)]
                [:div.controls.crud

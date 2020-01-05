@@ -28,20 +28,21 @@
       :cmd        (let [[cmd & args] (str/split arg #" ")]
                     (case cmd
                       "absolute"
-                      (let [iii @!sel]
-                        (swap! !params ops/update-px (take 2 iii)
-                               els/normalize-els :op :absolute))
+                      (if-let [iii @!sel]
+                        (swap! !params ops/absolute (take 2 iii))
+                        (swap! !params ops/absolute))
 
                       "round"
                       (let [n   (first args)
                             iii @!sel]
                         (swap! !params
                                (fn [s]
-                                 (w/prewalk (case n
-                                              "1" #(-> % (cond-> (number? %) u/round1))
-                                              "2" #(-> % (cond-> (number? %) u/round2))
-                                               #(-> % (cond-> (number? %) u/round)))
-                                            s))))
+                                 (w/prewalk
+                                  (case n
+                                    "1" #(-> % (cond-> (number? %) u/round1))
+                                    "2" #(-> % (cond-> (number? %) u/round2))
+                                    #(-> % (cond-> (number? %) u/round)))
+                                  s))))
 
                       "translate"
                       (let [iii @!sel]
