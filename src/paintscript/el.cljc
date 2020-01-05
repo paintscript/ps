@@ -1,5 +1,6 @@
 (ns paintscript.el
-  (:require [paintscript.util :as u]))
+  (:require [clojure.set :as set]
+            [paintscript.util :as u]))
 
 (defn flip-bin [n] (case n 0 1 0))
 
@@ -10,7 +11,10 @@
                  :C :c :C1 :c1
                  :Q :q})
 (def relative? #{:c :s :l})
+(def absolute? #{:C :S :L :M})
 (def short?    #{:S :C1 :T :arc})
+
+(def el?       (set/union has-cp? relative? absolute? short?))
 
 
 ;; -----------------------------------------------------------------------------

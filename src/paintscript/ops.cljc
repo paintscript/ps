@@ -32,10 +32,16 @@
 (defn offset-pnt [pnt delta] (mapv + pnt delta))
 (defn xy-delta  [pnt1 pnt2] (mapv - pnt1 pnt2))
 
-(defn get-pnt [els [pi xyi-abs :as ii]] (get-in els ii))
+(defn get-pnt [els [eli xyi-abs :as ii]] (get-in els ii))
 
-(defn get-pred-tgt [els pi]
-  (-> (get els (-> pi (- 1))) get-tgt))
+(defn get-pred-tgt [els eli]
+  (-> (get els (-> eli (- 1))) get-tgt))
+
+(defn tail-iii [{:as params :keys [script]}]
+  (let [pi  (-> script count (- 1))
+        eli (-> script (get pi) count (- 1))
+        xyi (-> script (get-in [pi eli]) count (- 1))]
+    [:script pi eli xyi]))
 
 ;; points
 
@@ -43,50 +49,50 @@
 (def el-i-offset 2)
 
 (defn infer-succ-pnt
-  [els pi xyi]
-  (let [el (get els pi)
+  [els eli xyi]
+  (let [el (get els eli)
         xyi'  (+ xyi xyi-offset)
-        pnt-0   (get-pnt els [pi xyi'])]
+        pnt-0   (get-pnt els [eli xyi'])]
     (case (el-len el)
-      0 (if (has-pred? pi)
-          (offset-pnt (get-pred-tgt els pi)
+      0 (if (has-pred? eli)
+          (offset-pnt (get-pred-tgt els eli)
                       [10 10])
           [0 0])
 
-      1 (if (has-pred? pi)
-          (let [pnt-1 (-> (get els (-> pi (- 1))) get-tgt)]
+      1 (if (has-pred? eli)
+          (let [pnt-1 (-> (get els (-> eli (- 1))) get-tgt)]
             (offset-pnt pnt-0 (xy-delta pnt-0 pnt-1)))
           (offset-pnt pnt-0 (xy-delta pnt-0 [0 0])))
 
-      (let [pnt-1 (get-pnt els [pi (-> xyi' (- 1))])]
+      (let [pnt-1 (get-pnt els [eli (-> xyi' (- 1))])]
         (offset-pnt pnt-0
                     (xy-delta pnt-0 pnt-1))))))
 
 (defn append-pnt
-  ([els pi]
-   (append-pnt els pi (-> (get els pi) el-len dec)))
+  ([els eli]
+   (append-pnt els eli (-> (get els eli) el-len dec)))
 
   ;; infer successor
-  ([els pi xyi]
-   (append-pnt els pi xyi
-               (infer-succ-pnt els pi xyi)))
+  ([els eli xyi]
+   (append-pnt els eli xyi
+               (infer-succ-pnt els eli xyi)))
 
   ;; explicit:
-  ([els pi xyi pnt]
+  ([els eli xyi pnt]
    (let [xyi' (+ xyi xyi-offset)]
      (-> els
-         (update pi vec-append xyi' pnt)))))
+         (update eli vec-append xyi' pnt)))))
 
 (defn del-pnt
-  [els pi xyi]
+  [els eli xyi]
   (let [xyi' (+ xyi xyi-offset)]
     (-> els
-        (update pi vec-remove xyi'))))
+        (update eli vec-remove xyi'))))
 
 ;; els
 
-(defn infer-succ-el [els pi]
-  (let [[k & pnts :as el-1] (get els pi)]
+(defn infer-succ-el [els eli]
+  (let [[k & pnts :as el-1] (get els eli)]
     (case k
       :M [:L (offset-pnt (last pnts) [10 10])]
       :L [:L (offset-pnt (last pnts) [10 10])]
@@ -96,14 +102,13 @@
            [:S tgt tgt]))))
 
 (defn append-el
-  [els pi]
-  (-> els
-      (vec-append pi (infer-succ-el els pi))))
+  ([els eli] (append-el els eli (infer-succ-el els eli)))
+  ([els eli el] (-> els (vec-append eli el))))
 
 (defn del-el
-  [els pi]
+  [els eli]
   (-> els
-      (vec-remove pi)))
+      (vec-remove eli)))
 
 ;; params
 

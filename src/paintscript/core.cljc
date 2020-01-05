@@ -5,6 +5,7 @@
             [clojure.walk :as w]
             [svg-hiccup-kit.core :refer [d d2]]
             [paintscript.util :as u]
+            [paintscript.el :as el]
             [paintscript.els :as els]
             [paintscript.ops :as ops]
             [paintscript.nav :as nav]))
@@ -25,30 +26,45 @@
     (case op-k
       :set-xy     (do
                     (swap! !params assoc-in @!sel arg))
-      :cmd        (let [[cmd & args] (str/split arg #" ")]
-                    (case cmd
-                      "absolute"
-                      (if-let [iii @!sel]
-                        (swap! !params ops/absolute (take 2 iii))
-                        (swap! !params ops/absolute))
+      :cmd        (let [[cmd & args] (str/split arg #" ")
+                        cmd (keyword cmd)]
+                    (if (el/el? cmd)
+                      (let [vecs (->> args (partition 2) (map read-xy-str))
+                            el   (vec (cons cmd vecs))
+                            [src-k px eli :as sel] (or @!sel
+                                                       (ops/tail-iii @!params))]
+                        (swap! !params update-in [src-k px]
+                               ops/append-el eli el))
 
-                      "round"
-                      (let [n   (first args)
-                            iii @!sel]
-                        (swap! !params
-                               (fn [s]
-                                 (w/prewalk
-                                  (case n
-                                    "1" #(-> % (cond-> (number? %) u/round1))
-                                    "2" #(-> % (cond-> (number? %) u/round2))
-                                    #(-> % (cond-> (number? %) u/round)))
-                                  s))))
+                      (case cmd
+                        :absolute
+                        (if-let [iii @!sel]
+                          (swap! !params ops/absolute (take 2 iii))
+                          (swap! !params ops/absolute))
 
-                      "translate"
-                      (let [iii @!sel]
-                        (swap! !params ops/tl-pth (take 2 iii) (read-xy-str args)))
+                        :round
+                        (let [n   (first args)
+                              iii @!sel]
+                          (swap! !params
+                                 (fn [s]
+                                   (w/prewalk
+                                    (case n
+                                      "1" #(-> % (cond-> (number? %) u/round1))
+                                      "2" #(-> % (cond-> (number? %) u/round2))
+                                      #(-> % (cond-> (number? %) u/round)))
+                                    s))))
 
-                      (println (str "command not found: " cmd))))
+                        :translate
+                        (let [iii @!sel]
+                          (swap! !params ops/tl-pth (take 2 iii) (read-xy-str args)))
+
+                        :clear
+                        (swap! !params merge
+                               {:defs {}
+                                :script [[:path {:variant-k :outline :class-k :outline}
+                                          [:M [10 10]]]]})
+
+                        (println (str "command not found: " cmd)))))
 
       :pth-append (do
                     (reset! !sel nil)
