@@ -11,7 +11,7 @@
                  :C :c :C1 :c1
                  :Q :q})
 (def relative? #{:c :s :l})
-(def absolute? #{:C :S :L :M})
+(def absolute? #{:C :S :L :M :z})
 (def short?    #{:S :C1 :T :arc})
 
 (def el?       (set/union has-cp? relative? absolute? short?))

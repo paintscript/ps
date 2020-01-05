@@ -124,10 +124,16 @@
 
 (defn tl-pth [params ii tl]
   (-> params
-      (els/update-px ii #(els/map-xys (partial u/v+ tl) %))))
+      (els/update-px ii #(-> (els/map-xys (partial u/v+ tl) %)
+                             (cond-> (= :defs (first ii))
+                                     vec)))))
 
 (defn absolute
   ([params ii]
    (-> params (els/update-px ii  els/normalize-els :op :absolute)))
   ([params]
    (-> params (els/update-px-all els/normalize-els :op :absolute))))
+
+(defn update-p-opts [params ii f & args]
+  (let [p-opts-i (concat (take 2 ii) [1])]
+    (apply update-in params p-opts-i f args)))

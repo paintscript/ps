@@ -65,7 +65,7 @@
                           (reset! !sel nil)
                           (swap! !params merge
                                  {:defs {}
-                                  :script [[:path {:variant-k :outline :class-k :outline}
+                                  :script [[:path {:variant-k "outline" :class-k "outline"}
                                             [:M [10 10]]]]}))
 
                         :def
@@ -80,6 +80,30 @@
                                           (assoc-in [:defs pk] [])
                                           (update :script conj [:path {} [:ref pk]])))
                               (reset! !sel [:defs pk nil]))))
+
+                        :script
+                        (let [iii (cons :script (map read-string args))]
+                          (reset! !sel iii))
+
+
+                        ;; p-opts
+                        :mirror
+                        (let [[mode-str] args
+                              mode-k (or (some-> mode-str keyword) :separate)]
+                          (swap! !params ops/update-p-opts @!sel
+                                 assoc :mirror mode-k))
+
+                        :class-k
+                        (let [[class] args
+                              class-k (or class "outline")]
+                          (swap! !params ops/update-p-opts @!sel
+                                 assoc :class-k class-k))
+
+                        :variant-k
+                        (let [[variant] args
+                              variant-k (or variant "outline")]
+                          (swap! !params ops/update-p-opts @!sel
+                                 assoc :variant-k variant-k))
 
                         (println (str "command not found: " cmd)))))
 
@@ -223,8 +247,8 @@
                    (= variant variant-k))
          :let [styles-attrs (if class-k
                               (get styles class-k
-                                   (get styles :outline))
-                              (get styles :outline))
+                                   (get styles "outline"))
+                              (get styles "outline"))
                p-opts' (-> p-opts
                            (merge script-opts)
                            (update :attrs merge styles-attrs))]]
