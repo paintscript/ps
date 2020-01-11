@@ -19,7 +19,7 @@
    :kaocha [:xx
             {:dependencies [[lambdaisland/kaocha "0.0-565"]]}]
    :docs   {:resource-paths ["resources-docs/"]
-            :dependencies   [[hiccup-icons "0.4.1"]
+            :dependencies   [[hiccup-icons "0.4.2"]
                              [urlkit "0.3.3"]
                              [urlkit-util "0.1.2"]]
             :figwheel       {:css-dirs ["resources-docs/public/css"]}}

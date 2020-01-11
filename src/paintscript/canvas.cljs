@@ -11,7 +11,8 @@
             [paintscript.ops :as ops]
             [paintscript.els :as els]
             [paintscript.core :as ps]
-            [paintscript.nav :as nav]))
+            [paintscript.nav :as nav]
+            [paintscript.ctrl :as ctrl]))
 
 (defn- pprint' [edn] (with-out-str *out* (pprint edn)))
 
@@ -33,9 +34,9 @@
                !tab        (r/atom :script)
                !shell      (r/atom "")
                report!     (fn [iii] (reset! !sel iii))
-               dispatch!   (partial ps/dispatch! !params !sel)
-               dnd-fns     (ps/drag-and-drop-fns !scale !params !sel dispatch!)
-               kb-fns      (ps/keybind-fns              !params !sel dispatch!)
+               dispatch!   (partial ctrl/dispatch! !params !sel)
+               dnd-fns     (ctrl/drag-and-drop-fns !scale !params !sel dispatch!)
+               kb-fns      (ctrl/keybind-fns              !params !sel dispatch!)
                report-hov! (fn [iii val]
                              (swap! !hov #(cond
                                             val iii
@@ -81,8 +82,8 @@
          (for [tab-k [:script :config]]
            ^{:key tab-k}
            [zc/button
-            :label (name tab-k)
-            :active? (= tab-k tab)
+            :label    (name tab-k)
+            :active?  (= tab-k tab)
             :on-click #(reset! !tab tab-k)])]
 
         (case tab
@@ -152,8 +153,10 @@
                     [w h] (->> dims (mapv #(* % scale)))]]
 
           ^{:key (hash variant)}
-          [:svg (merge {:style {:width w :height h}}
-                       dnd-fns)
+          [:svg (merge-with merge
+                            {:style {:width w :height h}}
+                            (get-in config [:canvas :attrs])
+                            dnd-fns)
            [tf* {:sc [scale scale]}
 
             [:g.main
