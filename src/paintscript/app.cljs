@@ -1,6 +1,7 @@
  (ns paintscript.app
   (:require [reagent.core :as r]
-            [paintscript.canvas :refer [canvas]]))
+            [paintscript.canvas :refer [canvas]]
+            [paintscript.ctrl :as ctrl]))
 
 (def init-clear
   {:defs {}
@@ -15,7 +16,7 @@
     "solid"   {:stroke "none"  :fill "black"}}})
 
 (defn- root []
-  [canvas init-clear init-config])
+  [canvas ctrl/params-init init-config])
 
 (defn- mount-root! []
   (r/render [#'root]

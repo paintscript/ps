@@ -45,10 +45,18 @@
                                             :else %)))
 
                _ (doseq [[k f] kb-fns]
-                   (key/bind! k (keyword k) f))]
+                   (key/bind! k (keyword k) f))
+
+               set-ref! #(when (and % (not (:xy-svg @!ui)))
+                           (let [rect   (-> % (.getBoundingClientRect))
+                                 xy-svg [(-> rect .-left)
+                                         (-> rect .-top)]]
+                             (println :xy-svg xy-svg)
+                             (swap! !ui assoc :xy-svg xy-svg)))]
 
     (let [config @!config
           params @!params
+          {:keys [sel xy-svg]} @!ui
 
           {:as   params'
            :keys [variant]
@@ -64,7 +72,7 @@
           [src-k-sel
            pi-sel
            eli-sel
-           xyi-sel :as sel] @!sel
+           xyi-sel] sel
 
           hov @!hov
 
@@ -161,7 +169,8 @@
 
           ^{:key (hash variant)}
           [:svg (merge-with merge
-                            {:style {:width w :height h}}
+                            {:style {:width w :height h}
+                             :ref   set-ref!}
                             (get-in config [:canvas :attrs])
                             dnd-fns)
            [tf* {:sc [scale scale]}
