@@ -124,9 +124,10 @@
 
 (defn tl-pth [params ii tl]
   (-> params
-      (els/update-px ii #(-> (els/map-xys (partial u/v+ tl) %)
-                             (cond-> (= :defs (first ii))
-                                     vec)))))
+      (els/update-px (take 2 ii)
+                     #(-> (els/map-xys (partial u/v+ tl) %)
+                          (cond-> (= :defs (first ii))
+                                  vec)))))
 
 (defn absolute
   ([params ii]

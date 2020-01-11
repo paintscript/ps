@@ -26,17 +26,18 @@
      (list el))))
 
 (defn canvas [params-init cfg-init]
-  (r/with-let [!config     (r/atom cfg-init)
+  (r/with-let [!ui         (r/atom {:sel nil :snap nil})
+               !sel        (r/cursor !ui [:sel])
+               !config     (r/atom cfg-init)
                !scale      (r/cursor !config [:canvas :scale])
                !params     (r/atom params-init)
-               !sel        (r/atom nil)
                !hov        (r/atom nil)
                !tab        (r/atom :script)
                !shell      (r/atom "")
                report!     (fn [iii] (reset! !sel iii))
-               dispatch!   (partial ctrl/dispatch! !params !sel)
-               dnd-fns     (ctrl/drag-and-drop-fns !scale !params !sel dispatch!)
-               kb-fns      (ctrl/keybind-fns              !params !sel dispatch!)
+               dispatch!   (partial ctrl/dispatch! !params !ui)
+               dnd-fns     (ctrl/drag-and-drop-fns !scale !params !ui dispatch!)
+               kb-fns      (ctrl/keybind-fns              !params !ui dispatch!)
                report-hov! (fn [iii val]
                              (swap! !hov #(cond
                                             val iii
@@ -118,6 +119,12 @@
            (let [[_ opts :as p] (nav/params> params' :src-k src-k-sel :pi  pi-sel)
                  [k & xys]      (nav/p>      p       :eli   eli-sel)]
              [:div.selection-stack
+              [:div.selection-level.iii
+               [:span (pr-str sel)]
+               [:div.controls.crud
+                [zc/button :label "blur" :on-click #(dispatch! [:sel nil])]
+                [zc/button :label "up" :on-click #(dispatch! [:sel (drop-last sel)])]]]
+
               [:div.selection-level.path
                [:span (pr-str opts)]
                [:div.controls.crud

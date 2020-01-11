@@ -13,7 +13,8 @@ div.canvas {
   --pd:                  10px;
   --pd-half:             5px;
   --status-item-height:  50px;
-  --status-height:       calc(var(--status-item-height) * 3);
+  --status-item-count:   4;
+  --status-height:       calc(var(--status-item-height) * var(--status-item-count));
   --target-col:          hsla(0,0%,50%,0.3); //hsla(240,100%,50%,0.3);
   --control-col:         hsla(120,100%,50%,0.3);
   --path-bg:             hsl(0,0%,80%);

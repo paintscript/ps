@@ -47,21 +47,21 @@
         ;; else:
         (println (str "command not found: " cmd-line))))))
 
-(defn dispatch! [!params !sel [op-k & [arg :as args]]]
+(defn dispatch! [!params !ui [op-k & [arg :as args]]]
   (let [[src-k-sel
          pi-sel
          eli-sel
-         xyi-sel :as sel] @!sel]
+         xyi-sel :as sel] (:sel @!ui)]
     (case op-k
       :set-xy     (do
-                    (swap! !params assoc-in @!sel arg))
+                    (swap! !params assoc-in (:sel @!ui) arg))
 
       :pth-append (do
-                    (reset! !sel nil)
+                    (reset! !ui nil)
                     (swap! !params update :script ops/append-pth pi-sel))
 
       :pth-del    (do
-                    (reset! !sel nil)
+                    (reset! !ui nil)
                     (swap! !params update :script ops/del-pth pi-sel))
 
       :el-append  (let [[src-k px eli] (or sel (ops/tail-iii @!params))
@@ -69,26 +69,25 @@
                     (if-let [el arg]
                       (swap! !params update-in [src-k px] ops/append-el eli el)
                       (swap! !params update-in [src-k px] ops/append-el eli))
-                    (reset! !sel [src-k px eli']))
+                    (reset! !ui {:sel [src-k px eli']}))
 
-      :el-del     (do
-                    (reset! !sel nil)
-                    (swap! !params update-in [src-k-sel pi-sel]
-                           ops/del-el eli-sel))
+      :el-del     (let [eli' (max (dec eli-sel) 0)]
+                    (reset! !ui {:sel [src-k-sel pi-sel eli']})
+                    (swap! !params update-in [src-k-sel pi-sel] ops/del-el eli-sel))
 
       :xy-append  (do
-                     (reset! !sel nil)
-                     (swap! !params update-in [:script pi-sel]
-                            ops/append-pnt eli-sel))
+                    (reset! !ui nil)
+                    (swap! !params update-in [:script pi-sel]
+                           ops/append-pnt eli-sel))
 
       :xy-del     (do
-                     (reset! !sel nil)
-                     (swap! !params update-in [:script pi-sel]
-                            ops/del-pnt eli-sel
-                            (- xyi-sel nav/xyi0)))
+                    (reset! !ui nil)
+                    (swap! !params update-in [:script pi-sel]
+                           ops/del-pnt eli-sel
+                           (- xyi-sel nav/xyi0)))
 
       :cmd        (when-let [op-vec (parse-cmd-line arg)]
-                    (dispatch! !params !sel op-vec))
+                    (dispatch! !params !ui op-vec))
 
       :absolute   (if sel
                     (swap! !params ops/absolute [src-k-sel pi-sel])
@@ -104,10 +103,10 @@
                                 #(-> % (cond-> (number? %) u/round)))
                               s))))
 
-      :translate  (swap! !params ops/tl-pth (take 2 sel) arg)
+      :translate  (swap! !params ops/tl-pth sel arg)
 
       :clear      (do
-                    (reset! !sel nil)
+                    (reset! !ui nil)
                     (swap! !params merge
                            {:defs {}
                             :script [[:path {:variant-k "outline" :class-k "outline"}
@@ -118,46 +117,51 @@
                     (if-let [els (get defs pk)]
                       ;; select
                       (let [eli (-> els count (- 1) (max 0))]
-                        (reset! !sel [:defs pk eli]))
+                        (reset! !ui {:sel [:defs pk eli]}))
                       ;; create
                       (do
                         (swap! !params
                                #(-> %
                                     (assoc-in [:defs pk] [])
                                     (update :script conj [:path {} [:ref pk]])))
-                        (reset! !sel [:defs pk nil]))))
+                        (reset! !ui {:sel [:defs pk nil]}))))
 
-      :sel        (reset! !sel arg)
+      :sel        (do
+                    (reset! !ui {:sel arg})
+                    (when (nil? arg)
+                      (swap! !params assoc :snap nil)))
 
       :set-p-opts (let [[k v] arg]
                     (swap! !params ops/update-p-opts sel assoc k v)))))
 
-(defn drag-and-drop-fns [!scale !params !sel dispatch!]
-  (let [!snap  (atom nil)
-        get!   #(get-in @!params @!sel)]
-    {:on-mouse-down #(swap! !snap merge {:sel @!sel :xy0 (get!) :m0 (xy-mouse %)})
-     :on-mouse-move (fn [ev]
-                      (let [{:as snap :keys [xy0 m0]} @!snap
-                            scale @!scale]
-                        (when xy0
-                          (let [m1  (xy-mouse ev)
-                                d   (mapv - m1 m0)
-                                d'  (mapv / d [scale scale])
-                                d'  (mapv u/round d')
-                                xy' (mapv + xy0 d')]
-                            (dispatch! [:set-xy xy'])))))
-     :on-mouse-up   #(let [{:keys [sel sel-prev xy0]} @!snap
-                           xy (get!)]
-                       (reset! !snap {:sel-prev sel})
-                       (when (and sel sel-prev xy0
-                                  (= sel sel-prev)
-                                  (= xy0 xy))
-                         (reset! !sel  nil)
-                         (reset! !snap nil)))}))
+#?(:cljs
+ (defn drag-and-drop-fns [!scale !params !ui dispatch!]
+   (let [!snap  (r/cursor !ui [:snap])
+         !sel   (r/cursor !ui [:sel])
+         get!   #(get-in @!params @!sel)]
+     {:on-mouse-down #(swap! !snap merge {:sel @!sel :xy0 (get!) :m0 (xy-mouse %)})
+      :on-mouse-move (fn [ev]
+                       (let [{:as snap :keys [xy0 m0]} @!snap
+                             scale @!scale]
+                         (when xy0
+                           (let [m1  (xy-mouse ev)
+                                 d   (mapv - m1 m0)
+                                 d'  (mapv / d [scale scale])
+                                 d'  (mapv u/round d')
+                                 xy' (mapv + xy0 d')]
+                             (dispatch! [:set-xy xy'])))))
+      :on-mouse-up   #(let [{:keys [sel sel-prev xy0]} @!snap
+                            xy (get!)]
+                        (reset! !snap {:sel-prev sel})
+                        (when (and sel sel-prev xy0
+                                   (= sel sel-prev)
+                                   (= xy0 xy))
+                          (reset! !sel  nil)
+                          (reset! !snap nil)))})))
 
-(defn keybind-fns [!params !sel dispatch!]
-  (let [upd! #(swap! !params assoc-in @!sel %)
-        get! #(get-in @!params @!sel)]
+(defn keybind-fns [!params !ui dispatch!]
+  (let [upd! #(swap! !params assoc-in (:sel @!ui) %)
+        get! #(get-in @!params @!ui)]
     {"left"      #(when-let [[x y] (get!)] (dispatch! [:set-xy [(- x 1) y]]))
      "right"     #(when-let [[x y] (get!)] (dispatch! [:set-xy [(+ x 1) y]]))
      "up"        #(when-let [[x y] (get!)] (dispatch! [:set-xy [x (- y 1)]]))
