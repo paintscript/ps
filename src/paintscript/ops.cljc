@@ -11,6 +11,12 @@
            [el]
            (subvec coll i (count coll)))))
 
+(defn vec-replace [coll i el]
+  (vec
+   (concat (subvec coll 0 i)
+           [el]
+           (subvec coll (inc i) (count coll)))))
+
 (defn vec-remove
   [coll i]
   (vec
@@ -112,6 +118,34 @@
   [els eli]
   (-> els
       (vec-remove eli)))
+
+(defn transform-el
+  [els eli to]
+  (let [[el-k :as el] (get els eli)
+        [el-1-k :as el-1] (get els (dec eli))
+        el' (case el-k
+              :L (let [tgt (last el)]
+                   (case to
+                     :S [:S tgt tgt]
+                     :Q [:Q tgt tgt]
+                     :C [:C (last el-1) tgt tgt]))
+              :C (let [[_ c1 c2 tgt] el]
+                   (case to
+                     :S [:S c2 tgt]
+                     :Q [:Q c2 tgt]
+                     :L [:L tgt]))
+              :S (let [[_ c tgt] el]
+                   (case to
+                     :L [:L tgt]
+                     :Q [:Q c tgt]
+                     :C [:C (last el-1) c tgt]))
+              :Q (let [[_ c tgt] el]
+                   (case to
+                     :L [:L tgt]
+                     :S [:S c tgt]
+                     :C [:C (last el-1) c tgt])))]
+    (-> els
+        (vec-replace eli el'))))
 
 ;; params
 

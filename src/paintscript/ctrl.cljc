@@ -35,6 +35,7 @@
                      [:round ?n])
         "translate" (let [xy (read-xy-str args)]
                       [:translate xy])
+        "to"        [:el-tf (-> args first keyword)]
         "clear"     [:clear]
         "def"       (let [[pk] args]
                       [:def pk])
@@ -79,6 +80,10 @@
       :el-del     (let [eli' (max (dec eli-sel) 0)]
                     (swap! !ui merge {:sel [src-k-sel pi-sel eli']})
                     (swap! !params update-in [src-k-sel pi-sel] ops/del-el eli-sel))
+
+      :el-tf      (let [to arg]
+                    (swap! !params update-in [src-k-sel pi-sel]
+                           ops/transform-el eli-sel to))
 
       :xy-append  (do
                     (swap! !ui merge {:sel nil :snap nil})

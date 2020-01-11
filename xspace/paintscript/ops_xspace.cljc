@@ -8,7 +8,7 @@
    {:xx (fn [_ctx {:keys [title]} f] (testing title (f)))
     :x->
     (fn [ctx c args]
-      (let [{:keys [op params script els pnt ii tl =>]}
+      (let [{:keys [op params script els pnt ii i to tl =>]}
             (merge (-> ctx :args) args)]
         (is (= =>
                (case op
@@ -21,7 +21,8 @@
                  :append-pth (apply ops/append-pth script ii)
                  :del-pth    (apply ops/del-pth    script ii)
                  :tl-pth     (ops/tl-pth params ii tl)
-                 :absolute   (ops/absolute params))))))}})
+                 :absolute   (ops/absolute params)
+                 :transform-el (ops/transform-el els i to))))))}})
 
 (def ops-xspace
   [;; pnt
@@ -63,6 +64,18 @@
        (x-> :els [[:L [0 0] [5 5]] [:L [15 15]]]
             :ii  [0]
             :=>  [[:L [15 15]]]))
+
+   (xx {:= {:op :transform-el}}
+
+       (x-> :els [[:M [0 0]] [:L [5 5]]]
+            :i   1
+            :to  :C
+            :=>  [[:M [0 0]] [:C [0 0] [5 5] [5 5]]])
+
+       (x-> :els [[:M [0 0]] [:C [0 0] [5 5] [5 5]]]
+            :i   1
+            :to  :L
+            :=>  [[:M [0 0]] [:L [5 5]]]))
 
    ;; pth
    (xx {:= {:op :append-pth}}
