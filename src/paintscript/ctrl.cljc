@@ -49,6 +49,8 @@
         "variant-k" (let [[?variant] args
                           variant-k (or ?variant "outline")]
                       [:set-p-opts [:variant-k variant-k]])
+        "disable"   [:set-p-opts [:disabled? true]]
+        "enable"    [:set-p-opts [:disabled? false]]
 
         ;; else:
         (println (str "command not found: " cmd-line))))))
@@ -82,6 +84,7 @@
                     (swap! !params update-in [src-k-sel pi-sel] ops/del-el eli-sel))
 
       :el-tf      (let [to arg]
+                    (swap! !ui update :sel #(take 3 %))
                     (swap! !params update-in [src-k-sel pi-sel]
                            ops/transform-el eli-sel to))
 

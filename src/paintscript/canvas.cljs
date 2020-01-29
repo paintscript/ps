@@ -192,10 +192,11 @@
            (when coords?
              [:g.coords
               (for [[pi {:as p-opts :keys [variant-k]} els _] out-tups
-                    :when (or (not (:variant params'))
-                              (not variant-k)
-                              (= (:variant params') variant-k)
-                              (= (:variant params') variant-k))]
+                    :when (and (not (:disabled? p-opts))
+                               (or (not (:variant params'))
+                                   (not variant-k)
+                                   (= (:variant params') variant-k)
+                                   (= (:variant params') variant-k)))]
                 (let [els'           (->> els
                                           (els/resolve-refs (:defs p-opts))
                                           (els/attach-normalized-meta))

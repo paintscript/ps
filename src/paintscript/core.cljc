@@ -82,11 +82,12 @@
 
 (defn paint [{:as script-opts :keys [variant defs styles attrs script data?]}]
   [:g
-   (for [[pi [obj-k {:as p-opts :keys [variant-k class-k]} & els :as obj]]
+   (for [[pi [obj-k {:as p-opts :keys [disabled? variant-k class-k]} & els :as obj]]
          (map-indexed vector script)
-         :when (or (not variant)
-                   (not variant-k)
-                   (= variant variant-k))
+         :when (and (not disabled?)
+                    (or (not variant)
+                        (not variant-k)
+                        (= variant variant-k)))
          :let [styles-attrs (if class-k
                               (get styles class-k
                                    (get styles "outline"))
