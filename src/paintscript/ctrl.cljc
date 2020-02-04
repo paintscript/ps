@@ -30,6 +30,7 @@
             el       (vec (cons cmd-k num-vecs))]
         [:el-append el])
       (case cmd-str
+        "undo"     [:undo]
         "absolute" [:absolute]
         "round"    (let [[?n] args]
                      [:round ?n])
@@ -55,94 +56,116 @@
         ;; else:
         (println (str "command not found: " cmd-line))))))
 
-(defn dispatch! [!params !ui [op-k & [arg :as args]]]
+(defn- handle-op [params ui [op-k & [arg :as args]]]
   (let [[src-k-sel
          pi-sel
          eli-sel
-         xyi-sel :as sel] (:sel @!ui)]
+         xyi-sel :as sel] (:sel ui)]
     (case op-k
-      :set-xy     (do
-                    (swap! !params assoc-in (:sel @!ui) arg))
+      :set-xy     {:params (-> params (assoc-in (:sel ui) arg))}
 
-      :pth-append (do
-                    (swap! !ui merge {:sel nil :snap nil})
-                    (swap! !params update :script ops/append-pth pi-sel))
+      :pth-append {:params (-> params (update :script ops/append-pth pi-sel))
+                   :ui     (-> ui (merge {:sel nil :snap nil}))}
 
-      :pth-del    (do
-                    (swap! !ui merge {:sel nil :snap nil})
-                    (swap! !params update :script ops/del-pth pi-sel))
+      :pth-del    {:params (-> params (update :script ops/del-pth pi-sel))
+                   :ui     (-> ui (merge {:sel nil :snap nil}))}
 
-      :el-append  (let [[src-k px eli] (or sel (ops/tail-iii @!params))
+      :el-append  (let [[src-k px eli] (or sel (ops/tail-iii params))
                         eli'           (or (some-> eli inc) 0)]
-                    (if-let [el arg]
-                      (swap! !params update-in [src-k px] ops/append-el eli el)
-                      (swap! !params update-in [src-k px] ops/append-el eli))
-                    (swap! !ui merge {:sel [src-k px eli']}))
+                    (-> (if-let [el arg]
+                          {:params (-> params (update-in [src-k px] ops/append-el eli el))}
+                          {:params (-> params (update-in [src-k px] ops/append-el eli))})
+                        (assoc :ui (-> ui (merge {:sel [src-k px eli']})))))
 
       :el-del     (let [eli' (max (dec eli-sel) 0)]
-                    (swap! !ui merge {:sel [src-k-sel pi-sel eli']})
-                    (swap! !params update-in [src-k-sel pi-sel] ops/del-el eli-sel))
+                    {:params (-> params (update-in [src-k-sel pi-sel] ops/del-el eli-sel))
+                     :ui     (-> ui (merge {:sel [src-k-sel pi-sel eli']}))})
 
       :el-tf      (let [to arg]
-                    (swap! !ui update :sel #(take 3 %))
-                    (swap! !params update-in [src-k-sel pi-sel]
-                           ops/transform-el eli-sel to))
+                    {:params (-> params (update-in [src-k-sel pi-sel]
+                                                   ops/transform-el eli-sel to))
+                     :ui     (-> ui (update :sel #(take 3 %)))})
 
-      :xy-append  (do
-                    (swap! !ui merge {:sel nil :snap nil})
-                    (swap! !params update-in [:script pi-sel]
-                           ops/append-pnt eli-sel))
+      :xy-append  {:params (-> params (update-in [:script pi-sel]
+                                                 ops/append-pnt eli-sel))
+                   :ui     (-> ui (merge {:sel nil :snap nil}))}
 
-      :xy-del     (do
-                    (swap! !ui merge {:sel nil :snap nil})
-                    (swap! !params update-in [:script pi-sel]
-                           ops/del-pnt eli-sel
-                           (- xyi-sel nav/xyi0)))
+      :xy-del     {:params (-> params (update-in [:script pi-sel]
+                                                 ops/del-pnt eli-sel
+                                                 (- xyi-sel nav/xyi0)))
+                   :ui     (-> ui (merge {:sel nil :snap nil}))}
 
-      :cmd        (when-let [op-vec (parse-cmd-line arg)]
-                    (dispatch! !params !ui op-vec))
+      ; :cmd        (when-let [op-vec (parse-cmd-line arg)]
+      ;               (handle-op params ui op-vec))
 
-      :absolute   (if sel
-                    (swap! !params ops/absolute [src-k-sel pi-sel])
-                    (swap! !params ops/absolute))
+      :absolute   {:params (if sel
+                             (-> params (ops/absolute [src-k-sel pi-sel]))
+                             (-> params (ops/absolute)))}
 
       :round      (let [n arg]
-                    (swap! !params
-                           (fn [s]
-                             (w/prewalk
-                              (case n
-                                "1" #(-> % (cond-> (number? %) u/round1))
-                                "2" #(-> % (cond-> (number? %) u/round2))
-                                #(-> % (cond-> (number? %) u/round)))
-                              s))))
+                    {:params
+                     (-> params
+                         ((fn [s]
+                            (w/prewalk
+                             (case n
+                               "1" #(-> % (cond-> (number? %) u/round1))
+                               "2" #(-> % (cond-> (number? %) u/round2))
+                               #(-> % (cond-> (number? %) u/round)))
+                             s))))})
 
-      :translate  (swap! !params ops/tl-pth sel arg)
+      :translate  {:params (-> params (ops/tl-pth sel arg))}
 
-      :clear      (do
-                    (swap! !ui merge {:sel nil :snap nil})
-                    (swap! !params merge params-init))
+      :clear      {:params (-> params (merge params-init))
+                   :ui     (-> ui (merge {:sel nil :snap nil}))}
 
       :def        (let [[pk] args
-                        {:keys [defs]} @!params]
+                        {:keys [defs]} params]
                     (if-let [els (get defs pk)]
                       ;; select
                       (let [eli (-> els count (- 1) (max 0))]
-                        (swap! !ui merge {:sel [:defs pk eli]}))
+                        {:ui (-> ui (merge {:sel [:defs pk eli]}))})
                       ;; create
-                      (do
-                        (swap! !params
-                               #(-> %
-                                    (assoc-in [:defs pk] [])
-                                    (update :script conj [:path {} [:ref pk]])))
-                        (swap! !ui merge {:sel [:defs pk nil]}))))
+                      {:params (-> params (#(-> %
+                                                (assoc-in [:defs pk] [])
+                                                (update :script conj [:path {} [:ref pk]]))))
+                       :ui     (-> ui (merge {:sel [:defs pk nil]}))}))
 
-      :sel        (do
-                    (swap! !ui merge {:sel arg})
-                    (when (nil? arg)
-                      (swap! !ui assoc :snap nil)))
+      :sel        {:ui (-> ui
+                           (merge {:sel arg})
+                           (cond-> (nil? arg)
+                                   (assoc :snap nil)))}
 
       :set-p-opts (let [[k v] arg]
-                    (swap! !params ops/update-p-opts sel assoc k v)))))
+                    {:params (-> params (ops/update-p-opts sel assoc k v))}))))
+
+(defn dispatch! [!params !state-log !ui [op-k arg :as op]]
+  (case op-k
+    :cmd  (when-let [op-vec (parse-cmd-line arg)]
+            (dispatch! !params !state-log !ui op-vec))
+
+    :undo (let [_ (swap! !state-log rest)
+                state-prev (first @!state-log)]
+            (reset! !params (:params state-prev))
+            (reset! !ui     (:ui     state-prev)))
+
+    ;; else:
+    (let [params @!params
+          ui     @!ui]
+      (try
+        (let [{params' :params
+               ui'     :ui} (handle-op params ui op)]
+          (do
+            (when params' (reset! !params params'))
+            (when ui'     (reset! !ui ui'))
+            (when-not (= :set-xy op-k)
+              (swap! !state-log conj {:params (or params' params)
+                                      :ui     (or ui'     ui)}))))
+        (catch #?(:cljs :default :clj Exception) e
+          (do
+            (println :handle-op-exception e)
+            #?(:cljs (js/console.log e))
+            (reset! !params params)
+            (reset! !ui ui)))))))
 
 #?(:cljs
  (defn drag-and-drop-fns [!scale !params !ui dispatch!]

@@ -26,23 +26,27 @@
      (list el))))
 
 (defn canvas [params-init cfg-init]
-  (r/with-let [!ui         (r/atom {:sel nil :snap nil})
-               !sel        (r/cursor !ui [:sel])
-               !config     (r/atom cfg-init)
-               !scale      (r/cursor !config [:canvas :scale])
-               !params     (r/atom params-init)
-               !hov        (r/atom nil)
-               !tab        (r/atom :script)
-               !shell      (r/atom "")
-               report!     (fn [iii] (reset! !sel iii))
-               dispatch!   (partial ctrl/dispatch! !params !ui)
-               dnd-fns     (ctrl/drag-and-drop-fns !scale !params !ui dispatch!)
-               kb-fns      (ctrl/keybind-fns              !params !ui dispatch!)
-               report-hov! (fn [iii val]
-                             (swap! !hov #(cond
-                                            val iii
-                                            (= iii %) nil
-                                            :else %)))
+  (r/with-let [ui-init      {:sel nil :snap nil}
+               !ui          (r/atom ui-init)
+               !sel         (r/cursor !ui [:sel])
+               !config      (r/atom cfg-init)
+               !scale       (r/cursor !config [:canvas :scale])
+               !params      (r/atom params-init)
+               !state-log   (r/atom (list {:params params-init
+                                           :ui     ui-init}))
+               !hov         (r/atom nil)
+               !tab         (r/atom :script)
+               !shell       (r/atom "")
+
+               report!      (fn [iii] (reset! !sel iii))
+               dispatch!    (partial ctrl/dispatch! !params !state-log !ui)
+               dnd-fns      (ctrl/drag-and-drop-fns !scale !params !ui dispatch!)
+               kb-fns       (ctrl/keybind-fns              !params !ui dispatch!)
+               report-hov!  (fn [iii val]
+                              (swap! !hov #(cond
+                                             val iii
+                                             (= iii %) nil
+                                             :else %)))
 
                _ (doseq [[k f] kb-fns]
                    (key/bind! k (keyword k) f))
@@ -54,8 +58,9 @@
                              (println :xy-svg xy-svg)
                              (swap! !ui assoc :xy-svg xy-svg)))]
 
-    (let [config @!config
-          params @!params
+    (let [config     @!config
+          params     @!params
+
           {:keys [sel xy-svg]} @!ui
 
           {:as   params'
@@ -93,7 +98,11 @@
            [zc/button
             :label    (name tab-k)
             :active?  (= tab-k tab)
-            :on-click #(reset! !tab tab-k)])]
+            :on-click #(reset! !tab tab-k)])
+         [zc/button
+          :label     "undo"
+          :disabled? (= 1 (count @!state-log))
+          :on-click  #(dispatch! [:undo])]]
 
         (case tab
           :script [:textarea
