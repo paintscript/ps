@@ -163,6 +163,14 @@
                           (cond-> (= :defs (first ii))
                                   vec)))))
 
+(defn sc-pth [params ii ctr k]
+  (-> params
+      (els/update-px (take 2 ii)
+                     #(-> %
+                          (els/scale-els ctr k)
+                          (cond-> (= :defs (first ii))
+                                  vec)))))
+
 (defn absolute
   ([params ii]
    (-> params (els/update-px ii  els/normalize-els :op :absolute)))

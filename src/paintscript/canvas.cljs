@@ -16,7 +16,7 @@
 
 (defn- pprint' [edn] (with-out-str *out* (pprint edn)))
 
-(defn get-path-segment [src-k-sel els eli]
+(defn- get-path-segment [src-k-sel els eli]
   (let [el-prev    (nav/els-prev els (case src-k-sel :defs :eln :eli) eli)
         [k :as el] (nav/els>     els (case src-k-sel :defs :eln :eli) eli)]
     (concat
@@ -25,7 +25,7 @@
        (list [:M (last el-prev)]))
      (list el))))
 
-(defn canvas-paint
+(defn- canvas-paint
   [!hov config params params' sel dispatch! report! report-hov! set-ref! dnd-fns]
   (let [hov @!hov
 
@@ -115,7 +115,7 @@
            (js/console.log e)
            (dispatch! [:undo]))))]))
 
-(defn canvas-sidebar
+(defn- canvas-sidebar
   [!config !params !shell !state-log !tab
    config params params' sel
    dispatch!]

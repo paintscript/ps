@@ -115,8 +115,8 @@
       (update :defs   (fn [dd] (u/map-vals #(apply f % args) dd)))
       (update :script (fn [s]  (mapv #(apply update-p-els % f args) s)))))
 
-(defn scale-els [els ctr n]
-  (map-xys #(u/tl-point-towards % ctr n) els))
+(defn scale-els [els ctr k]
+  (map-xys #(u/tl-point-towards % ctr k) els))
 
 (defn- attach-cp-meta [args eli]
   (let [cp-cnt (dec (count args))]

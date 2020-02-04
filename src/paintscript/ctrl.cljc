@@ -36,6 +36,9 @@
                      [:round ?n])
         "translate" (let [xy (read-xy-str args)]
                       [:translate xy])
+        "scale"     (let [ctr (read-xy-str (take 2 args))
+                          n   (read-string (last args))]
+                      [:scale ctr n])
         "to"        [:el-tf (-> args first keyword)]
         "clear"     [:clear]
         "def"       (let [[pk] args]
@@ -56,7 +59,7 @@
         ;; else:
         (println (str "command not found: " cmd-line))))))
 
-(defn- handle-op [params ui [op-k & [arg :as args]]]
+(defn- handle-op [params ui [op-k & [arg :as args] :as op]]
   (let [[src-k-sel
          pi-sel
          eli-sel
@@ -114,6 +117,9 @@
                              s))))})
 
       :translate  {:params (-> params (ops/tl-pth sel arg))}
+
+      :scale      (let [[ctr k] args]
+                    {:params (-> params (ops/sc-pth sel ctr k))})
 
       :clear      {:params (-> params (merge params-init))
                    :ui     (-> ui (merge {:sel nil :snap nil}))}
