@@ -1,22 +1,22 @@
 @import "../../z-com/resources/scss/z-com";
+@import "gallery";
 
 html, body {
   margin: 0; padding: 0;
   font-family: sans-serif;
 }
 
-div.canvas {
-  display: flex; flex-shrink: 0;
-
+div.app {
   * { box-sizing: border-box; }
 
   --pd:                  10px;
   --pd-half:             5px;
+  --pd-double:           20px;
   --status-item-height:  50px;
   --status-item-count:   4;
   --status-height:       calc(var(--status-item-height) * var(--status-item-count));
   --target-col:          hsla(0,0%,50%,0.3); //hsla(240,100%,50%,0.3);
-  --control-col:         hsla(120,100%,50%,0.3);
+
   --path-bg:             hsl(0,0%,80%);
   --sel-fg:              hsl(240,100%,50%);
   --sel-bg:              hsl(240,100%,95%);
@@ -28,10 +28,90 @@ div.canvas {
   --sidebar-max:         300px;
 
   --controls-height:     50px;
+  --controls-bg:         hsl(0,0%,95%);
+  --control-col:         hsla(120,100%,50%,0.3);
   --script-height:       calc(100vh - var(--controls-height) - var(--status-item-height));
   --script-height-short: calc(var(--script-height) - var(--status-height));
 
   * { box-sizing: border-box; }
+}
+
+div.script-phantom.sidebar {
+  height:    100vh;
+}
+
+div.script.sidebar {
+  position: fixed;
+  border-width: 0 3px 0 0;
+  border-style: solid;
+  border-color: hsl(0,0%,0%);
+
+  > div.controls {
+    &.unsaved-changes div.zc-button.save {
+      background-color: hsl(0,100%,90%);
+    }
+    height: var(--controls-height);
+    background-color: var(--controls-bg);
+    div.zc.zc-button { --height: var(--controls-height); }
+  }
+
+  > textarea {
+    height: var(--script-height);
+  }
+
+  &.with-status > textarea {
+    height: var(--script-height-short);
+  }
+
+  > div.shell {
+    padding: 0;
+    height: var(--status-item-height);
+    border-top: 1px solid hsl(0,0%,90%);
+    textarea {
+      padding: var(--pd);
+      height: 100%;
+      line-height: calc(var(--status-item-height) - (2 * var(--pd)));
+      font-size: inherit;
+    }
+  }
+
+  > div.status {
+    position:  relative;
+    width: 100%;
+
+    div.selection-stack {
+      display:          flex;
+      flex-direction:   column;
+      height:           var(--status-height);
+      background-color: var(--light-grey);
+      color:            black;
+
+      > div.selection-level {
+        overflow:     hidden;
+        border-top:   1px solid hsl(0,0%,90%);
+        white-space:  nowrap;
+        height:       var(--status-item-height);
+        padding-left: 10px;
+        display:      flex;
+        align-items:  center;
+        color: var(--sel-fg);
+        > * + * { margin-left: 5px; }
+        > span.selected { color: var(--sel-fg); }
+
+        div.controls {
+          div.zc-button {
+            box-sizing: border-box;
+            --height:   calc(var(--status-item-height) - 1px);
+          }
+          &.crud { position: absolute; right: 0; }
+        }
+      }
+    }
+  }
+}
+
+div.canvas, div.galleries {
+  display: flex; flex-shrink: 0;
 
   textarea {
     display:   block;
@@ -50,130 +130,63 @@ div.canvas {
     height:    100vh;
     flex-shrink: 0;
   }
+}
 
-  div.script-phantom.sidebar {
-    height:    100vh;
-  }
+div.canvas div.paint {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  width: 100%;
+}
 
-  div.script.sidebar {
-    position: fixed;
-    border-width: 0 3px 0 0;
-    border-style: solid;
-    border-color: hsl(0,0%,0%);
+div.paint {
 
-    > div.controls {
-      height: var(--controls-height);
-      background-color: hsl(0,0%,95%);
-      div.zc.zc-button { --height: var(--controls-height); }
+  * { user-select: none; }
+
+  svg {
+    margin: 5px;
+    border: 5px solid var(--light-grey);
+    display: block;
+    box-sizing: content-box;
+
+    g.main {
     }
 
-    > textarea {
-      height: var(--script-height);
+    g.sel {
+      stroke:       var(--sel-fg);
+      fill:         none;
+      stroke-width: 1.5;
     }
 
-    &.with-status > textarea {
-      height: var(--script-height-short);
-    }
+    g.coords {
+      g.cp rect {
+        stroke-width: 2;
+        stroke:       hsl(0,0%,80%);
+        fill:         hsl(0,0%,100%);
 
-    > div.shell {
-      padding: 0;
-      height: var(--status-item-height);
-      border-top: 1px solid hsl(0,0%,90%);
-      textarea {
-        padding: var(--pd);
-        height: 100%;
-        line-height: calc(var(--status-item-height) - (2 * var(--pd)));
-        font-size: inherit;
+        &:hover { fill: var(--sel-fg); }
       }
-    }
-
-    > div.status {
-      position:  relative;
-      width: 100%;
-
-      div.selection-stack {
-        display:          flex;
-        flex-direction:   column;
-        height:           var(--status-height);
-        background-color: var(--light-grey);
-        color:            black;
-
-        > div.selection-level {
-          overflow:     hidden;
-          border-top:   1px solid hsl(0,0%,90%);
-          white-space:  nowrap;
-          height:       var(--status-item-height);
-          padding-left: 10px;
-          display:      flex;
-          align-items:  center;
-          color: var(--sel-fg);
-          > * + * { margin-left: 5px; }
-          > span.selected { color: var(--sel-fg); }
-
-          div.controls {
-            div.zc-button {
-              box-sizing: border-box;
-              --height:   calc(var(--status-item-height) - 1px);
-            }
-            &.crud { position: absolute; right: 0; }
-          }
-        }
-      }
-    }
-  }
-
-  div.paint {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex-wrap: wrap;
-    width: 100%;
-    * { user-select: none; }
-
-    svg {
-      margin: 5px;
-      border: 5px solid var(--light-grey);
-      display: block;
-      box-sizing: content-box;
-
-      g.main {
-      }
-
-      g.sel {
+      g.selected g.cp rect {
         stroke:       var(--sel-fg);
-        fill:         none;
-        stroke-width: 1.5;
+        fill:         hsl(0,0%,100%);
+        stroke-width: 2;
       }
-
-      g.coords {
-        g.cp rect {
-          stroke-width: 2;
-          stroke:       hsl(0,0%,80%);
-          fill:         hsl(0,0%,100%);
-
-          &:hover { fill: var(--sel-fg); }
-        }
-        g.selected g.cp rect {
-          stroke:       var(--sel-fg);
-          fill:         hsl(0,0%,100%);
-          stroke-width: 2;
-        }
-        line.ctrl-target {
-          stroke-linecap: round;
-          stroke: hsl(0,0%,80%);
-          stroke-width: 2;
-        }
+      line.ctrl-target {
+        stroke-linecap: round;
+        stroke: hsl(0,0%,80%);
+        stroke-width: 2;
       }
+    }
 
-      text { font-family: sans-serif; }
-      path { stroke-linecap: round; }
+    text { font-family: sans-serif; }
+    path { stroke-linecap: round; }
 
-      g {
-        &.control  { circle { fill: hsl(0,0%,90%); stroke: var(--sel-fg); stroke-width: 2; } }
-        &.target   { circle { fill: transparent; stroke: var(--target-col); stroke-width: 2; } }
-        &.hover    { circle { fill: var(--sel-fg); } }
-        &.selected { circle { fill: transparent; stroke: var(--sel-fg); } }
-      }
+    g {
+      &.control  { circle { fill: hsl(0,0%,90%); stroke: var(--sel-fg); stroke-width: 2; } }
+      &.target   { circle { fill: transparent; stroke: var(--target-col); stroke-width: 2; } }
+      &.hover    { circle { fill: var(--sel-fg); } }
+      &.selected { circle { fill: transparent; stroke: var(--sel-fg); } }
     }
   }
 }

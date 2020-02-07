@@ -1,11 +1,13 @@
-(defproject paintscript "0.2.4"
+(defproject paintscript "0.2.5"
   :dependencies [[org.clojure/clojure "1.10.0"]
                  [org.clojure/clojurescript "1.10.520"]
                  [reagent "0.8.1"]
                  [svg-hiccup-kit "0.2.4"]
                  [xspace "0.2.14"]
                  [z-com "0.8.22"]
-                 [keybind "2.2.0"]]
+                 [keybind "2.2.0"]
+                 [urlkit "0.3.3"]
+                 [urlkit-util "0.1.2"]]
 
   :source-paths ["src/"]
   :plugins      [[lein-cljsbuild "1.1.7"]
@@ -19,9 +21,7 @@
    :kaocha [:xx
             {:dependencies [[lambdaisland/kaocha "0.0-565"]]}]
    :docs   {:resource-paths ["resources-docs/"]
-            :dependencies   [[hiccup-icons "0.4.2"]
-                             [urlkit "0.3.3"]
-                             [urlkit-util "0.1.2"]]
+            :dependencies   [[hiccup-icons "0.4.2"]]
             :figwheel       {:css-dirs ["resources-docs/public/css"]}}
    :app    {:resource-paths ["resources-app/"]
             :figwheel       {:css-dirs ["resources-app/public/css"]}}}

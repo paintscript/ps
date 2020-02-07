@@ -16,96 +16,96 @@
 
 (defn- pprint' [edn] (with-out-str *out* (pprint edn)))
 
-(defn- canvas-paint
-  [!hov config params params' sel dispatch! report! report-hov! set-ref! dnd-fns]
-  (let [hov @!hov
+(defn canvas-paint
+  ([config params] (canvas-paint nil config params))
+  ([[hov sel dispatch! report! report-hov! set-ref! dnd-fns]
+    config params]
+   (let [{:keys [variant]
+          {:as   canvas
+           :keys [variants]} :canvas}
+         params
 
-        {:keys [variant]
-         {:as   canvas
-          :keys [variants]} :canvas}
-        params'
+         [src-k-sel
+          pi-sel
+          eli-sel
+          xyi-sel] sel
 
-        [src-k-sel
-         pi-sel
-         eli-sel
-         xyi-sel] sel
-
-        out-tups (->> (:script params')
-                      (map-indexed
-                       (fn [pi [_ p-opts & els :as path]]
-                         (let [pth (ps/path {:defs (:defs params')
-                                             :debug? true}
-                                            p-opts
-                                            els)]
-                           [pi p-opts els pth]))))]
-    [:div.paint
-     (for [variant (or variants
-                       (some-> variant list)
-                       [nil])
-           :let [{:as params'
-                  {:as   canvas
-                   :keys [scale dims coords?]
-                   :or   {dims [100 100] coords? true}} :canvas}
-                 (-> params'
-                     (cond-> (keyword? variant) (assoc :variant variant)
-                             (map?     variant) (-> (assoc :variant (:variant variant))
-                                                    (update :canvas merge variant))))
-
-                 [w h] (->> dims (mapv #(* % scale)))]]
-
-       (try
-         ^{:key (hash variant)}
-         [:svg (merge-with merge
-                           {:style {:width w :height h}
-                            :ref   set-ref!}
-                           (get-in config [:canvas :attrs])
-                           dnd-fns)
-          [tf* {:sc [scale scale]}
-
-           [:g.main
-            [ps/paint params']]
-
-           (when (and sel (or (and (= :defs src-k-sel)
-                                   (get sel 2))
-                              (> eli-sel nav/eli0)))
-             (let [els' (->> (nav/params> params' :src-k src-k-sel :pi pi-sel)
-                             (take (inc eli-sel))
-                             (drop (if (= :defs src-k-sel) 0 nav/eli0))
-                             els/normalize-els)
-                   els-seg (els/get-path-segment src-k-sel els' eli-sel)]
-               [:g.sel
-                [ps/path-builder {} pi-sel els-seg]]))]
-
-          (when coords?
-            [:g.coords
-             (for [[pi {:as p-opts :keys [variant-k]} els _] out-tups
-                   :when (and (not (:disabled? p-opts))
-                              (or (not (:variant params'))
-                                  (not variant-k)
-                                  (= (:variant params') variant-k)
-                                  (= (:variant params') variant-k)))]
-               (let [els'           (->> els
-                                         (els/resolve-refs (:defs p-opts))
-                                         (els/attach-normalized-meta))
-                     [data-svg-tups
-                      _svg-seq]     (ps/path {:debug? true
-                                              :coords? true}
+         out-tups (->> (:script params)
+                       (map-indexed
+                        (fn [pi [_ p-opts & els :as path]]
+                          (let [pth (ps/path {:defs (:defs params)
+                                              :debug? true}
                                              p-opts
-                                             els')]
-                 ^{:key pi}
-                 [:g
-                  (ps/plot-coords {:scaled        scale
-                                   :coord-size    10
-                                   :report!       report!
-                                   :report-hover! report-hov!
-                                   :sel           sel
-                                   :hov           hov
-                                   :controls?     (= pi-sel pi)}
-                                  pi els' data-svg-tups)]))])]
-         (catch :default e
-           (println :paint-exec-error)
-           (js/console.log e)
-           (dispatch! [:undo]))))]))
+                                             els)]
+                            [pi p-opts els pth]))))]
+     [:div.paint
+      (for [variant (or variants
+                        (some-> variant list)
+                        [nil])
+            :let [{:as params
+                   {:as   canvas
+                    :keys [scale dims coords?]
+                    :or   {dims [100 100] coords? true}} :canvas}
+                  (-> params
+                      (cond-> (keyword? variant) (assoc :variant variant)
+                              (map?     variant) (-> (assoc :variant (:variant variant))
+                                                     (update :canvas merge variant))))
+
+                  [w h] (->> dims (mapv #(* % scale)))]]
+
+        (try
+          ^{:key (hash variant)}
+          [:svg (merge-with merge
+                            {:style {:width w :height h}
+                             :ref   set-ref!}
+                            (get-in config [:canvas :attrs])
+                            dnd-fns)
+           [tf* {:sc [scale scale]}
+
+            [:g.main
+             [ps/paint params]]
+
+            (when (and sel (or (and (= :defs src-k-sel)
+                                    (get sel 2))
+                               (> eli-sel nav/eli0)))
+              (let [els' (->> (nav/params> params :src-k src-k-sel :pi pi-sel)
+                              (take (inc eli-sel))
+                              (drop (if (= :defs src-k-sel) 0 nav/eli0))
+                              els/normalize-els)
+                    els-seg (els/get-path-segment src-k-sel els' eli-sel)]
+                [:g.sel
+                 [ps/path-builder nil {} pi-sel els-seg]]))]
+
+           (when coords?
+             [:g.coords
+              (for [[pi {:as p-opts :keys [variant-k]} els _] out-tups
+                    :when (and (not (:disabled? p-opts))
+                               (or (not (:variant params))
+                                   (not variant-k)
+                                   (= (:variant params) variant-k)
+                                   (= (:variant params) variant-k)))]
+                (let [els'           (->> els
+                                          (els/resolve-refs (:defs params))
+                                          (els/attach-normalized-meta))
+                      [data-svg-tups
+                       _svg-seq]     (ps/path {:debug? true
+                                               :coords? true}
+                                              p-opts
+                                              els')]
+                  ^{:key pi}
+                  [:g
+                   (ps/plot-coords {:scaled        scale
+                                    :coord-size    10
+                                    :report!       report!
+                                    :report-hover! report-hov!
+                                    :sel           sel
+                                    :hov           hov
+                                    :controls?     (= pi-sel pi)}
+                                   pi els' data-svg-tups)]))])]
+          (catch :default e
+            (println :paint-exec-error)
+            (js/console.log e)
+            (dispatch! [:undo]))))])))
 
 (defn- canvas-sidebar
   [!config !params !shell !state-log !tab
@@ -183,7 +183,7 @@
                [zc/button :label "add" :on-click #(dispatch! [:xy-append])]
                [zc/button :label "del" :on-click #(dispatch! [:xy-del])]])]]))]]))
 
-(defn canvas [params-init cfg-init]
+(defn canvas [cfg-init params-init]
   (r/with-let [ui-init      {:sel nil :snap nil}
                !ui          (r/atom ui-init)
                !sel         (r/cursor !ui [:sel])
@@ -241,6 +241,5 @@
         config params params' sel dispatch!]
 
        [canvas-paint'
-        !hov
-        config params params' sel
-        dispatch! report! report-hov! set-ref! dnd-fns]])))
+        [@!hov sel dispatch! report! report-hov! set-ref! dnd-fns]
+        config params']])))

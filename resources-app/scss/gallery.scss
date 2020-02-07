@@ -1,0 +1,20 @@
+div.paintings {
+  display: flex; flex-wrap: wrap;
+  div.paint {
+    &:hover svg {
+      background-color: hsl(240,100%,98%);
+    }
+  }
+}
+
+div.gallery-main {
+  div.paintings {
+    padding: var(--pd-double);
+  }
+  h1 {
+    margin: 0;
+    padding: 0 var(--pd-double);
+    line-height: var(--controls-height);
+    background-color: hsl(0,0%,0%); color: white;
+  }
+}
