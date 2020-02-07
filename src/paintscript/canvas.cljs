@@ -16,15 +16,6 @@
 
 (defn- pprint' [edn] (with-out-str *out* (pprint edn)))
 
-(defn- get-path-segment [src-k-sel els eli]
-  (let [el-prev    (nav/els-prev els (case src-k-sel :defs :eln :eli) eli)
-        [k :as el] (nav/els>     els (case src-k-sel :defs :eln :eli) eli)]
-    (concat
-     (when (and el-prev
-                (not= :M (first el)))
-       (list [:M (last el-prev)]))
-     (list el))))
-
 (defn- canvas-paint
   [!hov config params params' sel dispatch! report! report-hov! set-ref! dnd-fns]
   (let [hov @!hov
@@ -42,11 +33,11 @@
         out-tups (->> (:script params')
                       (map-indexed
                        (fn [pi [_ p-opts & els :as path]]
-                         (let [p-opts' (-> p-opts
-                                           (assoc :defs (:defs params')))]
-                           [pi p-opts' els
-                            (ps/path (merge p-opts' {:debug? true})
-                                     els)]))))]
+                         (let [pth (ps/path {:defs (:defs params')
+                                             :debug? true}
+                                            p-opts
+                                            els)]
+                           [pi p-opts els pth]))))]
     [:div.paint
      (for [variant (or variants
                        (some-> variant list)
@@ -81,7 +72,7 @@
                              (take (inc eli-sel))
                              (drop (if (= :defs src-k-sel) 0 nav/eli0))
                              els/normalize-els)
-                   els-seg (get-path-segment src-k-sel els' eli-sel)]
+                   els-seg (els/get-path-segment src-k-sel els' eli-sel)]
                [:g.sel
                 [ps/path-builder {} pi-sel els-seg]]))]
 
@@ -97,8 +88,9 @@
                                          (els/resolve-refs (:defs p-opts))
                                          (els/attach-normalized-meta))
                      [data-svg-tups
-                      _svg-seq]     (ps/path (merge p-opts {:debug? true
-                                                            :coords? true})
+                      _svg-seq]     (ps/path {:debug? true
+                                              :coords? true}
+                                             p-opts
                                              els')]
                  ^{:key pi}
                  [:g

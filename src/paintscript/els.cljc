@@ -3,41 +3,8 @@
             [paintscript.el :as el]
             [paintscript.nav :as nav]))
 
-(defn- arcs
-  [arc-xys {:as opts :keys [mode ctd?] :or {mode :concave}}]
-  (let [[head & tail]    arc-xys
-        paired-with-prev (map vector tail (drop-last arc-xys))
-        arc-middle       (str (case mode :concave "0,1" :convex "0,0") )]
-    (concat (when-not ctd?
-              [["M" head]])
-            (for [[[x  y  :as _xy]
-                   [xp yp :as _xy-prev]] paired-with-prev]
-              ["A" [(- x xp) (- y yp)] [0 arc-middle] [x y]]))))
-
-(defn- parse-el [[el-k & args]]
-  (if (map? (first args))
-    [el-k (first args) 2 (rest args)]
-    [el-k nil 1 args]))
-
-(defn- mirror-xy  [width pnt] (update pnt 0 #(- width %)))
-(defn- mirror-xys [width xys] (map #(mirror-xy width %) xys))
-
-(defn- mirror-els [width els]
-  (->> els
-       (map (fn [[el-k & xys :as el]]
-              (case el-k
-                :arc (let [[opts & xys] xys]
-                       (concat [el-k (-> opts
-                                          (update :mode
-                                                  #(case % :convex :concave :convex)))]
-                               (mirror-xys width xys)))
-                :A (let [[r [rot f1 f2] xy] xys
-
-                               ;; NOTE: needs to be undone when combined with reverse
-                               f2' (-> f2 el/flip-bin)]
-                           [:A r [rot f1 f2'] (mirror-xy width xy)])
-                (cons el-k
-                      (mirror-xys width xys)))))))
+;; -----------------------------------------------------------------------------
+;; normalize
 
 (defn normalize-els [els & {:keys [op] :or {op :all}}]
   (loop [[[el-k :as el] & els-tail] els
@@ -70,6 +37,11 @@
          els
          els')))
 
+;; -----------------------------------------------------------------------------
+;; transform
+
+;; --- reverse
+
 (defn- reverse-el-xys
   "drop last point (implicit) and redistribute the rest in reverse:
     ([:M 1] [:L 2 3] [:C 4 5 6] [:C 7 8 9])
@@ -90,6 +62,46 @@
   (->> els
        normalize-els
        reverse-el-xys))
+
+;; --- mirror
+
+(defn- mirror-xy  [width pnt] (update pnt 0 #(- width %)))
+(defn- mirror-xys [width xys] (map #(mirror-xy width %) xys))
+
+(defn- mirror-els [width els]
+  (->> els
+       (map (fn [[el-k & xys :as el]]
+              (case el-k
+                :arc (let [[opts & xys] xys]
+                       (concat [el-k (-> opts
+                                          (update :mode
+                                                  #(case % :convex :concave :convex)))]
+                               (mirror-xys width xys)))
+                :A (let [[r [rot f1 f2] xy] xys
+
+                               ;; NOTE: needs to be undone when combined with reverse
+                               f2' (-> f2 el/flip-bin)]
+                           [:A r [rot f1 f2'] (mirror-xy width xy)])
+                (cons el-k
+                      (mirror-xys width xys)))))))
+
+(defn mirror-els* [mode width els]
+  (sequence
+   (comp
+    (partition-by #{[:z]})
+    (mapcat
+     (fn [els-part]
+       (if (= (list [:z]) els-part)
+         els-part
+         (concat
+          els-part
+          (->> (case mode
+                 :merged   (->> els-part (reverse-els width))
+                 :separate (->> els-part normalize-els))
+               (mirror-els width)))))))
+   els))
+
+;; --- traverse
 
 (defn map-xys [f els]
   (->> els
@@ -115,8 +127,24 @@
       (update :defs   (fn [dd] (u/map-vals #(apply f % args) dd)))
       (update :script (fn [s]  (mapv #(apply update-p-els % f args) s)))))
 
+;; --- scale
+
 (defn scale-els [els ctr k]
   (map-xys #(u/tl-point-towards % ctr k) els))
+
+;; -----------------------------------------------------------------------------
+;; convert
+
+(defn- arcs
+  [arc-xys {:as opts :keys [mode ctd?] :or {mode :concave}}]
+  (let [[head & tail]    arc-xys
+        paired-with-prev (map vector tail (drop-last arc-xys))
+        arc-middle       (str (case mode :concave "0,1" :convex "0,0") )]
+    (concat (when-not ctd?
+              [["M" head]])
+            (for [[[x  y  :as _xy]
+                   [xp yp :as _xy-prev]] paired-with-prev]
+              ["A" [(- x xp) (- y yp)] [0 arc-middle] [x y]]))))
 
 (defn- attach-cp-meta [args eli]
   (let [cp-cnt (dec (count args))]
@@ -129,6 +157,11 @@
                                           eli)})
                      xy))
                  args)))
+
+(defn- parse-el [[el-k & args]]
+  (if (map? (first args))
+    [el-k (first args) 2 (rest args)]
+    [el-k nil 1 args]))
 
 (defn- el-->svg-seq [eli el]
   (let [[el-k opts xyi0 args] (parse-el el)
@@ -154,22 +187,6 @@
       :t    (let [[c1    tgt] args] [data (list "t" c1 tgt tgt)])
       :z    [data (list "z")])))
 
-(defn mirror-els* [mode width els]
-  (sequence
-   (comp
-    (partition-by #{[:z]})
-    (mapcat
-     (fn [els-part]
-       (if (= (list [:z]) els-part)
-         els-part
-         (concat
-          els-part
-          (->> (case mode
-                 :merged   (->> els-part (reverse-els width))
-                 :separate (->> els-part normalize-els))
-               (mirror-els width)))))))
-   els))
-
 (defn attach-iii-meta [src-k x-k eli0 els]
   (->> els
        (map-indexed (fn [eli el]
@@ -193,19 +210,31 @@
                         (attach-iii-meta :defs arg 0))
                    [el])))))
 
+(defn get-path-segment [src-k-sel els eli]
+  (let [el-prev    (nav/els-prev els (case src-k-sel :defs :eln :eli) eli)
+        [k :as el] (nav/els>     els (case src-k-sel :defs :eln :eli) eli)]
+    (concat
+     (when (and el-prev
+                (not= :M (first el)))
+       (list [:M (last el-prev)]))
+     (list el))))
+
 (defn path
-  ([els] (path nil els))
-  ([{:keys [defs mode debug? close? width mirror coords?]
-     [scale-ctr scale-fract :as scale] :scale
-     :or   {width 100
-            mode  :concave}}
+  ([els]      (path nil nil  els))
+  ([opts els] (path nil opts els))
+  ([{:as params :keys [defs debug? coords?]}
+    {:as opts
+     :keys [close? width mirror]
+     {scale-ctr :center scale-fract :fract :as scale} :scale
+     {mirror-mode :mode mirror-width :width :or {mirror-width 100}} :mirror}
     els]
    (let [els'
          (-> els
              (->> (resolve-refs defs))
-             (cond-> scale (scale-els scale-ctr scale-fract)
+             (cond-> scale
+                     (scale-els scale-ctr scale-fract)
                      (and mirror
-                          (not coords?)) (->> (mirror-els* mirror width))))
+                          (not coords?)) (->> (mirror-els* mirror-mode mirror-width))))
 
          data-svg-tups
          (for [[eli el] (map-indexed vector els')]

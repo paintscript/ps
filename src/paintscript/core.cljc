@@ -71,16 +71,19 @@
 (def path els/path)
 
 (defn path-builder
-  ([opts els] (path-builder opts 0 els))
-  ([{:as opts :keys [debug? attrs]}
-    pi els]
-   (let [[data-svg-tups svg-seq] (els/path (assoc opts :debug? true) els)]
+  ([opts els] (path-builder nil opts 0 els))
+  ([{:as params :keys [debug?]}
+    {:as opts :keys [attrs]}
+    pi
+    els]
+   (let [[data-svg-tups svg-seq] (els/path (-> params (assoc :debug? true)) opts els)]
      [:g
       (if debug?
         (plot-coords opts pi els data-svg-tups)
         [:path (merge attrs {:d (apply d svg-seq)})])])))
 
-(defn paint [{:as script-opts :keys [variant defs styles attrs script data?]}]
+(defn paint
+  [{:as script-opts :keys [variant defs styles attrs script data?]}]
   [:g
    (for [[pi [obj-k {:as p-opts :keys [disabled? variant-k class-k]} & els :as obj]]
          (map-indexed vector script)
@@ -93,12 +96,11 @@
                                    (get styles "outline"))
                               (get styles "outline"))
                p-opts' (-> p-opts
-                           (merge script-opts)
                            (update :attrs merge styles-attrs))]]
 
      (with-meta
        (case obj-k
-         :path (path-builder p-opts' pi els)
+         :path (path-builder script-opts p-opts' pi els)
          (-> obj
              (update 1 #(-> %
                             (dissoc :class-k :variant-k)
