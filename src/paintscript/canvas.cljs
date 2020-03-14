@@ -62,6 +62,10 @@
                             dnd-fns)
            [tf* {:sc [scale scale]}
 
+            (when (:script config)
+              [:g.main
+               [ps/paint config]])
+
             [:g.main
              [ps/paint params]]
 
@@ -230,7 +234,7 @@
 
           params'
           (-> (merge-with merge
-                          config
+                          (-> config (dissoc :script))
                           params)
               (update :script els/attach-iii-meta*))]
 
