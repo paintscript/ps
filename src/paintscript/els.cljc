@@ -172,6 +172,7 @@
       :arc  [data (arcs args opts)]
       :arc* [data (arcs args (assoc opts :ctd? true))]
       :M    [data (cons "M" args)]
+      :m    [data (cons "m" args)]
       :L    [data (cons "L" args)]
       :l    [data (cons "l" args)]
       :A    (let [[r  p  tgt] args] [data (list "A" r  p   tgt)])

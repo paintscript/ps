@@ -10,7 +10,7 @@
 (def has-cp?   #{:S :s
                  :C :c :C1 :c1
                  :Q :q})
-(def relative? #{:c :s :l})
+(def relative? #{:c :s :l :m})
 (def absolute? #{:C :S :L :M :z})
 (def short?    #{:S :C1 :T :arc})
 
@@ -39,9 +39,21 @@
         c1 (flip-c2 cp-prev tgt-prev)]
     [[:C c1 c2 tgt] tgt c2]))
 
+(defn- rel->abs--pnt-seq [tgt-prev pnt-seq]
+  (first
+   (reduce (fn [[vv tgt-prev] v-rel]
+             (let [v-abs (u/v+ v-rel tgt-prev)]
+               [(conj vv v-abs) v-abs]))
+           [[] tgt-prev]
+           pnt-seq)))
+
 (defmethod rel->abs :l [[k & pnts :as el] tgt-prev _]
-  (let [pnts' (map #(u/v+ % tgt-prev) pnts)]
+  (let [pnts' (rel->abs--pnt-seq tgt-prev pnts)]
     [(vec (cons :L pnts')) (last pnts') nil]))
+
+(defmethod rel->abs :m [[k & pnts :as el] tgt-prev _]
+  (let [pnts' (rel->abs--pnt-seq tgt-prev pnts)]
+    [(vec (cons :M pnts')) (last pnts') nil]))
 
 ;; short->full
 
@@ -74,7 +86,10 @@
 ;; el->tgt
 
 (defn el->tgt  [el] (-> el rest last)) ;; NOTE: rest for singleton-vecs like [:z]
-(defn el->tgt' [el _ _] [el (el->tgt el)])
+(defn el->tgt' [el tgt-prev _]
+  (case (first el)
+    (:Z :z) [el tgt-prev]
+    [el (el->tgt el)]))
 
 ;; ------------------------------------
 ;; dispatch

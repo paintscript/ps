@@ -1,5 +1,6 @@
 (ns paintscript.ctrl
-  (:require #?(:cljs [reagent.core :as r :refer [atom]])
+  (:require [clojure.pprint :refer [pprint]]
+            #?(:cljs [reagent.core :as r :refer [atom]])
             #?(:cljs [cljs.reader :refer [read-string]])
             [clojure.string :as str]
             [clojure.walk :as w]
@@ -7,7 +8,8 @@
             [paintscript.util :as u]
             [paintscript.el :as el]
             [paintscript.ops :as ops]
-            [paintscript.nav :as nav]))
+            [paintscript.nav :as nav]
+            [paintscript.conv :as conv]))
 
 (def params-init
   {:defs {}
@@ -55,6 +57,7 @@
                       [:set-p-opts [:variant-k variant-k]])
         "disable"   [:set-p-opts [:disabled? true]]
         "enable"    [:set-p-opts [:disabled? false]]
+        "svg"       [:svg-path (str/join " " args)]
 
         ;; else:
         (println (str "command not found: " cmd-line))))))
@@ -135,6 +138,13 @@
                                                 (assoc-in [:defs pk] [])
                                                 (update :script conj [:path {} [:ref pk]]))))
                        :ui     (-> ui (merge {:sel [:defs pk nil]}))}))
+
+      :svg-path   (let [[svg-path] args]
+                    (println :svg-path svg-path)
+                    (let [p-new (conv/path-d->path svg-path)]
+                      (pprint p-new)
+                      {:params (-> params
+                                   (update :script conj p-new))}))
 
       :sel        {:ui (-> ui
                            (merge {:sel arg})
