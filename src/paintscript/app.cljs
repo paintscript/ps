@@ -1,12 +1,12 @@
  (ns paintscript.app
   (:require [reagent.core :as r]
             [cljs.reader :refer [read-string]]
+            [urlkit.core :as uk]
+            [urlkit.sync :as sync]
+
             [paintscript.canvas :refer [canvas]]
             [paintscript.gallery :refer [galleries]]
-            [paintscript.ctrl :as ctrl]
-
-            [urlkit.core :as uk]
-            [urlkit.sync :as sync]))
+            [paintscript.ctrl :as ctrl]))
 
 (defn read-edn! [data-k]
   (some-> js/window.localStorage
@@ -16,7 +16,6 @@
 (defn write-edn! [data-k edn]
   (-> js/window.localStorage
       (.setItem (name data-k) (pr-str edn))))
-
 
 (def init-clear
   {:defs {}

@@ -32,32 +32,34 @@
             el       (vec (cons cmd-k num-vecs))]
         [:el-append el])
       (case cmd-str
-        "undo"     [:undo]
-        "absolute" [:absolute]
-        "round"    (let [[?n] args]
-                     [:round ?n])
-        "translate" (let [xy (read-xy-str args)]
-                      [:translate xy])
-        "scale"     (let [ctr (read-xy-str (take 2 args))
-                          n   (read-string (last args))]
-                      [:scale ctr n])
-        "to"        [:el-tf (-> args first keyword)]
-        "clear"     [:clear]
-        "def"       (let [[pk] args]
-                      [:def pk])
-        "script"    (let [sel-path (map read-string args)]
-                      [:sel (cons :script sel-path)])
-        "mirror"    (let [[?mode-str] args]
-                      [:set-p-opts [:mirror (or (some-> ?mode-str keyword) :separate)]])
-        "class-k"   (let [[?class] args
-                          class-k (or ?class "outline")]
-                      [:set-p-opts [:class-k class-k]])
-        "variant-k" (let [[?variant] args
-                          variant-k (or ?variant "outline")]
-                      [:set-p-opts [:variant-k variant-k]])
-        "disable"   [:set-p-opts [:disabled? true]]
-        "enable"    [:set-p-opts [:disabled? false]]
-        "svg"       [:svg-path (str/join " " args)]
+        "undo"        [:undo]
+        ("abs"
+         "absolute")  [:absolute]
+        "round"       (let [[?n] args]
+                        [:round ?n])
+        ("tl"
+         "translate") (let [xy (read-xy-str args)]
+                        [:translate xy])
+        "scale"       (let [ctr (read-xy-str (take 2 args))
+                            n   (read-string (last args))]
+                        [:scale ctr n])
+        "to"          [:el-tf (-> args first keyword)]
+        "clear"       [:clear]
+        "def"         (let [[pk] args]
+                        [:def pk])
+        "script"      (let [sel-path (map read-string args)]
+                        [:sel (cons :script sel-path)])
+        "mirror"      (let [[?mode-str] args]
+                        [:set-p-opts [:mirror (or (some-> ?mode-str keyword) :separate)]])
+        "class-k"     (let [[?class] args
+                            class-k (or ?class "outline")]
+                        [:set-p-opts [:class-k class-k]])
+        "variant-k"   (let [[?variant] args
+                            variant-k (or ?variant "outline")]
+                        [:set-p-opts [:variant-k variant-k]])
+        "disable"     [:set-p-opts [:disabled? true]]
+        "enable"      [:set-p-opts [:disabled? false]]
+        "svg"         [:svg-path (str/join " " args)]
 
         ;; else:
         (println (str "command not found: " cmd-line))))))
