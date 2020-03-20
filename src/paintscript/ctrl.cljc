@@ -12,13 +12,8 @@
             [paintscript.conv :as conv]))
 
 (def params-init
-  {:defs {},
-   :script
-   [[:path
-     {:variant-k "outline", :class-k "outline"}
-     [:M [15 15]]
-     [:v 15]
-     ]]})
+  {:defs {}
+   :script []})
 
 (defn- xy-mouse [ev]
   [(-> ev .-clientX)

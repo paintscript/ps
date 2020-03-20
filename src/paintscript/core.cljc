@@ -74,15 +74,18 @@
 
 (defn path-builder
   ([opts els] (path-builder nil opts 0 els))
-  ([{:as params :keys [debug?]}
-    {:as opts :keys [attrs]}
+  ([{:as s-opts :keys [debug?]}
+    {:as p-opts :keys [attrs]}
     pi
     els]
-   (let [[data-svg-tups svg-seq] (els/path (-> params (assoc :debug? true)) opts els)]
-     [:g
-      (if debug?
-        (plot-coords opts pi els data-svg-tups)
-        [:path (merge attrs {:d (apply d svg-seq)})])])))
+   (if-let [d (:d p-opts)]
+     [:path (merge attrs {:d d})]
+     (let [[data-svg-tups
+            svg-seq] (els/path (-> s-opts (assoc :debug? true)) p-opts els)]
+       [:g
+        (if debug?
+          (plot-coords p-opts pi els data-svg-tups)
+          [:path (merge attrs {:d (apply d svg-seq)})])]))))
 
 (defn paint
   [{:as script-opts :keys [variant defs styles attrs script data?]}]
