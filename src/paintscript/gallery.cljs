@@ -6,6 +6,7 @@
             [keybind.core :as key]
             [reagent.core :as r]
 
+            [paintscript.util :as u]
             [paintscript.canvas :as canvas]))
 
 (defn- pprint' [edn] (with-out-str *out* (pprint edn)))
@@ -65,25 +66,29 @@
   (r/with-let [!shell (r/atom "")
                !tab   (r/atom :script)]
     (let [c-base @!c-gallery
-          gg     @!galleries]
+          {gg-config :config
+           galleries :galleries} @!galleries]
       [:div.galleries
        [:div.sidebar.script-phantom]
        [gallery-sidebar app-dispatch!
         !c-gallery !c-gallery-committed
         !galleries !galleries-committed
-        !tab !shell]
+        !tab       !shell]
        [:div.gallery-main
-        (for [[g-id {:as g :keys [title paintings]}] gg]
-          ^{:key (hash g)}
+        (for [[g-id {:as gallery :keys [title paintings]}] galleries]
+          ^{:key (hash gallery)}
           [:div.gallery
            [:h1 (or title g-id)]
            [:div.paintings
-            (for [[item-id {:as item :keys [params]}] paintings
-                  :let [c  (or (-> item :config)
-                               (-> g    :config))
-                        c' (-> (or c c-base)
+            (for [[item-id {:as painting :keys [params]}] paintings
+                  :let [c  (u/merge-configs
+                            (-> painting :config)
+                            (-> gallery  :config)
+                            gg-config)
+                        c' (-> (or c
+                                   c-base)
                                (assoc-in [:canvas :coords?] false))]]
-              ^{:key (hash item)}
+              ^{:key (hash painting)}
               [:div.gallery-item
                {:on-click #(app-dispatch! [:set-canvas [c params]])}
                [canvas/canvas-paint c' (merge c' params)]])]])]])))

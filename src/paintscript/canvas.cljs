@@ -3,11 +3,13 @@
             [clojure.walk :as w]
             [cljs.pprint :refer [pprint]]
             [cljs.reader :refer [read-string]]
+
             [reagent.core :as r]
             [z-com.core :as zc]
             [svg-hiccup-kit.core :refer [tf tf* d d2]]
             [keybind.core :as key]
 
+            [paintscript.util :as u]
             [paintscript.ops :as ops]
             [paintscript.els :as els]
             [paintscript.core :as ps]
@@ -48,8 +50,7 @@
                     :or   {dims [100 100] coords? true}} :canvas}
                   (-> params
                       (cond-> (keyword? variant) (assoc :variant variant)
-                              (map?     variant) (-> (assoc :variant (:variant variant))
-                                                     (update :canvas merge variant))))
+                              (map?     variant) (u/merge-configs variant)))
 
                   [w h] (->> dims (mapv #(* % scale)))]]
 
@@ -64,7 +65,9 @@
 
             (when (:script config)
               [:g.main
-               [ps/paint config]])
+               [ps/paint (u/merge-configs
+                          config
+                          variant)]])
 
             [:g.main
              [ps/paint params]]
@@ -89,7 +92,7 @@
                                    (= (:variant params) variant-k)
                                    (= (:variant params) variant-k)))]
                 (let [els'           (->> els
-                                          (els/resolve-refs (:defs params))
+                                          (els/resolve-els-refs (:defs params))
                                           (els/attach-normalized-meta))
                       [data-svg-tups
                        _svg-seq]     (ps/path {:debug? true

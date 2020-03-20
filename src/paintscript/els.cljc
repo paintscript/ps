@@ -106,11 +106,12 @@
 (defn map-xys [f els]
   (->> els
        (map (fn [[el-k & xys :as el]]
-              (case el-k
-                :A (-> el (update 3 f))
-                (vec
-                 (cons el-k
-                       (map f xys))))))))
+              (let [el' (case el-k
+                          :A (-> el (update 3 f))
+                          (vec
+                           (cons el-k
+                                 (map f xys))))]
+                (-> el' (with-meta (meta el))))))))
 
 (defn update-p-els [p f & args]
   (vec
@@ -131,6 +132,11 @@
 
 (defn scale-els [els ctr k]
   (map-xys #(u/tl-point-towards % ctr k) els))
+
+;; --- translate
+
+(defn translate-els [els xyd]
+  (map-xys (partial u/v+ xyd) els))
 
 ;; -----------------------------------------------------------------------------
 ;; convert
@@ -209,12 +215,19 @@
                                     (attach-iii-meta :script pi nav/eli0))))))
        vec))
 
-(defn resolve-refs [defs els]
+(defn ref? [x]
+  (and (vector? x)
+       (= :ref (get x 0))))
+
+(defn resolve-els-ref [defs ref] (get defs (get ref 1)))
+(defn resolve-d-ref [defs ref] (get-in defs [:d (get ref 1)]))
+
+(defn resolve-els-refs [defs els]
   (->> els
-       (mapcat (fn [[el-k arg :as el]]
-                 (if (= :ref el-k)
-                   (->> (get defs arg)
-                        (attach-iii-meta :defs arg 0))
+       (mapcat (fn [el]
+                 (if (ref? el)
+                   (->> (resolve-els-ref defs el)
+                        (attach-iii-meta :defs (get el 1) 0))
                    [el])))))
 
 (defn get-path-segment [src-k-sel els eli]
@@ -232,16 +245,19 @@
   ([{:as params :keys [defs debug? coords?]}
     {:as opts
      :keys [close? width mirror]
-     {scale-ctr :center scale-fract :fract :as scale} :scale
+     {scale-ctr :center scale-factor :factor :as scale} :scale
+     translate :translate
      {mirror-mode :mode mirror-width :width :or {mirror-width 100}} :mirror}
     els]
    (let [els'
          (-> els
-             (->> (resolve-refs defs))
-             (cond-> scale
-                     (scale-els scale-ctr scale-fract)
+             (->> (resolve-els-refs defs))
+             (cond-> scale     (scale-els scale-ctr scale-factor)
+                     translate (translate-els translate)
+
                      (and mirror
-                          (not coords?)) (->> (mirror-els* mirror-mode mirror-width))))
+                          (not coords?))
+                     (->> (mirror-els* mirror-mode mirror-width))))
 
          data-svg-tups
          (for [[eli el] (map-indexed vector els')]

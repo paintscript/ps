@@ -159,7 +159,7 @@
 (defn tl-pth [params ii tl]
   (-> params
       (els/update-px (take 2 ii)
-                     #(-> (els/map-xys (partial u/v+ tl) %)
+                     #(-> (els/translate-els % tl)
                           (cond-> (= :defs (first ii))
                                   vec)))))
 

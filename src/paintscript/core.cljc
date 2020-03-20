@@ -1,7 +1,7 @@
 (ns paintscript.core
   (:require #?(:cljs [reagent.core :as r :refer [atom]])
             [clojure.string :as str]
-            [svg-hiccup-kit.core :refer [d d2]]
+            [svg-hiccup-kit.core :refer [d d2 tf]]
             [paintscript.els :as els]
             [paintscript.ctrl :as ctrl]))
 
@@ -14,8 +14,8 @@
   (#?(:cljs r/with-let :clj let) [!hover? (atom false)]
     (when
       (vector? xy) ;; skip v/V, h/H
-      (let [[x y] (->> (-> xy (cond-> (relative? el-k) els/abs-meta))
-                       (mapv #(* % scaled)))
+      (let [[x y]     (->> (-> xy (cond-> (relative? el-k) els/abs-meta))
+                           (mapv #(* % scaled)))
             i-tgt     (-> xy meta :i-tgt)
             cp?       (some? i-tgt)
             hover?    (= iii hov)
@@ -79,7 +79,15 @@
     pi
     els]
    (if-let [d (:d p-opts)]
-     [:path (merge attrs {:d d})]
+     (let [d' (-> d (cond-> (els/ref? d)
+                            (->> (els/resolve-d-ref (:defs s-opts)))))
+           {:keys [translate]
+            {scale-factor :factor} :scale} p-opts
+
+           pth [:path (merge attrs {:d d'})]]
+       (if (or translate scale-factor)
+         [tf {:tl translate :sc [scale-factor]} pth]
+         pth))
      (let [[data-svg-tups
             svg-seq] (els/path (-> s-opts (assoc :debug? true)) p-opts els)]
        [:g
@@ -101,11 +109,16 @@
                                    (get styles "outline"))
                               (get styles "outline"))
                p-opts' (-> p-opts
-                           (update :attrs merge styles-attrs))]]
+                           (->> (merge (select-keys styles-attrs
+                                                    [:scale :translate])))
+                           (update :attrs merge
+                                   (dissoc styles-attrs
+                                           :scale :translate)))]]
 
      (with-meta
        (case obj-k
          :path (path-builder script-opts p-opts' pi els)
+
          (-> obj
              (update 1 #(-> %
                             (dissoc :class-k :variant-k)

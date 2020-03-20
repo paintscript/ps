@@ -47,12 +47,12 @@
     (let [slope (slope xy1 xy2)]
       (atan' slope))))
 
-(defn tl-point-towards [pnt ctr fract]
-  (let [fract   (- fract)
+(defn tl-point-towards [pnt ctr factor]
+  (let [factor   (- factor)
         [dx dy] (mapv - ctr pnt)
         dist    (dist ctr pnt)
         dist-mv (-> dist
-                    (- (- 1 (* dist fract)))
+                    (- (- 1 (* dist factor)))
                     (* (sign dx))
                     )]
     (tl-point pnt
@@ -61,3 +61,9 @@
 
 (defn map-vals [f coll]
   (into {} (map (fn [[k v]] [k (f v)])) coll))
+
+(defn merge-maps [& args]
+  (if (every? map? args) (apply merge args) (last args)))
+
+(defn merge-configs [& args]
+  (apply merge-with merge-maps args))
