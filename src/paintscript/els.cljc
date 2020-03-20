@@ -175,6 +175,12 @@
       :m    [data (cons "m" args)]
       :L    [data (cons "L" args)]
       :l    [data (cons "l" args)]
+
+      :V    [data (cons "V" args)]
+      :H    [data (cons "H" args)]
+      :v    [data (cons "v" args)]
+      :h    [data (cons "h" args)]
+
       :A    (let [[r  p  tgt] args] [data (list "A" r  p   tgt)])
       :S    (let [[   c2 tgt] args] [data (list "S"    c2  tgt)])
       :s    (let [[   c2 tgt] args] [data (list "s"    c2  tgt)])

@@ -10,9 +10,9 @@
 (def has-cp?   #{:S :s
                  :C :c :C1 :c1
                  :Q :q})
-(def relative? #{:c :s :l :m})
+(def relative? #{:c :s :l :m :q :t :v :h})
 (def absolute? #{:C :S :L :M :z})
-(def short?    #{:S :C1 :T :arc})
+(def short?    #{:S :C1 :T :arc :V :H})
 
 (def el?       (set/union has-cp? relative? absolute? short?))
 
@@ -39,6 +39,15 @@
         c1 (flip-c2 cp-prev tgt-prev)]
     [[:C c1 c2 tgt] tgt c2]))
 
+(defmethod rel->abs :q [[k & pnts :as el] tgt-prev _cp-prev]
+  (let [[c1 tgt :as pnts'] (map #(u/v+ % tgt-prev) pnts)]
+    [[:Q c1 tgt] tgt c1]))
+
+(defmethod rel->abs :t [[k & pnts :as el] tgt-prev cp-prev]
+  (let [[tgt] (map #(u/v+ % tgt-prev) pnts)
+        c1 (flip-c2 cp-prev tgt-prev)]
+    [[:T tgt] tgt c1]))
+
 (defn- rel->abs--pnt-seq [tgt-prev pnt-seq]
   (first
    (reduce (fn [[vv tgt-prev] v-rel]
@@ -50,6 +59,16 @@
 (defmethod rel->abs :l [[k & pnts :as el] tgt-prev _]
   (let [pnts' (rel->abs--pnt-seq tgt-prev pnts)]
     [(vec (cons :L pnts')) (last pnts') nil]))
+
+(defmethod rel->abs :v [[k & pnts :as el] tgt-prev _]
+  (let [pnts' (map second
+                   (rel->abs--pnt-seq tgt-prev (map (fn [y] [0 y]) pnts)))]
+    [(vec (cons :V pnts')) [0 (last pnts')] nil]))
+
+(defmethod rel->abs :h [[k & pnts :as el] tgt-prev _]
+  (let [pnts' (map first
+                   (rel->abs--pnt-seq tgt-prev (map (fn [x] [x 0]) pnts)))]
+    [(vec (cons :H pnts')) [(last pnts') 0] nil]))
 
 (defmethod rel->abs :m [[k & pnts :as el] tgt-prev _]
   (let [pnts' (rel->abs--pnt-seq tgt-prev pnts)]
@@ -67,6 +86,21 @@
 (defmethod short->full :C1 [[k & pnts :as el] tgt-prev cp-prev]
   (let [[c1 tgt] pnts]
     [[:C c1 tgt tgt] tgt nil]))
+
+(defmethod short->full :T [[k & pnts :as el] tgt-prev cp-prev]
+  (let [[tgt] pnts
+        c1 (flip-c2 cp-prev tgt-prev)]
+    [[:T c1 tgt] tgt c1]))
+
+(defmethod short->full :V [[k & pnts :as el] tgt-prev cp-prev]
+  (let [[y] pnts
+        tgt [(first tgt-prev) y]]
+    [[:L tgt] tgt]))
+
+(defmethod short->full :H [[k & pnts :as el] tgt-prev cp-prev]
+  (let [[x] pnts
+        tgt [x (second tgt-prev)]]
+    [[:L tgt] tgt]))
 
 (defmethod short->full :arc [[k & pnts :as el] _ _]
   (let [[arg1 & args-rest] pnts

@@ -12,53 +12,55 @@
              els el-k el
              xy [src-k pi eli _ :as iii]]
   (#?(:cljs r/with-let :clj let) [!hover? (atom false)]
-    (let [[x y] (->> (-> xy (cond-> (relative? el-k) els/abs-meta))
-                     (mapv #(* % scaled)))
-          i-tgt     (-> xy meta :i-tgt)
-          cp?       (some? i-tgt)
-          hover?    (= iii hov)
-          sel-pv?   (and (= pi-sel  pi)
-                         (= eli-sel eli))
-          sel-pnt?  (= iii sel)]
-      (when (or (not cp?) sel-pv?)
-        [:g
-         (when cp?
-           (let [[x2 y2] (-> els
-                             (nth i-tgt)
-                             last
-                             (cond-> (relative? el-k)
-                                     (#(-> % els/abs-meta (or %))))
-                             (->> (mapv #(* % scaled))))]
-            [:g
-             [:line.ctrl-target.under {:x1 x :y1 y :x2 x2 :y2 y2}]
-             [:line.ctrl-target.over  {:x1 x :y1 y :x2 x2 :y2 y2}]]))
-         [:g {:style {:cursor "pointer" :text-select "none"}
-              :on-mouse-down #(report!       iii)
-              :on-mouse-over #(report-hover! iii true)
-              :on-mouse-out  #(report-hover! iii false)
-              :class (str (if i-tgt "control" "target")
-                          (when hover? " hover")
-                          (when (= sel iii) " selected"))}
-          (if cp?
-            [:g.cp
-             [:rect {:x (- x (/ coord-size 2))
-                     :y (- y (/ coord-size 2))
-                     :width  coord-size
-                     :height coord-size}]]
+    (when
+      (vector? xy) ;; skip v/V, h/H
+      (let [[x y] (->> (-> xy (cond-> (relative? el-k) els/abs-meta))
+                       (mapv #(* % scaled)))
+            i-tgt     (-> xy meta :i-tgt)
+            cp?       (some? i-tgt)
+            hover?    (= iii hov)
+            sel-pv?   (and (= pi-sel  pi)
+                           (= eli-sel eli))
+            sel-pnt?  (= iii sel)]
+        (when (or (not cp?) sel-pv?)
+          [:g
+           (when cp?
+             (let [[x2 y2] (-> els
+                               (nth i-tgt)
+                               last
+                               (cond-> (relative? el-k)
+                                       (#(-> % els/abs-meta (or %))))
+                               (->> (mapv #(* % scaled))))]
+               [:g
+                [:line.ctrl-target.under {:x1 x :y1 y :x2 x2 :y2 y2}]
+                [:line.ctrl-target.over  {:x1 x :y1 y :x2 x2 :y2 y2}]]))
+           [:g {:style {:cursor "pointer" :text-select "none"}
+                :on-mouse-down #(report!       iii)
+                :on-mouse-over #(report-hover! iii true)
+                :on-mouse-out  #(report-hover! iii false)
+                :class (str (if i-tgt "control" "target")
+                            (when hover? " hover")
+                            (when (= sel iii) " selected"))}
+            (if cp?
+              [:g.cp
+               [:rect {:x (- x (/ coord-size 2))
+                       :y (- y (/ coord-size 2))
+                       :width  coord-size
+                       :height coord-size}]]
 
-            (if (or sel-pnt? hover?)
-              [:g
-               [:circle {:cx x :cy y :r (* coord-size 1.8)}]
-               (when-not (or sel-pnt? cp?)
-                 [:text {:x x :y y
-                         :fill "white"
-                         :font-size coord-size
-                         :text-anchor "middle"
-                         :dominant-baseline "middle"
-                         :style {:user-select "none"}}
-                  (str/join " " xy)])]
+              (if (or sel-pnt? hover?)
+                [:g
+                 [:circle {:cx x :cy y :r (* coord-size 1.8)}]
+                 (when-not (or sel-pnt? cp?)
+                   [:text {:x x :y y
+                           :fill "white"
+                           :font-size coord-size
+                           :text-anchor "middle"
+                           :dominant-baseline "middle"
+                           :style {:user-select "none"}}
+                    (str/join " " xy)])]
 
-              [:circle {:cx x :cy y :r coord-size}]))]]))))
+                [:circle {:cx x :cy y :r coord-size}]))]])))))
 
 (defn plot-coords [opts pi els data-svg-tups]
   (for [[args _eli xyi0 el-k el] (map first data-svg-tups)
