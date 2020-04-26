@@ -32,6 +32,8 @@
         [:el-append el])
       (case cmd-str
         "undo"        [:undo]
+
+        ;; --- mutate
         ("abs"
          "absolute")  [:absolute]
         "full"        [:full]
@@ -46,13 +48,13 @@
          "scale")     (let [ctr (read-xy-str (take 2 args))
                             n   (read-string (last args))]
                         [:scale ctr n])
+        "mirror"      (let [[axis pos] args]
+                        [:mirror (some-> axis read-string) (some-> pos read-string)])
+
         "to"          [:el-tf (-> args first keyword)]
-        "clear"       [:clear]
-        "def"         (let [[pk] args]
-                        [:def pk])
-        "script"      (let [sel-path (map read-string args)]
-                        [:sel (cons :script sel-path)])
-        "mirror"      (let [[?mode-str] args]
+
+        ;; --- configure
+        "p-mirror"    (let [[?mode-str] args]
                         [:set-p-opts [:mirror {:mode (or (some-> ?mode-str keyword) :separate)}]])
         "class-k"     (let [[?class] args
                             class-k (or ?class "outline")]
@@ -62,6 +64,13 @@
                         [:set-p-opts [:variant-k variant-k]])
         "disable"     [:set-p-opts [:disabled? true]]
         "enable"      [:set-p-opts [:disabled? false]]
+
+        ;; --- nav
+        "clear"       [:clear]
+        "def"         (let [[pk] args]
+                        [:def pk])
+        "script"      (let [sel-path (map read-string args)]
+                        [:sel (cons :script sel-path)])
         "svg"         [:svg-path (str/join " " args)]
 
         ;; else:
@@ -111,6 +120,8 @@
       :normalize  {:params (-> params (ops/normalize sel))}
       :scale      (let [[ctr k] args]
                     {:params (-> params (ops/scale sel ctr k))})
+      :mirror     (let [[axis pos] args]
+                    {:params (-> params (ops/mirror (or axis 0) (or pos 100) sel))})
 
       :round      (let [n arg]
                     {:params
@@ -123,7 +134,7 @@
                                #(-> % (cond-> (number? %) u/round)))
                              s))))})
 
-      :translate  {:params (-> params (ops/tl-pth sel arg))}
+      :translate  {:params (-> params (ops/translate sel arg))}
 
       :clear      {:params (-> params (merge params-init))
                    :ui     (-> ui (merge {:sel nil :snap nil}))}

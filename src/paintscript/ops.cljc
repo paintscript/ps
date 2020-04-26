@@ -2,7 +2,7 @@
   (:require [paintscript.util :as u]
             [paintscript.els :as els]))
 
-;; generic
+;; --- generic
 
 (defn vec-insert
   [coll i el]
@@ -25,7 +25,7 @@
 
 (defn vec-append [coll i el] (vec-insert coll (inc i) el))
 
-;; info
+;; --- info
 
 (defn has-pred? [pi] (pos? pi))
 
@@ -49,7 +49,7 @@
         xyi (-> script (get-in [pi eli]) count (- 1))]
     [:script pi eli xyi]))
 
-;; points
+;; --- points
 
 (def xyi-offset 1)
 (def el-i-offset 2)
@@ -95,7 +95,7 @@
     (-> els
         (update eli vec-remove xyi'))))
 
-;; els
+;; --- els
 
 (defn infer-succ-el [els eli]
   (let [[k & pnts :as el-1] (get els eli)]
@@ -147,7 +147,7 @@
     (-> els
         (vec-replace eli el'))))
 
-;; params
+;; --- params
 
 (defn append-pth
   [script pi]
@@ -156,13 +156,9 @@
 
 (defn del-pth [script pi] (-> script (vec-remove pi)))
 
-(defn tl-pth [params ii tl]
-  (-> params
-      (els/update-px (take 2 ii)
-                     #(-> (els/translate-els % tl)
-                          (cond-> (= :defs (first ii))
-                                  vec)))))
-
+(defn translate
+  ([params ii n] (-> params (els/update-px ii  els/translate-els n)))
+  ([params    n] (-> params (els/update-px-all els/translate-els n))))
 
 (defn scale
   ([params ii c n] (-> params (els/update-px ii  els/scale-els c n)))
@@ -179,6 +175,10 @@
 (defn normalize
   ([params ii] (-> params (els/update-px ii  els/normalize-els :op :all)))
   ([params]    (-> params (els/update-px-all els/normalize-els :op :all))))
+
+(defn mirror
+  ([params axis pos ii] (-> params (els/update-px ii  #(els/mirror-els axis pos %))))
+  ([params axis pos]    (-> params (els/update-px-all #(els/mirror-els axis pos %)))))
 
 (defn update-p-opts [params ii f & args]
   (let [p-opts-i (concat (take 2 ii) [1])]

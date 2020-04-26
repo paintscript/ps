@@ -65,27 +65,28 @@
 
 ;; --- mirror
 
-(defn- mirror-xy  [width pnt] (update pnt 0 #(- width %)))
-(defn- mirror-xys [width xys] (map #(mirror-xy width %) xys))
+(defn- mirror-xy  [axis pos pnt] (update pnt axis #(- pos %)))
+(defn- mirror-xys [axis pos xys] (map #(mirror-xy axis pos %) xys))
 
-(defn- mirror-els [width els]
+(defn mirror-els [axis pos els]
   (->> els
-       (map (fn [[el-k & xys :as el]]
-              (case el-k
-                :arc (let [[opts & xys] xys]
-                       (concat [el-k (-> opts
+       (mapv (fn [[el-k & xys :as el]]
+               (case el-k
+                 :arc (let [[opts & xys] xys]
+                        (concat [el-k (-> opts
                                           (update :mode
                                                   #(case % :convex :concave :convex)))]
-                               (mirror-xys width xys)))
-                :A (let [[r [rot f1 f2] xy] xys
+                                (mirror-xys axis pos xys)))
+                 :A (let [[r [rot f1 f2] xy] xys
 
-                               ;; NOTE: needs to be undone when combined with reverse
-                               f2' (-> f2 el/flip-bin)]
-                           [:A r [rot f1 f2'] (mirror-xy width xy)])
-                (cons el-k
-                      (mirror-xys width xys)))))))
+                          ;; NOTE: needs to be undone when combined with reverse
+                          f2' (-> f2 el/flip-bin)]
+                      [:A r [rot f1 f2'] (mirror-xy axis pos xy)])
+                 (vec
+                  (cons el-k
+                        (mirror-xys axis pos xys))))))))
 
-(defn mirror-els* [mode width els]
+(defn mirror-els* [mode axis pos els]
   (sequence
    (comp
     (partition-by #{[:z]})
@@ -96,9 +97,9 @@
          (concat
           els-part
           (->> (case mode
-                 :merged   (->> els-part (reverse-els width))
+                 :merged   (->> els-part (reverse-els pos))
                  :separate (->> els-part normalize-els))
-               (mirror-els width)))))))
+               (mirror-els axis pos)))))))
    els))
 
 ;; --- traverse
@@ -249,7 +250,11 @@
      :keys [close? width mirror]
      {scale-ctr :center scale-factor :factor :as scale} :scale
      translate :translate
-     {mirror-mode :mode mirror-width :width :or {mirror-width 100}} :mirror}
+     {mirror-mode  :mode
+      mirror-pos   :pos
+      mirror-axis  :axis
+      :or {mirror-pos 100
+           mirror-axis  0}} :mirror}
     els]
    (let [els'
          (-> els
@@ -259,7 +264,9 @@
 
                      (and mirror
                           (not coords?))
-                     (->> (mirror-els* mirror-mode mirror-width))))
+                     (->> (mirror-els* mirror-mode
+                                       mirror-axis
+                                       mirror-pos))))
 
          data-svg-tups
          (for [[eli el] (map-indexed vector els')]

@@ -20,7 +20,7 @@
                  :del-el     (apply ops/del-el     els ii)
                  :append-pth (apply ops/append-pth script ii)
                  :del-pth    (apply ops/del-pth    script ii)
-                 :tl-pth     (ops/tl-pth params ii tl)
+                 :tl-pth     (ops/translate params ii tl)
                  :absolute   (ops/absolute params)
                  :transform-el (ops/transform-el els i to))))))}})
 
