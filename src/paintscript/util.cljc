@@ -53,8 +53,7 @@
         dist    (dist ctr pnt)
         dist-mv (-> dist
                     (- (- 1 (* dist factor)))
-                    (* (sign dx))
-                    )]
+                    (* (sign dx)))]
     (tl-point pnt
               (angle-between pnt ctr)
               dist-mv)))

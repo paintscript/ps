@@ -163,19 +163,22 @@
                           (cond-> (= :defs (first ii))
                                   vec)))))
 
-(defn sc-pth [params ii ctr k]
-  (-> params
-      (els/update-px (take 2 ii)
-                     #(-> %
-                          (els/scale-els ctr k)
-                          (cond-> (= :defs (first ii))
-                                  vec)))))
+
+(defn scale
+  ([params ii c n] (-> params (els/update-px ii  els/scale-els c n)))
+  ([params    c n] (-> params (els/update-px-all els/scale-els c n))))
 
 (defn absolute
-  ([params ii]
-   (-> params (els/update-px ii  els/normalize-els :op :absolute)))
-  ([params]
-   (-> params (els/update-px-all els/normalize-els :op :absolute))))
+  ([params ii] (-> params (els/update-px ii  els/normalize-els :op :absolute)))
+  ([params]    (-> params (els/update-px-all els/normalize-els :op :absolute))))
+
+(defn full
+  ([params ii] (-> params (els/update-px ii  els/normalize-els :op :full)))
+  ([params]    (-> params (els/update-px-all els/normalize-els :op :full))))
+
+(defn normalize
+  ([params ii] (-> params (els/update-px ii  els/normalize-els :op :all)))
+  ([params]    (-> params (els/update-px-all els/normalize-els :op :all))))
 
 (defn update-p-opts [params ii f & args]
   (let [p-opts-i (concat (take 2 ii) [1])]

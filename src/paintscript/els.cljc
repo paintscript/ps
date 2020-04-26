@@ -105,33 +105,35 @@
 
 (defn map-xys [f els]
   (->> els
-       (map (fn [[el-k & xys :as el]]
-              (let [el' (case el-k
-                          :A (-> el (update 3 f))
-                          (vec
-                           (cons el-k
-                                 (map f xys))))]
-                (-> el' (with-meta (meta el))))))))
+       (mapv (fn [[el-k & xys :as el]]
+               (let [el' (case el-k
+                           :A (-> el (update 3 f))
+                           (vec
+                            (cons el-k
+                                  (map f xys))))]
+                 (-> el' (with-meta (meta el))))))))
 
 (defn update-p-els [p f & args]
   (vec
    (concat (take 2 p)
            (apply f (drop 2 p) args))))
 
-(defn update-px [params [src-k px] f & args]
-  (case src-k
-    :defs   (apply update-in params [src-k px] f args)
-    :script (apply update-in params [src-k px] update-p-els f args)))
-
 (defn update-px-all [params f & args]
   (-> params
       (update :defs   (fn [dd] (u/map-vals #(apply f % args) dd)))
       (update :script (fn [s]  (mapv #(apply update-p-els % f args) s)))))
 
+(defn update-px [params [src-k px :as sel] f & args]
+  (if-not sel
+    (apply update-px-all params f args)
+    (case src-k
+      :defs   (apply update-in params [src-k px] f args)
+      :script (apply update-in params [src-k px] update-p-els f args))))
+
 ;; --- scale
 
-(defn scale-els [els ctr k]
-  (map-xys #(u/tl-point-towards % ctr k) els))
+(defn scale-els [els center factor]
+  (map-xys #(u/tl-point-towards % center factor) els))
 
 ;; --- translate
 
