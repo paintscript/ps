@@ -2,7 +2,8 @@
   (:require [clojure.test :refer [deftest testing is]]
             [xspace.core :as x :refer [x-> xx x:=]]
             [paintscript.els :as els]
-            [paintscript.core :as core]))
+            [paintscript.core :as core]
+            [paintscript.render-svg :as render-svg]))
 
 (def core-xspace-cfg
   {:fns
@@ -14,13 +15,14 @@
         (let [opts' (merge opts-base opts)]
           (is (= =>
                  (case op
-                   :path           (els/path opts' path)
-                   :arcs           (#'els/arcs arcs opts)
+                   :path           (core/path opts' path)
+                   :arcs           (#'render-svg/arcs arcs opts)
                    :mirror-xys     (#'els/mirror-xys width xys)
                    :normalize-els  (#'els/normalize-els path)
                    :reverse-el-xys (#'els/reverse-el-xys path)
                    :scale-els      (els/scale-els path center factor)
-                   :paint          (core/paint params)))))))}})
+                   ; :paint          (core/paint params)
+                   ))))))}})
 
 (def core-xspace
   [(xx "util"
@@ -76,8 +78,8 @@
 
                (x-> :path [[:M [0  0]] [:L [30 30]] [:z]
                            [:M [0 50]] [:L [30 80]] [:z]]
-                    :=>   '("M" 0  0 "L" 30 30 "M" 100  0 "L" 70 30 "z"
-                            "M" 0 50 "L" 30 80 "M" 100 50 "L" 70 80 "z")))
+                    :=>   '("M" 0  0 "L" 30 30 "z" "M" 100  0 "L" 70 30 "z"
+                            "M" 0 50 "L" 30 80 "z" "M" 100 50 "L" 70 80 "z")))
 
            (xx {:= {:opts {:mirror {:mode :merged}}}}
 
@@ -158,13 +160,14 @@
 
                     :=>   '("M" 11.792893218813452 11.792893218813452 "A" 10 5 0 0 1 23.207106781186546 23.207106781186546 "M" 88.20710678118655 11.792893218813452 "A" 10 5 0 0 0 76.79289321881345 23.207106781186546))))
 
-       (xx {:= {:op :paint}}
-
-           (x-> :params {:script [[:path {} [:M [0 0]]]]}
-                :=>     '[:g ([:g [:path {:d "M 0 0"}]])])
-
-           (x-> :params {:script [[:circle {:cx 10 :cy 10 :r 10}]]}
-                :=>     '[:g ([:circle {:cx 10 :cy 10 :r 10}])])))])
+       ; (xx {:= {:op :paint}}
+       ;
+       ;     (x-> :params {:script [[:path {} [:M [0 0]]]]}
+       ;          :=>     '[:g ([:g [:path {:d "M 0 0"}]])])
+       ;
+       ;     (x-> :params {:script [[:circle {:cx 10 :cy 10 :r 10}]]}
+       ;          :=>     '[:g ([:circle {:cx 10 :cy 10 :r 10}])]))
+       )])
 
 (deftest core-test
   (x/traverse-xspace core-xspace-cfg

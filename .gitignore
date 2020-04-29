@@ -4,3 +4,4 @@ node_modules/
 js/
 css/
 !*.json
+*.log

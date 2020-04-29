@@ -1,4 +1,4 @@
-(defproject paintscript "0.2.13"
+(defproject paintscript "0.2.14"
   :dependencies [[org.clojure/clojure "1.10.0"]
                  [org.clojure/clojurescript "1.10.520"]
                  [reagent "0.8.1"]

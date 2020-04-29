@@ -21,22 +21,6 @@
             el'' (with-meta el' (meta el))]
         (recur els-tail tgt' cp' (conj acc el''))))))
 
-(defn- with-abs-meta [xy1 xy2] (with-meta xy1 {:abs xy2}))
-(defn abs-meta [xy] (-> xy meta :abs))
-
-(defn attach-normalized-meta [els]
-  (let [els' (-> els normalize-els)]
-    (map (fn [[el-k & xys :as el] [el' & xys']]
-           (-> (case el-k
-                 :c (vec (cons el-k (map with-abs-meta xys xys')))
-                 :s (let [[  c2  tgt]  xys
-                          [_ c2' tgt'] xys']
-                      [el-k (with-abs-meta c2 c2') (with-abs-meta tgt tgt')])
-                 el)
-               (with-meta (meta el))))
-         els
-         els')))
-
 ;; -----------------------------------------------------------------------------
 ;; transform
 
@@ -87,22 +71,25 @@
                         (mirror-xys axis pos xys))))))))
 
 (defn mirror-els* [mode axis pos els]
-  (sequence
-   (comp
-    (partition-by #{[:z]})
-    (mapcat
-     (fn [els-part]
-       (if (= (list [:z]) els-part)
+  (let [els-parts (as-> (partition-by #{[:z]} els) coll
+                        (if (odd? (count coll))
+                          (-> coll (concat [nil]))
+                          coll)
+                        (->> coll
+                             (partition 2)
+                             (map #(apply concat %))))]
+    (sequence
+     (mapcat
+      (fn [els-part]
+        (concat
          els-part
-         (concat
-          els-part
-          (->> (case mode
-                 :merged   (->> els-part (reverse-els pos))
-                 :separate (->> els-part normalize-els))
-               (mirror-els axis pos)))))))
-   els))
+         (->> (case mode
+                :merged   (->> els-part (reverse-els pos))
+                :separate (->> els-part normalize-els))
+              (mirror-els axis pos)))))
+     els-parts)))
 
-;; --- traverse
+;; --- traverse (HOF)
 
 (defn map-xys [f els]
   (->> els
@@ -141,96 +128,81 @@
 (defn translate-els [els xyd]
   (map-xys (partial u/v+ xyd) els))
 
-;; -----------------------------------------------------------------------------
-;; convert
+;; --- meta
 
-(defn- arcs
-  [arc-xys {:as opts :keys [mode ctd?] :or {mode :concave}}]
-  (let [[head & tail]    arc-xys
-        paired-with-prev (map vector tail (drop-last arc-xys))
-        arc-middle       (str (case mode :concave "0,1" :convex "0,0") )]
-    (concat (when-not ctd?
-              [["M" head]])
-            (for [[[x  y  :as _xy]
-                   [xp yp :as _xy-prev]] paired-with-prev]
-              ["A" [(- x xp) (- y yp)] [0 arc-middle] [x y]]))))
+(defn- with-xy-abs-meta [xy1 xy2] (with-meta xy1 {:xy-abs xy2}))
+(defn xy-abs-meta [xy] (-> xy meta :xy-abs))
 
-(defn- attach-cp-meta [args eli]
-  (let [cp-cnt (dec (count args))]
-    (map-indexed (fn [xyi xy]
-                   (if (< xyi cp-cnt)
-                     (vary-meta xy merge
-                                {:i-tgt (if (and (= 2 cp-cnt)
-                                                 (= 0 xyi))
-                                          (dec eli)
-                                          eli)})
-                     xy))
-                 args)))
+(defn attach-xy-abs-meta [els]
+  (let [els' (-> els normalize-els)]
+    (map (fn [[el-k   & xys :as el]
+              [_el-k' & xys']]
+           (let [el' (case el-k
+                       :c (vec (cons el-k
+                                     (map with-xy-abs-meta xys xys')))
+                       :s (let [[  c2  tgt]  xys
+                                [_ c2' tgt'] xys']
+                            [el-k
+                             (with-xy-abs-meta c2 c2')
+                             (with-xy-abs-meta tgt tgt')])
+                       el)]
+             (-> el'
+                 (with-meta (meta el)))))
+         els
+         els')))
 
-(defn- parse-el [[el-k & args]]
-  (if (map? (first args))
-    [el-k (first args) 2 (rest args)]
-    [el-k nil 1 args]))
-
-(defn- el-->svg-seq [eli el]
-  (let [[el-k opts xyi0 args] (parse-el el)
-        args' (-> args (cond-> (el/has-cp? el-k)
-                               (attach-cp-meta eli)))
-        data [args' eli xyi0 el-k el]]
-    (case el-k
-      :arc  [data (arcs args opts)]
-      :arc* [data (arcs args (assoc opts :ctd? true))]
-      :M    [data (cons "M" args)]
-      :m    [data (cons "m" args)]
-      :L    [data (cons "L" args)]
-      :l    [data (cons "l" args)]
-
-      :V    [data (cons "V" args)]
-      :H    [data (cons "H" args)]
-      :v    [data (cons "v" args)]
-      :h    [data (cons "h" args)]
-
-      :A    (let [[r  p  tgt] args] [data (list "A" r  p   tgt)])
-      :S    (let [[   c2 tgt] args] [data (list "S"    c2  tgt)])
-      :s    (let [[   c2 tgt] args] [data (list "s"    c2  tgt)])
-      :C    (let [[c1 c2 tgt] args] [data (list "C" c1 c2  tgt)])
-      :c    (let [[c1 c2 tgt] args] [data (list "c" c1 c2  tgt)])
-      :C1   (let [[c1    tgt] args] [data (list "C" c1 tgt tgt)])
-      :c1   (let [[c1    tgt] args] [data (list "c" c1 tgt tgt)])
-      :Q    (let [[c     tgt] args] [data (list "Q" c      tgt)])
-      :q    (let [[c     tgt] args] [data (list "q" c      tgt)])
-      :T    (let [[c1    tgt] args] [data (list "T" c1 tgt tgt)])
-      :t    (let [[c1    tgt] args] [data (list "t" c1 tgt tgt)])
-      :z    [data (list "z")])))
-
-(defn attach-iii-meta [src-k x-k eli0 els]
+(defn- attach-ii-el-meta
+  [src-k x-k eli0 els]
   (->> els
        (map-indexed (fn [eli el]
-                      (with-meta el {:ii [src-k x-k (+ eli eli0)]})))
+                      (with-meta el {:ii-el [src-k x-k (+ eli0 eli)]})))
        vec))
 
-(defn attach-iii-meta* [script-pp]
+(defn attach-ii-el-meta* [script-pp]
   (->> script-pp
        (map-indexed (fn [pi p]
                       (vec
                        (concat (take 2 p)
                                (->> (drop 2 p)
-                                    (attach-iii-meta :script pi nav/eli0))))))
+                                    (attach-ii-el-meta :script pi nav/eli0))))))
        vec))
 
-(defn ref? [x]
-  (and (vector? x)
-       (= :ref (get x 0))))
+(defrecord El      [el-k opts ii-el i-arg0 args])
+(defrecord MainPnt [xy xy-abs ii-pnt])
+(defrecord CtrlPnt [xy xy-abs ii-pnt i-main])
 
-(defn resolve-els-ref [defs ref] (get defs (get ref 1)))
-(defn resolve-d-ref [defs ref] (get-in defs [:d (get ref 1)]))
+(defn args-->pnts
+  [{:as el :keys [el-k i-arg0 args]}
+   eli
+   {:as el-meta :keys [ii-el xy-abs]}]
+  (let [cp-cnt (dec (count args))]
+    (map-indexed (fn [i-xy xy]
+                   (let [ii-pnt (concat ii-el [(+ i-arg0 i-xy)])]
+                     (if (and (el/has-cp? el-k)
+                              (< i-xy cp-cnt))
+                       (let [i-main (if (and (= 2 cp-cnt)
+                                             (= 0 i-xy))
+                                      (dec eli)
+                                      eli)]
+                         (->CtrlPnt xy xy-abs ii-pnt i-main))
+                       (->MainPnt xy xy-abs ii-pnt))))
+                 args)))
 
-(defn resolve-els-refs [defs els]
+(defn el-pnts [el-recs]
+  (map-indexed (fn [eli el]
+                 [el (args-->pnts el eli (meta el))])
+               el-recs))
+
+(defn resolve-els-ref [defs ref] (get    defs (get ref 1)))
+(defn resolve-d-ref   [defs ref] (get-in defs [:d (get ref 1)]))
+
+(defn resolve-els-refs
+  [defs els]
   (->> els
        (mapcat (fn [el]
-                 (if (ref? el)
+                 (if (el/ref? el)
                    (->> (resolve-els-ref defs el)
-                        (attach-iii-meta :defs (get el 1) 0))
+                        (attach-ii-el-meta :defs (get el 1) 0))
                    [el])))))
 
 (defn get-path-segment [src-k-sel els eli]
@@ -242,42 +214,37 @@
        (list [:M (last el-prev)]))
      (list el))))
 
-(defn path
-  ([els]      (path nil nil  els))
-  ([opts els] (path nil opts els))
-  ([{:as params :keys [defs debug? coords?]}
-    {:as opts
-     :keys [close? width mirror]
-     {scale-ctr :center scale-factor :factor :as scale} :scale
-     translate :translate
-     {mirror-mode  :mode
-      mirror-pos   :pos
-      mirror-axis  :axis
-      :or {mirror-pos 100
-           mirror-axis  0}} :mirror}
-    els]
-   (let [els'
-         (-> els
-             (->> (resolve-els-refs defs))
-             (cond-> scale     (scale-els scale-ctr scale-factor)
-                     translate (translate-els translate)
+(defn el-vec-->el-rec
+  ([elv] (el-vec-->el-rec elv nil))
+  ([[el-k & [arg1 :as args] :as el-vec] ii-el]
+   (with-meta (if (map? arg1)
+                (->El el-k arg1 ii-el 2 (rest args))
+                (->El el-k nil  ii-el 1 args))
+     (meta el-vec))))
 
-                     (and mirror
-                          (not coords?))
-                     (->> (mirror-els* mirror-mode
-                                       mirror-axis
-                                       mirror-pos))))
+;; --- path opts
 
-         data-svg-tups
-         (for [[eli el] (map-indexed vector els')]
-           (el-->svg-seq eli el))
+(defn apply-path-opts
+  [{:as params :keys [defs debug? coords?]}
+   {:as opts
+    :keys [close? width mirror]
+    {scale-ctr    :center
+     scale-factor :factor :as scale} :scale
+    translate :translate
+    {mirror-mode  :mode
+     mirror-pos   :pos
+     mirror-axis  :axis
+     :or {mirror-pos 100
+          mirror-axis  0}} :mirror}
+   els]
+  (-> els
+      (->> (resolve-els-refs defs))
+      (cond-> scale     (scale-els scale-ctr scale-factor)
+              translate (translate-els translate)
+              close?    (concat [[:z]])
 
-         svg-seq
-         (-> data-svg-tups
-             (->> (map second))
-             (cond-> close? (concat ["Z"]))
-             flatten)]
-
-     (if debug?
-       [data-svg-tups svg-seq]
-       svg-seq))))
+              (and mirror
+                   (not coords?))
+              (->> (mirror-els* mirror-mode
+                                mirror-axis
+                                mirror-pos)))))
