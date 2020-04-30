@@ -3,6 +3,7 @@
             #?(:cljs [reagent.core :as r :refer [atom]])
             #?(:cljs [cljs.reader :refer [read-string]])
             [clojure.string :as str]
+            [clojure.set :as set]
             [clojure.walk :as w]
             [svg-hiccup-kit.core :refer [d d2]]
             [paintscript.util :as u]
@@ -87,22 +88,16 @@
          eli-sel
          xyi-sel :as sel] (:sel ui)]
     (case op-k
-      :set-xy     {:params (-> params (assoc-in sel arg))}
-      :set-sel-d  (let [{:keys [pth0 sel-eli-cp-ii]} (:snap ui)]
-                    {:params
-                     (-> params
-                         (assoc-in sel
-                                   (mapv + (get-in pth0 [eli-sel xyi-sel]) arg))
-                         (cond-> sel-eli-cp-ii
-                                 (as-> params'
-                                       (reduce
-                                        (fn [acc [eli cp-i]]
-                                          (-> acc
-                                              (assoc-in [src-k-sel pi-sel
-                                                         eli cp-i]
-                                                        (mapv + (get-in pth0 [eli cp-i]) arg))))
-                                        params'
-                                        sel-eli-cp-ii))))})
+      :set-sel-d  (let [{:keys [params0]} (:snap ui)]
+                    (let [params (or params0  ;; dnd
+                                     params)] ;; kb
+                      {:params
+                       (reduce (fn [acc' {:as sel-item :keys [ii-xy main?]}]
+                                 (-> acc'
+                                     (assoc-in ii-xy
+                                               (mapv + (get-in params ii-xy) arg))))
+                               params
+                               (:sel-set ui))}))
 
       :pth-append {:params (-> params (update :script ops/append-pth pi-sel))
                    :ui     (-> ui (merge {:sel nil :snap nil}))}
@@ -222,27 +217,33 @@
      (when-let [cp-i (some-> (get pth eli') (el/el->cp-i :init))] [[eli' cp-i]]))))
 
 #?(:cljs
- (defn drag-and-drop-fns [!scale !params !ui dispatch!]
-   (let [!snap  (r/cursor !ui [:snap])
-         !sel   (r/cursor !ui [:sel])
-         !sel-main? (r/cursor !ui [:sel-main?])
-         get-pth! #(let [[s p] @!sel]
-                    (get-in @!params [s p]))
-         get-el! #(let [[s p e] @!sel]
-                    (get-in @!params [s p e]))
-         get!      #(get-in @!params @!sel)
-         get-main! #(get-in @!params @!sel-main?)]
-     {:on-mouse-down #(let [{:keys [xy-svg sel sel-main?]} @!ui
+ (defn drag-and-drop-fns
+   "attached to SVG element"
+   [!scale !params !ui dispatch!]
+   (let [!snap    (r/cursor !ui [:snap])
+         !sel     (r/cursor !ui [:sel])
+         !sel-set (r/cursor !ui [:sel-set])]
+     {;; NOTE: invoked after canvas/report!
+      :on-mouse-down #(let [{:keys [xy-svg sel sel-set]} @!ui
                             xy  (xy-mouse %)
-                            scale @!scale]
+                            scale @!scale
+                            {:keys [main? shift?]} (meta sel)]
                         (if (= 4 (count sel))
                           ;; --- sel
-                          (swap! !snap merge
-                                 (let [pth (get-pth!)]
-                                   {:sel sel :pth0 pth :m0 xy
-                                    :sel-eli-cp-ii
-                                    (when sel-main?
-                                      (pth->cp-ii pth (nth sel 2)))}))
+                          (do
+                            (let [sel-set'
+                                  (into #{{:ii-xy sel :main? main?}}
+                                        (map (fn [eli-cpi]
+                                               {:ii-xy (concat (take 2 sel) eli-cpi)}))
+                                        (when main?
+                                          (pth->cp-ii (get-in @!params (take 2 sel))
+                                                      (nth sel 2))))]
+                              (if shift?
+                                (swap!  !sel-set set/union sel-set')
+                                (reset! !sel-set sel-set')))
+                            (swap! !snap merge
+                                   {:params0 @!params :m0 xy}))
+
                           ;; --- insert
                           (let [xy  (xy-mouse %)
                                 xy' (as-> (xy-mouse %) xy'
@@ -251,28 +252,28 @@
                                           (mapv u/round xy'))]
                             (dispatch! [:el-append [:L xy']]))))
       :on-mouse-move (fn [ev]
-                       (let [{:as snap :keys [pth0 m0]} @!snap
+                       (let [{:as snap :keys [params0 m0]} @!snap
                              scale @!scale]
-                         (when pth0
+                         (when params0
                            (let [m1  (xy-mouse ev)
                                  d   (mapv - m1 m0)
                                  d'  (mapv / d [scale scale])
                                  d'  (mapv u/round d')]
                              (dispatch! [:set-sel-d d'])))))
-      :on-mouse-up   #(let [{:keys [sel sel-prev pth0]} @!snap
-                            pth (get-pth!)]
+      :on-mouse-up   #(let [{:keys [sel sel-prev params0]} @!snap
+                            params @!params]
                         (reset! !snap {:sel-prev sel})
-                        (when (and sel sel-prev pth0
+                        (when (and sel sel-prev params0
                                    (= sel sel-prev)
-                                   (= pth0 pth))
+                                   (= params0 params))
                           (reset! !sel  nil)
                           (reset! !snap nil)))})))
 
 (defn keybind-fns [!params !ui dispatch!]
   (let [upd! #(swap! !params assoc-in (:sel @!ui) %)
         get! #(get-in @!params (:sel @!ui))]
-    {"left"      #(when-let [[x y] (get!)] (dispatch! [:set-xy [(- x 1) y]]))
-     "right"     #(when-let [[x y] (get!)] (dispatch! [:set-xy [(+ x 1) y]]))
-     "up"        #(when-let [[x y] (get!)] (dispatch! [:set-xy [x (- y 1)]]))
-     "down"      #(when-let [[x y] (get!)] (dispatch! [:set-xy [x (+ y 1)]]))
+    {"left"      #(dispatch! [:set-sel-d [-1 0]])
+     "right"     #(dispatch! [:set-sel-d [1 0]])
+     "up"        #(dispatch! [:set-sel-d [0 -1]])
+     "down"      #(dispatch! [:set-sel-d [0 1]])
      "backspace" #(when-let [[x y] (get!)] (dispatch! [:xy-del]))}))

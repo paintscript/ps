@@ -92,10 +92,10 @@
                [zc/button :label "del" :on-click #(dispatch! [:xy-del])]])]]))]]))
 
 (defn canvas [cfg-init params-init]
-  (r/with-let [ui-init      {:sel nil :sel-main? nil :snap nil}
+  (r/with-let [ui-init      {:sel nil :sel-set nil :snap nil}
                !ui          (r/atom ui-init)
                !sel         (r/cursor !ui [:sel])
-               !sel-main?   (r/cursor !ui [:sel-main?])
+               !sel-set     (r/cursor !ui [:sel-set])
                !config      (r/atom cfg-init)
                !scale       (r/cursor !config [:canvas :scale])
                !params      (r/atom params-init)
@@ -105,10 +105,10 @@
                !tab         (r/atom :script)
                !shell       (r/atom "")
 
-               report!      (fn [iii i-main]
-                              (reset! !sel iii)
-                              (let [[s p e] iii]
-                                (reset! !sel-main? (not i-main))))
+               report!      (fn [iii i-main shift?]
+                              (reset! !sel (-> iii
+                                               (with-meta {:main?  (not i-main)
+                                                           :shift? shift?}))))
                dispatch!    (partial ctrl/dispatch! !params !state-log !ui)
                dnd-fns      (ctrl/drag-and-drop-fns !scale !params !ui dispatch!)
                kb-fns       (ctrl/keybind-fns              !params !ui dispatch!)

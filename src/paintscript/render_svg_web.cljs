@@ -31,6 +31,7 @@
             sel-pv?   (and (= pi-sel  pi)
                            (= eli-sel eli))
             sel-pnt?  (= ii-pnt sel)]
+
         (when (or (not cp?) sel-pv?)
           [:g
            (when cp?
@@ -43,14 +44,16 @@
                [:g
                 [:line.ctrl-target.under {:x1 x :y1 y :x2 x2 :y2 y2}]
                 [:line.ctrl-target.over  {:x1 x :y1 y :x2 x2 :y2 y2}]]))
+
            [:g {:class         (str (if i-main "control" "target")
                                (when hover? " hover")
                                (when (= sel ii-pnt) " selected"))
                 :style         {:cursor      "pointer"
                                 :text-select "none"}
-                :on-mouse-down #(report!       ii-pnt i-main)
+                :on-mouse-down #(report!       ii-pnt i-main (-> % .-shiftKey))
                 :on-mouse-over #(report-hover! ii-pnt true)
                 :on-mouse-out  #(report-hover! ii-pnt false)}
+
             (if cp?
               [:g.cp
                [:rect {:x      (-> x (- (/ coord-size 2)))
