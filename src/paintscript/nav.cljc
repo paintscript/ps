@@ -1,7 +1,7 @@
 (ns paintscript.nav)
 
-(def eli0 2)
-(def xyi0 1)
+(def eli0 2) ;; offset for first el in path
+(def xyi0 1) ;; offset for first pnt in el
 
 (defn params> [params & {:keys [src-k pi ii iii] :or {src-k :script}}]
   (cond pi  (get-in params [src-k pi])
@@ -24,7 +24,7 @@
   (cond xyi (nth xys (- xyi xyi0))
         xyn (nth xys xyn)))
 
-;; rels
+;; --- rels
 
 (defn els-prev [els & {:keys [eli eln]}]
   (get els (cond eli (-> eli (- eli0) (- 1))

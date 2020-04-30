@@ -115,7 +115,19 @@
 ;; ------------------------------------
 ;; extraction
 
-;; --- curve->target-cp
+;; --- el->cp-i
+
+(defn el->cp-i [el pos-k]
+  (case (first el)
+    :C (case pos-k :init 1   :term 2)
+    :c (case pos-k :init 1   :term 2)
+    :Q (case pos-k :init nil :term 1)
+    :q (case pos-k :init nil :term 1)
+    :S (case pos-k :init nil :term 1)
+    :s (case pos-k :init nil :term 1)
+    nil))
+
+;; --- curve->tgt-cp
 
 (defmulti ^:private curve->tgt-cp dispatch-on-k)
 (defmethod curve->tgt-cp :C [[_ _ c2 tgt :as el] _ _] [el tgt c2])

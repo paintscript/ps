@@ -13,7 +13,12 @@
 
 (def params-init
   {:defs {},
- :script [[:path {} [:M [5 5]] [:Q [13 53] [55 46]] [:t [10 10]]]]})
+   :script
+   [[:path
+     {}
+     [:M [14 18]]
+     [:C [45 17] [27 48] [59 42]]
+     [:C [50 63] [84 73] [59 74]]]]})
 
 (defn- xy-mouse [ev]
   [(-> ev .-clientX)
@@ -82,7 +87,22 @@
          eli-sel
          xyi-sel :as sel] (:sel ui)]
     (case op-k
-      :set-xy     {:params (-> params (assoc-in (:sel ui) arg))}
+      :set-xy     {:params (-> params (assoc-in sel arg))}
+      :set-sel-d  (let [{:keys [pth0 sel-eli-cp-ii]} (:snap ui)]
+                    {:params
+                     (-> params
+                         (assoc-in sel
+                                   (mapv + (get-in pth0 [eli-sel xyi-sel]) arg))
+                         (cond-> sel-eli-cp-ii
+                                 (as-> params'
+                                       (reduce
+                                        (fn [acc [eli cp-i]]
+                                          (-> acc
+                                              (assoc-in [src-k-sel pi-sel
+                                                         eli cp-i]
+                                                        (mapv + (get-in pth0 [eli cp-i]) arg))))
+                                        params'
+                                        sel-eli-cp-ii))))})
 
       :pth-append {:params (-> params (update :script ops/append-pth pi-sel))
                    :ui     (-> ui (merge {:sel nil :snap nil}))}
@@ -195,18 +215,35 @@
             (reset! !params params)
             (reset! !ui ui)))))))
 
+(defn- pth->cp-ii [pth eli]
+  (let [eli' (inc eli)]
+    (concat
+     (when-let [cp-i (some-> (get pth eli)  (el/el->cp-i :term))] [[eli  cp-i]])
+     (when-let [cp-i (some-> (get pth eli') (el/el->cp-i :init))] [[eli' cp-i]]))))
+
 #?(:cljs
  (defn drag-and-drop-fns [!scale !params !ui dispatch!]
    (let [!snap  (r/cursor !ui [:snap])
          !sel   (r/cursor !ui [:sel])
-         get!   #(get-in @!params @!sel)]
-     {:on-mouse-down #(let [{:keys [xy-svg sel]} @!ui
+         !sel-main? (r/cursor !ui [:sel-main?])
+         get-pth! #(let [[s p] @!sel]
+                    (get-in @!params [s p]))
+         get-el! #(let [[s p e] @!sel]
+                    (get-in @!params [s p e]))
+         get!      #(get-in @!params @!sel)
+         get-main! #(get-in @!params @!sel-main?)]
+     {:on-mouse-down #(let [{:keys [xy-svg sel sel-main?]} @!ui
                             xy  (xy-mouse %)
                             scale @!scale]
                         (if (= 4 (count sel))
+                          ;; --- sel
                           (swap! !snap merge
-                                 {:sel sel :xy0 (get!) :m0 xy})
-                          ;; insert
+                                 (let [pth (get-pth!)]
+                                   {:sel sel :pth0 pth :m0 xy
+                                    :sel-eli-cp-ii
+                                    (when sel-main?
+                                      (pth->cp-ii pth (nth sel 2)))}))
+                          ;; --- insert
                           (let [xy  (xy-mouse %)
                                 xy' (as-> (xy-mouse %) xy'
                                           (mapv - xy' xy-svg)
@@ -214,27 +251,26 @@
                                           (mapv u/round xy'))]
                             (dispatch! [:el-append [:L xy']]))))
       :on-mouse-move (fn [ev]
-                       (let [{:as snap :keys [xy0 m0]} @!snap
+                       (let [{:as snap :keys [pth0 m0]} @!snap
                              scale @!scale]
-                         (when xy0
+                         (when pth0
                            (let [m1  (xy-mouse ev)
                                  d   (mapv - m1 m0)
                                  d'  (mapv / d [scale scale])
-                                 d'  (mapv u/round d')
-                                 xy' (mapv + xy0 d')]
-                             (dispatch! [:set-xy xy'])))))
-      :on-mouse-up   #(let [{:keys [sel sel-prev xy0]} @!snap
-                            xy (get!)]
+                                 d'  (mapv u/round d')]
+                             (dispatch! [:set-sel-d d'])))))
+      :on-mouse-up   #(let [{:keys [sel sel-prev pth0]} @!snap
+                            pth (get-pth!)]
                         (reset! !snap {:sel-prev sel})
-                        (when (and sel sel-prev xy0
+                        (when (and sel sel-prev pth0
                                    (= sel sel-prev)
-                                   (= xy0 xy))
+                                   (= pth0 pth))
                           (reset! !sel  nil)
                           (reset! !snap nil)))})))
 
 (defn keybind-fns [!params !ui dispatch!]
   (let [upd! #(swap! !params assoc-in (:sel @!ui) %)
-        get! #(get-in @!params @!ui)]
+        get! #(get-in @!params (:sel @!ui))]
     {"left"      #(when-let [[x y] (get!)] (dispatch! [:set-xy [(- x 1) y]]))
      "right"     #(when-let [[x y] (get!)] (dispatch! [:set-xy [(+ x 1) y]]))
      "up"        #(when-let [[x y] (get!)] (dispatch! [:set-xy [x (- y 1)]]))

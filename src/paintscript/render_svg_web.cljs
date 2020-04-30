@@ -48,7 +48,7 @@
                                (when (= sel ii-pnt) " selected"))
                 :style         {:cursor      "pointer"
                                 :text-select "none"}
-                :on-mouse-down #(report!       ii-pnt)
+                :on-mouse-down #(report!       ii-pnt i-main)
                 :on-mouse-over #(report-hover! ii-pnt true)
                 :on-mouse-out  #(report-hover! ii-pnt false)}
             (if cp?
