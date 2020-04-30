@@ -92,7 +92,9 @@
                [zc/button :label "del" :on-click #(dispatch! [:xy-del])]])]]))]]))
 
 (defn canvas [cfg-init params-init]
-  (r/with-let [ui-init      {:sel nil :sel-set nil :snap nil}
+  (r/with-let [ui-init      {:sel nil :sel-set nil :snap nil
+                             :snap-to-grid? true
+                             :insert-mode? false}
                !ui          (r/atom ui-init)
                !sel         (r/cursor !ui [:sel])
                !sel-set     (r/cursor !ui [:sel-set])

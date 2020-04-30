@@ -78,6 +78,9 @@
         "script"      (let [sel-path (map read-string args)]
                         [:sel (cons :script sel-path)])
         "svg"         [:svg-path (str/join " " args)]
+        "snap"        [:toggle-snap]
+        ("i"
+         "insert")    [:toggle-insert]
 
         ;; else:
         (println (str "command not found: " cmd-line))))))
@@ -157,10 +160,11 @@
       :def        (let [[pk] args
                         {:keys [defs]} params]
                     (if-let [els (get defs pk)]
-                      ;; select
+                      ;; --- select
                       (let [eli (-> els count (- 1) (max 0))]
                         {:ui (-> ui (merge {:sel [:defs pk eli]}))})
-                      ;; create
+
+                      ;; --- create
                       {:params (-> params (#(-> %
                                                 (assoc-in [:defs pk] [])
                                                 (update :script conj [:path {} [:ref pk]]))))
@@ -179,7 +183,10 @@
                                    (assoc :snap nil)))}
 
       :set-p-opts (let [[k v] arg]
-                    {:params (-> params (ops/update-p-opts sel assoc k v))}))))
+                    {:params (-> params (ops/update-p-opts sel assoc k v))})
+
+      :toggle-snap   {:ui (-> ui (update :snap-to-grid? not))}
+      :toggle-insert {:ui (-> ui (update :insert-mode? not))})))
 
 (defn dispatch! [!params !state-log !ui [op-k arg :as op]]
   (case op-k
@@ -224,11 +231,12 @@
          !sel     (r/cursor !ui [:sel])
          !sel-set (r/cursor !ui [:sel-set])]
      {;; NOTE: invoked after canvas/report!
-      :on-mouse-down #(let [{:keys [xy-svg sel sel-set]} @!ui
+      :on-mouse-down #(let [{:keys [xy-svg sel sel-set insert-mode?]} @!ui
                             xy  (xy-mouse %)
                             scale @!scale
                             {:keys [main? shift?]} (meta sel)]
-                        (if (= 4 (count sel))
+                        (cond
+                          (= 4 (count sel))
                           ;; --- sel
                           (do
                             (let [sel-set'
@@ -244,6 +252,7 @@
                             (swap! !snap merge
                                    {:params0 @!params :m0 xy}))
 
+                          insert-mode?
                           ;; --- insert
                           (let [xy  (xy-mouse %)
                                 xy' (as-> (xy-mouse %) xy'
@@ -252,13 +261,16 @@
                                           (mapv u/round xy'))]
                             (dispatch! [:el-append [:L xy']]))))
       :on-mouse-move (fn [ev]
-                       (let [{:as snap :keys [params0 m0]} @!snap
+                       (let [{:keys [snap-to-grid?]
+                              {:as snapshot :keys [params0 m0]} :snap} @!ui
                              scale @!scale]
                          (when params0
                            (let [m1  (xy-mouse ev)
                                  d   (mapv - m1 m0)
                                  d'  (mapv / d [scale scale])
-                                 d'  (mapv u/round d')]
+                                 d'  (if snap-to-grid?
+                                       (mapv u/round d')
+                                       d')]
                              (dispatch! [:set-sel-d d'])))))
       :on-mouse-up   #(let [{:keys [sel sel-prev params0]} @!snap
                             params @!params]
