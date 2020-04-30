@@ -7,14 +7,16 @@
 ;; -----------------------------------------------------------------------------
 ;; classes
 
-(def has-cp?   #{:S :s
-                 :C :c :C1 :c1
-                 :Q :q})
-(def relative? #{:c :s :l :m :q :t :v :h})
-(def absolute? #{:C :S :L :M :z})
-(def short?    #{:S :C1 :T :arc :V :H})
+(def has-cp?   #{      :c :q,          :s     :c1
+                       :C :Q,          :S     :C1})
+(def relative? #{:m :l :c :q,    :v :h :s :t, :c1})
+(def absolute? #{:M :L :C :Q :z, :V :H :S :T, :C1, :arc})
+(def full?     #{:m :l :c :q
+                 :M :L :C :Q :z})
+(def short?    #{                :v :h :s :t, :c1
+                                 :V :H :S :T, :C1, :arc})
 
-(def el?       (set/union has-cp? relative? absolute? short?))
+(def el?       (set/union relative? absolute?))
 
 (defn ref? [x]
   (and (vector? x)
@@ -39,9 +41,8 @@
     [[:C c1 c2 tgt] tgt c2]))
 
 (defmethod rel->abs :s [[_k & pnts :as elv] tgt-prev cp-prev]
-  (let [[c2 tgt] (map #(u/v+ % tgt-prev) pnts)
-        c1 (flip-c2 cp-prev tgt-prev)]
-    [[:C c1 c2 tgt] tgt c2]))
+  (let [[c2 tgt] (map #(u/v+ % tgt-prev) pnts)]
+    [[:S c2 tgt] tgt c2]))
 
 (defmethod rel->abs :q [[_k & pnts :as elv] tgt-prev _cp-prev]
   (let [[c1 tgt :as pnts'] (map #(u/v+ % tgt-prev) pnts)]
@@ -94,7 +95,7 @@
 (defmethod short->full :T [[_k & pnts :as elv] tgt-prev cp-prev]
   (let [[tgt] pnts
         c1 (flip-c2 cp-prev tgt-prev)]
-    [[:T c1 tgt] tgt c1]))
+    [[:Q c1 tgt] tgt c1]))
 
 (defmethod short->full :V [[_k & pnts :as elv] tgt-prev cp-prev]
   (let [[y] pnts
@@ -123,7 +124,7 @@
 
 ;; --- el->tgt
 
-(defn el->tgt  [el] (-> el rest last)) ;; NOTE: rest for singleton-vecs like [:z]
+(defn el->tgt  [el] (-> el rest last)) ;; NOTE: rest is for singleton-vecs like [:z]
 (defn el->tgt' [el tgt-prev _]
   (case (first el)
     (:Z :z) [el tgt-prev]
@@ -132,9 +133,13 @@
 ;; ------------------------------------
 ;; dispatch
 
-(defn normalization-steps [el-k op]
-  (or (seq (concat (when (and (#{:all :absolute} op) (relative? el-k)) [rel->abs])
-                   (when (and (#{:all :full} op)     (short?    el-k)) [short->full])))
+(defn normalization-steps
+  ;; NOTE: short->full is only implemented on abs els, necessitating :rel->abs
+  [el-k op]
+  (or (some-> (concat
+               (when (and (#{:all :rel->abs :short->full} op) (relative? el-k)) [rel->abs])
+               (when (and (#{:all :short->full} op) (short? el-k)) [short->full]))
+              seq)
       (when (has-cp? el-k) [curve->tgt-cp])
       [el->tgt']))
 

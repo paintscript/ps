@@ -165,12 +165,12 @@
   ([params    c n] (-> params (els/update-px-all els/scale-els c n))))
 
 (defn absolute
-  ([params ii] (-> params (els/update-px ii  els/normalize-els :op :absolute)))
-  ([params]    (-> params (els/update-px-all els/normalize-els :op :absolute))))
+  ([params ii] (-> params (els/update-px ii  els/normalize-els :op :rel->abs)))
+  ([params]    (-> params (els/update-px-all els/normalize-els :op :rel->abs))))
 
 (defn full
-  ([params ii] (-> params (els/update-px ii  els/normalize-els :op :full)))
-  ([params]    (-> params (els/update-px-all els/normalize-els :op :full))))
+  ([params ii] (-> params (els/update-px ii  els/normalize-els :op :short->full)))
+  ([params]    (-> params (els/update-px-all els/normalize-els :op :short->full))))
 
 (defn normalize
   ([params ii] (-> params (els/update-px ii  els/normalize-els :op :all)))

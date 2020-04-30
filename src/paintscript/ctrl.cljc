@@ -12,8 +12,8 @@
             [paintscript.conv :as conv]))
 
 (def params-init
-  {:defs {}
-   :script []})
+  {:defs {},
+ :script [[:path {} [:M [5 5]] [:Q [13 53] [55 46]] [:t [10 10]]]]})
 
 (defn- xy-mouse [ev]
   [(-> ev .-clientX)
@@ -35,8 +35,8 @@
 
         ;; --- mutate
         ("abs"
-         "absolute")  [:absolute]
-        "full"        [:full]
+         "absolute")  [:rel->abs]
+        "full"        [:short->full]
         ("norm"
          "normalize") [:normalize]
         "round"       (let [[?n] args]
@@ -115,8 +115,8 @@
                                                  (- xyi-sel nav/xyi0)))
                    :ui     (-> ui (merge {:sel nil :snap nil}))}
 
-      :absolute   {:params (-> params (ops/absolute  sel))}
-      :full       {:params (-> params (ops/full      sel))}
+      :rel->abs   {:params (-> params (ops/absolute  sel))}
+      :short->full {:params (-> params (ops/full      sel))}
       :normalize  {:params (-> params (ops/normalize sel))}
       :scale      (let [[ctr k] args]
                     {:params (-> params (ops/scale sel ctr k))})

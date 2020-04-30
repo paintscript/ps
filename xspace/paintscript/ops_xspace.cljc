@@ -21,7 +21,7 @@
                  :append-pth (apply ops/append-pth script ii)
                  :del-pth    (apply ops/del-pth    script ii)
                  :tl-pth     (ops/translate params ii tl)
-                 :absolute   (ops/absolute params)
+                 :rel->abs   (ops/absolute params)
                  :transform-el (ops/transform-el els i to))))))}})
 
 (def ops-xspace
@@ -103,7 +103,7 @@
                      [[:path {} [:M [6 7]]]
                       [:path {} [:M [10 10]]]]}))
 
-   (xx {:= {:op :absolute}}
+   (xx {:= {:op :rel->abs}}
 
        (x-> :params {:script
                      [[:path {} [:M [5 5]] [:l [5 5]]]

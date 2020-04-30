@@ -7,6 +7,7 @@
 ;; normalize
 
 (defn normalize-els [els & {:keys [op] :or {op :all}}]
+  {:pre [(when op (-> op #{:all :rel->abs :short->full}))]}
   (loop [[[el-k :as el] & els-tail] els
          tgt-prev nil
          cp-prev  nil
@@ -14,7 +15,7 @@
     (if-not el-k
       acc
       (let [[el' tgt' cp']
-            (reduce (fn [[el tgt-prev cp-prev] f-step]
+            (reduce (fn [[el _tgt-prev _cp-prev] f-step]
                       (f-step el tgt-prev cp-prev))
                     [el tgt-prev cp-prev]
                     (el/normalization-steps el-k op))
@@ -70,23 +71,29 @@
                   (cons el-k
                         (mirror-xys axis pos xys))))))))
 
-(defn mirror-els* [mode axis pos els]
-  (let [els-parts (as-> (partition-by #{[:z]} els) coll
-                        (if (odd? (count coll))
-                          (-> coll (concat [nil]))
-                          coll)
-                        (->> coll
-                             (partition 2)
-                             (map #(apply concat %))))]
+(defn add-mirrored
+  "subdivide els in chunks terminated w/ :z and append a mirrored version after each"
+  [mode axis pos els]
+  (let [els-parts
+        (as-> (partition-by #{[:z]} els) coll
+              (if (odd? (count coll))
+                (-> coll (concat [nil]))
+                coll)
+              (partition 2 coll))]
     (sequence
-     (mapcat
-      (fn [els-part]
-        (concat
-         els-part
-         (->> (case mode
-                :merged   (->> els-part (reverse-els pos))
-                :separate (->> els-part normalize-els))
-              (mirror-els axis pos)))))
+     (comp (map #(apply concat %))
+           (mapcat
+            (fn [els-part]
+              (concat
+               els-part
+               (->> (case mode
+                      :merged   (->> els-part (reverse-els pos))
+                      :separate (->  els-part
+                                     (normalize-els
+                                      ;; - :rel->abs for math
+                                      ;; - :short->full for uniform data (esp. :arc)
+                                      :op :all)))
+                    (mirror-els axis pos))))))
      els-parts)))
 
 ;; --- traverse (HOF)
@@ -134,22 +141,26 @@
 (defn xy-abs-meta [xy] (-> xy meta :xy-abs))
 
 (defn attach-xy-abs-meta [els]
-  (let [els' (-> els normalize-els)]
-    (map (fn [[el-k   & xys :as el]
-              [_el-k' & xys']]
-           (let [el' (case el-k
-                       :c (vec (cons el-k
-                                     (map with-xy-abs-meta xys xys')))
-                       :s (let [[  c2  tgt]  xys
-                                [_ c2' tgt'] xys']
-                            [el-k
-                             (with-xy-abs-meta c2 c2')
-                             (with-xy-abs-meta tgt tgt')])
-                       el)]
-             (-> el'
-                 (with-meta (meta el)))))
-         els
-         els')))
+  (map (fn [[el-k   & xys :as el]
+            [_el-k' & xys' :as el-norm]]
+         (let [el' (case el-k
+                     :c (vec (cons el-k
+                                   (map with-xy-abs-meta xys xys')))
+                     :s (let [[c2  tgt]  xys
+                              [c2' tgt'] xys']
+                          [el-k
+                           (with-xy-abs-meta c2 c2')
+                           (with-xy-abs-meta tgt tgt')])
+                     :t (let [[tgt]  xys
+                              [tgt'] xys']
+                          [el-k
+                           (with-xy-abs-meta tgt tgt')])
+                     el)]
+           (-> el'
+               (with-meta (meta el)))))
+       els
+       (-> els (normalize-els
+                :op :rel->abs))))
 
 (defn- attach-ii-el-meta
   [src-k x-k eli0 els]
@@ -174,7 +185,7 @@
 (defn args-->pnts
   [{:as el :keys [el-k i-arg0 args]}
    eli
-   {:as el-meta :keys [ii-el xy-abs]}]
+   {:as el-meta :keys [ii-el]}]
   (let [cp-cnt (dec (count args))]
     (map-indexed (fn [i-xy xy]
                    (let [ii-pnt (concat ii-el [(+ i-arg0 i-xy)])]
@@ -184,8 +195,8 @@
                                              (= 0 i-xy))
                                       (dec eli)
                                       eli)]
-                         (->CtrlPnt xy xy-abs ii-pnt i-main))
-                       (->MainPnt xy xy-abs ii-pnt))))
+                         (->CtrlPnt xy (-> xy meta :xy-abs) ii-pnt i-main))
+                       (->MainPnt xy (-> xy meta :xy-abs) ii-pnt))))
                  args)))
 
 (defn el-pnts [el-recs]
@@ -245,6 +256,6 @@
 
               (and mirror
                    (not coords?))
-              (->> (mirror-els* mirror-mode
-                                mirror-axis
-                                mirror-pos)))))
+              (->> (add-mirrored mirror-mode
+                                 mirror-axis
+                                 mirror-pos)))))

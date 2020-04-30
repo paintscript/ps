@@ -96,12 +96,11 @@
        (if (or translate scale-factor)
          [tf {:tl translate :sc [scale-factor]} pth]
          pth))
-     (let [[out-seq
-            pnts-seq] (render/path svg-renderer (-> s-opts (assoc :debug? true)) p-opts els)]
-       [:g
-        (if debug?
-          (plot-coords p-opts pi els pnts-seq)
-          [:path (merge attrs {:d (apply d out-seq)})])]))))
+     (if debug?
+       (let [pnts-seq (render/path-pnts s-opts p-opts els)]
+         (plot-coords p-opts pi els pnts-seq))
+       (let [out-seq (render/path svg-renderer s-opts p-opts els)]
+         [:path (merge attrs {:d (apply d out-seq)})])))))
 
 (defn paint
   [{:as script-opts :keys [variant defs styles attrs script data?]}]
@@ -191,10 +190,12 @@
             (when (and sel (or (and (= :defs src-k-sel)
                                     (get sel 2))
                                (> eli-sel nav/eli0)))
-              (let [els'    (->> (nav/params> params :src-k src-k-sel :pi pi-sel)
-                                 (take (inc eli-sel))
-                                 (drop (if (= :defs src-k-sel) 0 nav/eli0))
-                                 els/normalize-els)
+              (let [els'    (-> (nav/params> params :src-k src-k-sel :pi pi-sel)
+                                ;; to render an individual el it needs to be full & abs:
+                                (els/update-p-els els/normalize-els)
+                                (->> (take (inc eli-sel))
+                                     (drop (if (= :defs src-k-sel) 0 nav/eli0)))
+                                vec)
                     els-seg (els/get-path-segment src-k-sel els' eli-sel)]
                 [:g.sel
                  [path-builder nil {} pi-sel els-seg]]))]
