@@ -92,9 +92,11 @@
                [zc/button :label "del" :on-click #(dispatch! [:xy-del])]])]]))]]))
 
 (defn canvas [cfg-init params-init]
-  (r/with-let [ui-init      {:sel nil :sel-set nil :snap nil
+  (r/with-let [ui-init      {:sel           nil
+                             :sel-set       nil
+                             :snap          nil
                              :snap-to-grid? true
-                             :insert-mode? false}
+                             :insert-mode?  true}
                !ui          (r/atom ui-init)
                !sel         (r/cursor !ui [:sel])
                !sel-set     (r/cursor !ui [:sel-set])
@@ -123,12 +125,12 @@
                _ (doseq [[k f] kb-fns]
                    (key/bind! k (keyword k) f))
 
-               set-ref! #(when (and % (not (:xy-svg @!ui)))
-                           (let [rect   (-> % (.getBoundingClientRect))
-                                 xy-svg [(-> rect .-left)
-                                         (-> rect .-top)]]
-                             (println :xy-svg xy-svg)
-                             (swap! !ui assoc :xy-svg xy-svg)))
+               set-ref! #(when (and % (not (:xy-svg! @!ui)))
+                           (swap! !ui assoc :xy-svg!
+                                  (fn []
+                                    (let [rect (-> % (.getBoundingClientRect))]
+                                      [(-> rect .-left)
+                                       (-> rect .-top)]))))
 
                canvas-paint' (with-meta #'render-svg-web/canvas-paint
                                {:component-did-catch

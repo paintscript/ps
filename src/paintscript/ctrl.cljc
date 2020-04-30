@@ -15,11 +15,7 @@
 (def params-init
   {:defs {},
    :script
-   [[:path
-     {}
-     [:M [14 18]]
-     [:C [45 17] [27 48] [59 42]]
-     [:C [50 63] [84 73] [59 74]]]]})
+   []})
 
 (defn- xy-mouse [ev]
   [(-> ev .-clientX)
@@ -108,12 +104,17 @@
       :pth-del    {:params (-> params (update :script ops/del-pth pi-sel))
                    :ui     (-> ui (merge {:sel nil :snap nil}))}
 
-      :el-append  (let [[src-k px eli] (or sel (ops/tail-iii params))
-                        eli'           (or (some-> eli inc) 0)]
-                    (-> (if-let [el arg]
-                          {:params (-> params (update-in [src-k px] ops/append-el eli el))}
-                          {:params (-> params (update-in [src-k px] ops/append-el eli))})
-                        (assoc :ui (-> ui (merge {:sel [src-k px eli']})))))
+      :el-append  (let [el             arg
+                        [src-k px eli] (or sel
+                                           (ops/tail-iii params))
+                        eli'           (or (some-> eli inc) 0)
+                        sel'           [src-k px eli']
+                        init?          (not (seq (:script params)))]
+                    {:params (cond
+                               init? (-> params (update :script conj [:path {} el]))
+                               el    (-> params (update-in [src-k px] ops/append-el eli el))
+                               :else (-> params (update-in [src-k px] ops/append-el eli)))
+                     :ui     (-> ui (assoc :sel sel'))})
 
       :el-del     (let [eli' (max (dec eli-sel) 0)]
                     {:params (-> params (update-in [src-k-sel pi-sel] ops/del-el eli-sel))
@@ -231,7 +232,7 @@
          !sel     (r/cursor !ui [:sel])
          !sel-set (r/cursor !ui [:sel-set])]
      {;; NOTE: invoked after canvas/report!
-      :on-mouse-down #(let [{:keys [xy-svg sel sel-set insert-mode?]} @!ui
+      :on-mouse-down #(let [{:keys [xy-svg! sel sel-set insert-mode?]} @!ui
                             xy  (xy-mouse %)
                             scale @!scale
                             {:keys [main? shift?]} (meta sel)]
@@ -256,10 +257,13 @@
                           ;; --- insert
                           (let [xy  (xy-mouse %)
                                 xy' (as-> (xy-mouse %) xy'
-                                          (mapv - xy' xy-svg)
+                                          (mapv - xy' (xy-svg!))
                                           (mapv / xy' [scale scale])
-                                          (mapv u/round xy'))]
-                            (dispatch! [:el-append [:L xy']]))))
+                                          (mapv u/round xy'))
+                                el-k (if (seq (:script @!params))
+                                       :L
+                                       :M)]
+                            (dispatch! [:el-append [el-k xy']]))))
       :on-mouse-move (fn [ev]
                        (let [{:keys [snap-to-grid?]
                               {:as snapshot :keys [params0 m0]} :snap} @!ui

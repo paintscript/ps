@@ -44,9 +44,9 @@
   (-> (get els (-> eli (- 1))) get-tgt))
 
 (defn tail-iii [{:as params :keys [script]}]
-  (let [pi  (-> script count (- 1))
-        eli (-> script (get pi) count (- 1))
-        xyi (-> script (get-in [pi eli]) count (- 1))]
+  (let [pi  (-> script count (- 1) (max 0))
+        eli (-> script (get pi) count (- 1) (max 1))
+        xyi (some-> script (get-in [pi eli]) count (- 1))]
     [:script pi eli xyi]))
 
 ;; --- points
@@ -103,7 +103,7 @@
       :M [:L (offset-pnt (last pnts) [10 10])]
       :L [:L (offset-pnt (last pnts) [10 10])]
       :C (let [tgt (offset-pnt (last pnts) [10 10])]
-           [:C (last pnts) tgt tgt])
+           [:S (last pnts) tgt])
       :S (let [tgt (offset-pnt (last pnts) [10 10])]
            [:S tgt tgt]))))
 
