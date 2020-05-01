@@ -123,7 +123,8 @@
                                                          [:scale :translate])))
                                 (update :attrs merge
                                         (dissoc styles-attrs
-                                                :scale :translate)))]]
+                                                :scale :translate))
+                                (dissoc :disabled?))]]
 
      (with-meta
        (case obj-k
@@ -131,7 +132,9 @@
 
          (-> obj
              (update 1 #(-> %
-                            (dissoc :class-k :variant-k)
+                            (dissoc :class-k
+                                    :variant-k
+                                    :disabled?)
                             (merge attrs
                                    styles-attrs)))))
        {:key pi}))])

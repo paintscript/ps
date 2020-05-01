@@ -26,7 +26,7 @@
    {:dims [100 100] :scale 4}
 
    :styles
-   {"outline" {:stroke "black" :fill "none"}
+   {"outline" {:stroke "black" :fill "none" :stroke-width 1}
     "solid"   {:stroke "none"  :fill "black"}}})
 
 (def init-config-gallery

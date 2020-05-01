@@ -10,29 +10,27 @@
             [paintscript.els :as els]
             [paintscript.nav :as nav]
             [paintscript.ctrl :as ctrl]
+            [paintscript.s-log :as s-log]
 
             [paintscript.render-svg-web :as render-svg-web]))
 
 (defn- pprint' [edn] (with-out-str *out* (pprint edn)))
 
 (defn- canvas-sidebar
-  [!config !params !shell !state-log !tab
+  [!config !params !ui !shell !s-log !tab
    config params params' sel
    dispatch!]
   (let [tab @!tab
-        [src-k-sel pi-sel eli-sel xyi-sel] sel]
-    [:div.sidebar.script {:class (when sel "with-status")}
+        [src-k-sel pi-sel eli-sel xyi-sel] sel
+        status? (and sel (= :script tab))]
+    [:div.sidebar.script {:class (when status? "with-status")}
      [:div.controls
-      (for [tab-k [:script :config]]
+      (for [tab-k [:script :config :log]]
         ^{:key tab-k}
         [zc/button
          :label    (name tab-k)
          :active?  (= tab-k tab)
-         :on-click #(reset! !tab tab-k)])
-      [zc/button
-       :label     "undo"
-       :disabled? (= 1 (count @!state-log))
-       :on-click  #(dispatch! [:undo])]]
+         :on-click #(reset! !tab tab-k)])]
 
      (case tab
        :script [:textarea
@@ -44,7 +42,17 @@
                 {:value     (str/trim (pprint' config))
                  :on-focus  #(key/disable!)
                  :on-blur   #(key/enable!)
-                 :on-change #(reset! !config (-> % .-target .-value read-string))}])
+                 :on-change #(reset! !config (-> % .-target .-value read-string))}]
+       :log    (let [[i-active i-s-items] (s-log/items !s-log)]
+                 [:ol.log
+                  (for [[i {:as log-item :keys [n op]}] i-s-items]
+                    ^{:key n}
+                    [:li.log-item
+                     {:class         (when (= i-active i) "active")
+                      :on-click      #(s-log/op !s-log !params !ui :activate i)
+                      :on-mouse-over #(s-log/op !s-log !params !ui :preview  i)
+                      :on-mouse-out  #(s-log/op !s-log !params !ui :activate i-active)}
+                     n ". " (pr-str op)])]))
 
      [:div.shell
       [:textarea
@@ -62,7 +70,7 @@
                            (dispatch! [:cmd (str/trim cmd)])
                            (-> e (.preventDefault)))))}]]
      [:div.status
-      (when sel
+      (when status?
         (let [[_ opts :as p] (nav/params> params' :src-k src-k-sel :pi  pi-sel)
               [k & xys]      (nav/p>      p       :eli   eli-sel)]
           [:div.selection-stack
@@ -103,8 +111,7 @@
                !config      (r/atom cfg-init)
                !scale       (r/cursor !config [:canvas :scale])
                !params      (r/atom params-init)
-               !state-log   (r/atom (list {:params params-init
-                                           :ui     ui-init}))
+               !s-log       (r/atom nil)
                !hov         (r/atom nil)
                !tab         (r/atom :script)
                !shell       (r/atom "")
@@ -113,7 +120,7 @@
                               (reset! !sel (-> iii
                                                (with-meta {:main?  (not i-main)
                                                            :shift? shift?}))))
-               dispatch!    (partial ctrl/dispatch! !params !state-log !ui)
+               dispatch!    (partial ctrl/dispatch! !params !s-log !ui)
                dnd-fns      (ctrl/drag-and-drop-fns !scale !params !ui dispatch!)
                kb-fns       (ctrl/keybind-fns              !params !ui dispatch!)
                report-hov!  (fn [iii val]
@@ -130,7 +137,8 @@
                                   (fn []
                                     (let [rect (-> % (.getBoundingClientRect))]
                                       [(-> rect .-left)
-                                       (-> rect .-top)]))))
+                                       (-> rect .-top)])))
+                           (reset! !s-log (s-log/init @!params @!ui)))
 
                canvas-paint' (with-meta #'render-svg-web/canvas-paint
                                {:component-did-catch
@@ -153,7 +161,7 @@
       [:div.canvas
        [:div.sidebar.script-phantom]
        [canvas-sidebar
-        !config !params !shell !state-log !tab
+        !config !params !ui !shell !s-log !tab
         config params params' sel dispatch!]
 
        [canvas-paint'

@@ -10,12 +10,12 @@
             [paintscript.el :as el]
             [paintscript.ops :as ops]
             [paintscript.nav :as nav]
-            [paintscript.conv :as conv]))
+            [paintscript.conv :as conv]
+            [paintscript.s-log :as s-log]))
 
 (def params-init
-  {:defs {},
-   :script
-   []})
+  {:defs {}
+   :script []})
 
 (defn- xy-mouse [ev]
   [(-> ev .-clientX)
@@ -34,6 +34,9 @@
         [:el-append el])
       (case cmd-str
         "undo"        [:undo]
+        "log-clear"   [:log-clear]
+        "log-clear<"  [:log-clear<]
+        "log-clear>"  [:log-clear>]
 
         ;; --- mutate
         ("abs"
@@ -189,15 +192,15 @@
       :toggle-snap   {:ui (-> ui (update :snap-to-grid? not))}
       :toggle-insert {:ui (-> ui (update :insert-mode? not))})))
 
-(defn dispatch! [!params !state-log !ui [op-k arg :as op]]
+(defn dispatch! [!params !s-log !ui [op-k arg :as op]]
   (case op-k
     :cmd  (when-let [op-vec (parse-cmd-line arg)]
-            (dispatch! !params !state-log !ui op-vec))
+            (dispatch! !params !s-log !ui op-vec))
 
-    :undo (let [_ (swap! !state-log rest)
-                state-prev (first @!state-log)]
-            (reset! !params (:params state-prev))
-            (reset! !ui     (:ui     state-prev)))
+    :undo       (s-log/op !s-log !params !ui :undo)
+    :log-clear  (s-log/op !s-log !params !ui :clear)
+    :log-clear< (s-log/op !s-log !params !ui :clear<)
+    :log-clear> (s-log/op !s-log !params !ui :clear>)
 
     ;; else:
     (let [params @!params
@@ -208,9 +211,11 @@
           (do
             (when params' (reset! !params params'))
             (when ui'     (reset! !ui ui'))
-            (when-not (= :set-xy op-k)
-              (swap! !state-log conj {:params (or params' params)
-                                      :ui     (or ui'     ui)}))))
+            (s-log/add !s-log {:op     op
+                               :params (or params' params)
+                               :ui     (-> (or ui'     ui)
+                                           (cond-> (= :set-sel-d op-k)
+                                                   (assoc :snap nil)))})))
         (catch #?(:cljs :default :clj Exception) e
           (do
             (println :handle-op-exception e)

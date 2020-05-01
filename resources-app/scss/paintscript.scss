@@ -59,7 +59,30 @@ div.script.sidebar {
     height: var(--script-height);
   }
 
+  > ol.log {
+    height: var(--script-height);
+    overflow: scroll;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    li {
+      line-height: var(--controls-height);
+      padding: 0 var(--pd);
+      &:hover {
+        cursor: pointer;
+        background-color: hsl(60,90%,95%);
+      }
+      &.active {
+        background-color: hsl(240,90%,95%);
+      }
+    }
+  }
+
   &.with-status > textarea {
+    height: var(--script-height-short);
+  }
+
+  &.with-status > ol.log {
     height: var(--script-height-short);
   }
 

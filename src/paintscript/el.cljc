@@ -182,3 +182,6 @@
 
 (defmethod el->reversed :Q [[_ c tgt] tgt-prev]
   [[:Q c tgt-prev] tgt])
+
+(defmethod el->reversed :z [_ tgt-prev]
+  [[:z] tgt-prev])
