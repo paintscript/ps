@@ -120,7 +120,7 @@
                               (reset! !sel (-> iii
                                                (with-meta {:main?  (not i-main)
                                                            :shift? shift?}))))
-               dispatch!    (partial ctrl/dispatch! !params !s-log !ui)
+               dispatch!    (partial ctrl/dispatch! !config !params !s-log !ui)
                dnd-fns      (ctrl/drag-and-drop-fns !scale !params !ui dispatch!)
                kb-fns       (ctrl/keybind-fns              !params !ui dispatch!)
                report-hov!  (fn [iii val]
@@ -132,13 +132,18 @@
                _ (doseq [[k f] kb-fns]
                    (key/bind! k (keyword k) f))
 
-               set-ref! #(when (and % (not (:xy-svg! @!ui)))
-                           (swap! !ui assoc :xy-svg!
-                                  (fn []
-                                    (let [rect (-> % (.getBoundingClientRect))]
-                                      [(-> rect .-left)
-                                       (-> rect .-top)])))
-                           (reset! !s-log (s-log/init @!params @!ui)))
+               set-ref! (fn [svg-dom]
+                          (when (and svg-dom (not (:xy-svg! @!ui)))
+                            (swap! !ui
+                                   (fn [ui]
+                                     (-> ui
+                                         (assoc :svg-dom svg-dom
+                                                :xy-svg!
+                                                (fn []
+                                                  (let [rect (-> svg-dom (.getBoundingClientRect))]
+                                                    [(-> rect .-left)
+                                                     (-> rect .-top)]))))))
+                            (reset! !s-log (s-log/init @!params @!ui))))
 
                canvas-paint' (with-meta #'render-svg-web/canvas-paint
                                {:component-did-catch

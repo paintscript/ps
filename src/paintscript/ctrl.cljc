@@ -9,6 +9,7 @@
             [paintscript.util :as u]
             [paintscript.el :as el]
             [paintscript.ops :as ops]
+            #?(:cljs [paintscript.ops-svg :as ops-svg])
             [paintscript.nav :as nav]
             [paintscript.conv :as conv]
             [paintscript.s-log :as s-log]))
@@ -80,6 +81,8 @@
         "snap"        [:toggle-snap]
         ("i"
          "insert")    [:toggle-insert]
+        ".png"        [:dl-png]
+        ".svg"        [:dl-svg]
 
         ;; else:
         (println (str "command not found: " cmd-line))))))
@@ -192,15 +195,32 @@
       :toggle-snap   {:ui (-> ui (update :snap-to-grid? not))}
       :toggle-insert {:ui (-> ui (update :insert-mode? not))})))
 
-(defn dispatch! [!params !s-log !ui [op-k arg :as op]]
+(defn- get-wh [params]
+  (let [{:keys [dims scale]} (:canvas params)]
+    (mapv (partial * scale) dims)))
+
+(defn dispatch! [!config !params !s-log !ui
+                 [op-k arg :as op]]
   (case op-k
-    :cmd  (when-let [op-vec (parse-cmd-line arg)]
-            (dispatch! !params !s-log !ui op-vec))
+    :cmd (when-let [op-vec (parse-cmd-line arg)]
+           (dispatch! !config !params !s-log !ui op-vec))
 
     :undo       (s-log/op !s-log !params !ui :undo)
     :log-clear  (s-log/op !s-log !params !ui :clear)
     :log-clear< (s-log/op !s-log !params !ui :clear<)
     :log-clear> (s-log/op !s-log !params !ui :clear>)
+
+    (:dl-png
+     :dl-svg)   #?(:cljs ((case op-k :dl-png
+                            ops-svg/to-png!
+                            ops-svg/to-svg)
+                          (get-wh (merge @!config
+                                         @!params))
+                          (:svg-dom @!ui)
+                          #(-> % (ops-svg/download!
+                                  (str "paintscript"
+                                       (case op-k :dl-png ".png" ".svg")))))
+                   :clj nil)
 
     ;; else:
     (let [params @!params

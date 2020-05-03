@@ -1,5 +1,6 @@
  (ns paintscript.app
   (:require [reagent.core :as r]
+            [reagent.dom :as rd]
             [cljs.reader :refer [read-string]]
             [urlkit.core :as uk]
             [urlkit.sync :as sync]
@@ -82,7 +83,7 @@
            [canvas init-config init-params]))])))
 
 (defn- mount-root! []
-  (r/render [#'app]
+  (rd/render [#'app]
             (.getElementById js/document "app")))
 
 (defonce _init
