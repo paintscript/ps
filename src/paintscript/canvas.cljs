@@ -12,7 +12,7 @@
             [paintscript.ctrl :as ctrl]
             [paintscript.s-log :as s-log]
 
-            [paintscript.render-svg-web :as render-svg-web]))
+            [paintscript.render-svg :as render-svg]))
 
 (defn- pprint' [edn] (with-out-str *out* (pprint edn)))
 
@@ -145,7 +145,7 @@
                                                      (-> rect .-top)]))))))
                             (reset! !s-log (s-log/init @!params @!ui))))
 
-               canvas-paint' (with-meta #'render-svg-web/canvas-paint
+               canvas-paint' (with-meta #'render-svg/canvas-paint
                                {:component-did-catch
                                 (fn [e info]
                                   (println :paint-error e)

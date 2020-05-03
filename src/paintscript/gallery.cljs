@@ -8,7 +8,7 @@
 
             [paintscript.util :as u]
             [paintscript.canvas :as canvas]
-            [paintscript.render-svg-web :as render-svg-web]))
+            [paintscript.render-svg :as render-svg]))
 
 (defn- pprint' [edn] (with-out-str *out* (pprint edn)))
 
@@ -92,4 +92,4 @@
               ^{:key (hash painting)}
               [:div.gallery-item
                {:on-click #(app-dispatch! [:set-canvas [c params]])}
-               [render-svg-web/canvas-paint c' (merge c' params)]])]])]])))
+               [render-svg/canvas-paint c' (merge c' params)]])]])]])))

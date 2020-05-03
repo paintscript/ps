@@ -2,7 +2,11 @@
   (:require [paintscript.els :as els]))
 
 (defprotocol Renderer
-  (els->out [_ els]))
+  (els->out [_ els])
+  (group    [_ els])
+  (tf       [_ opts el])
+  (tf*      [_ opts els])
+  (paint    [_ ps]))
 
 (defn path-pnts [params opts els]
   (let [els'    (els/apply-path-opts params opts els)
