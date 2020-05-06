@@ -58,7 +58,8 @@
     (group    [_ els] (vec (cons :g els)))
     (tf       [_ opts el]  (shk/tf opts el))
     (tf*      [_ opts els] (apply shk/tf* opts els))
-    (paint    [_ ps] (paint ps))))
+    (paint    [_ ps] (paint ps))
+    (paint*   [_ ps-out _ _] ps-out)))
 
 (declare plot-coords)
 
@@ -76,7 +77,8 @@
 
            pth [:path (merge attrs {:d d'})]]
        (if (or translate scale-factor)
-         [tf {:tl translate :sc [scale-factor]} pth]
+         [tf {:tl translate
+              :sc [scale-factor]} pth]
          pth))
      (if debug?
        (let [pnts-seq (render/path-pnts s-opts p-opts els)]

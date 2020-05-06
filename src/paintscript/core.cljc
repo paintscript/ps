@@ -5,6 +5,6 @@
 
 (def path (partial render/path render-svg/svg-renderer))
 
-#?(:cljs (def path-builder render-svg/path-builder))
-#?(:cljs (def paint        render-svg/paint))
-#?(:cljs (def plot-coords  render-svg/plot-coords))
+(def path-builder #?(:cljs render-svg/path-builder))
+(def paint        #?(:cljs render-svg/paint))
+(def plot-coords  #?(:cljs render-svg/plot-coords))

@@ -1,6 +1,7 @@
  (ns paintscript.core-xspace
   (:require [clojure.test :refer [deftest testing is]]
             [xspace.core :as x :refer [x-> xx x:=]]
+            [paintscript.util :as util]
             [paintscript.els :as els]
             [paintscript.core :as core]
             [paintscript.render-svg :as render-svg]))
@@ -10,19 +11,26 @@
    {:xx (fn [_ctx {:keys [title]} f] (testing title (f)))
     :x->
     (fn [ctx c args]
-      (let [{:keys [op params opts-base opts arcs xys center factor width path =>]}
+      (let [{:keys [op params opts-base opts arcs xys center factor width path
+                    pnt ctr rad alpha dist
+                    =>]}
             (merge (-> ctx :args) args)]
         (let [opts' (merge opts-base opts)]
           (is (= =>
                  (case op
+                   :angle-between    (#'util/angle-between   ctr pnt)
+                   :angle-delta      (#'util/angle-delta     ctr pnt)
+                   :rad-between      (#'util/rad-between     ctr pnt)
+                   :point-at-angle   (#'util/point-at-angle  ctr rad alpha)
+                   :tl-point-around  (#'util/tl-point-around ctr pnt alpha)
+                   :tl-point-along   (#'util/tl-point-along  pnt alpha dist)
+
                    :path           (core/path opts' path)
                    :arcs           (#'render-svg/arcs arcs opts)
                    :mirror-xys     (#'els/mirror-xys width xys)
                    :normalize-els  (#'els/normalize-els path)
                    :reverse-el-xys (#'els/reverse-el-xys path)
-                   :scale-els      (els/scale-els path center factor)
-                   ; :paint          (core/paint params)
-                   ))))))}})
+                   :scale-els      (els/scale-els path center factor)))))))}})
 
 (def core-xspace
   [(xx "util"
@@ -55,7 +63,76 @@
                 :=>   '([:L 1]))
 
            (x-> :path '([:M 1] [:C 2 3 4] )
-                :=>   '([:C 3 2 1]))))
+                :=>   '([:C 3 2 1])))
+
+       (xx "tl-point-towards"
+
+           (xx {:= {:op  :angle-delta
+                    :ctr [50 50]}}
+
+               (x-> :pnt [60 40] :=> -45.0) ;; ↘
+               (x-> :pnt [40 40] :=>  45.0) ;; ↗
+               (x-> :pnt [40 60] :=> -45.0) ;; ↘
+               (x-> :pnt [60 60] :=>  45.0) ;; ↗
+
+               (x-> :pnt [70 50] :=>   0.0) ;; →
+               (x-> :pnt [50 30] :=> -90)   ;; ↓
+               (x-> :pnt [30 50] :=>   0.0) ;; →
+               (x-> :pnt [50 70] :=>  90))  ;; ↑
+           )
+
+       (xx {:= {:op  :angle-between
+                :ctr [50 50]}}
+
+           (x-> :pnt [60 40] :=>  45.0)  ;; ↗
+           (x-> :pnt [40 40] :=> 135.0)  ;; ↖
+           (x-> :pnt [40 60] :=> 225.0)  ;; ↙
+           (x-> :pnt [60 60] :=> -45.0)  ;; ↘
+
+           (x-> :pnt [70 50] :=>     0)  ;; →
+           (x-> :pnt [50 30] :=>    90)  ;; ↑
+           (x-> :pnt [30 50] :=>   180)  ;; ←
+           (x-> :pnt [50 70] :=>   270)) ;; ↓
+
+       (xx {:= {:op :tl-point-along
+                :pnt [50 50]
+                :dist 20}}
+
+           (x-> :alpha 0   :=> [70.0 50.0])  ;; →
+           (x-> :alpha 90  :=> [50.0 70.0])  ;; ↓
+           (x-> :alpha 180 :=> [30.0 50.0])  ;; ←
+           (x-> :alpha -90 :=> [50.0 30.0])) ;; ↑
+
+       (let [p Math/PI]
+         (xx {:= {:op  :rad-between
+                  :ctr [50 50]}}
+
+             (x-> :pnt [60 40] :=>  (* p (/ 1 4)))
+             (x-> :pnt [40 40] :=>  (* p (/ 3 4)))
+             (x-> :pnt [40 60] :=>  (* p (/ 5 4)))
+             (x-> :pnt [60 60] :=>  (- (* p (/ 1 4))))
+
+             (x-> :pnt [70 50] :=> 0.0)
+             (x-> :pnt [50 30] :=> (* p (/ 1 2)))
+             (x-> :pnt [30 50] :=>    p)
+             (x-> :pnt [50 70] :=> (* p (/ 6 4)))))
+
+       (xx {:= {:op :point-at-angle
+                :ctr [50 50]
+                :rad 20}}
+
+           (x-> :alpha 0   :=> [70.0 50.0])
+           (x-> :alpha 90  :=> [50.0 30.0])
+           (x-> :alpha 180 :=> [30.0 50.0])
+           (x-> :alpha -90 :=> [50.0 70.0]))
+
+       (xx {:= {:op :tl-point-around
+                :ctr [50 50]
+                :pnt [70 50]}}
+
+           (x-> :alpha  90 :=> [50.0 30.0])
+           (x-> :alpha 180 :=> [30.0 50.0])
+           (x-> :alpha -90 :=> [50.0 70.0])))
 
    (xx {:= {:op :path}}
 

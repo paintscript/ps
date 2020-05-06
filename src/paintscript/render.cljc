@@ -6,7 +6,8 @@
   (group    [_ els])
   (tf       [_ opts el])
   (tf*      [_ opts els])
-  (paint    [_ ps]))
+  (paint    [_ ps])
+  (paint*   [_ ps-out container-size el-size]))
 
 (defn path-pnts [params opts els]
   (let [els'    (els/apply-path-opts params opts els)

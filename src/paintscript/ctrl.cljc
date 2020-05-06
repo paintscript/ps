@@ -15,8 +15,8 @@
             [paintscript.s-log :as s-log]))
 
 (def params-init
-  {:defs {}
-   :script []})
+  {:defs {}, :script [[:path {:rotate {:degree 45 :center [50 50]}}
+                       [:M [15 50]] [:L [85 50]]]]})
 
 (defn- xy-mouse [ev]
   [(-> ev .-clientX)
@@ -50,10 +50,20 @@
         ("tl"
          "translate") (let [xy (read-xy-str args)]
                         [:translate xy])
+        ("rt"
+         "rotate")    (let [[a cx cy] args
+                            alpha  (read-string a)
+                            center (if (and cx cy)
+                                     (read-xy-str [cx cy])
+                                     [50 50])]
+                        [:rotate alpha center])
         ("sc"
-         "scale")     (let [ctr (read-xy-str (take 2 args))
-                            n   (read-string (last args))]
-                        [:scale ctr n])
+         "scale")     (let [[n cx cy] args
+                            n      (read-string n)
+                            center (if (and cx cy)
+                                     (read-xy-str [cx cy])
+                                     [50 50])]
+                        [:scale center n])
         "mirror"      (let [[axis pos] args]
                         [:mirror (some-> axis read-string) (some-> pos read-string)])
 
@@ -160,6 +170,9 @@
                              s))))})
 
       :translate  {:params (-> params (ops/translate sel arg))}
+
+      :rotate     (let [[alpha center] args]
+                    {:params (-> params (ops/rotate sel center alpha))})
 
       :clear      {:params (-> params (merge params-init))
                    :ui     (-> ui (merge {:sel nil :snap nil}))}

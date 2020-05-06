@@ -160,6 +160,10 @@
   ([params ii n] (-> params (els/update-px ii  els/translate-els n)))
   ([params    n] (-> params (els/update-px-all els/translate-els n))))
 
+(defn rotate
+  ([params ii c a] (-> params (els/update-px ii  els/rotate-els c a)))
+  ([params    c a] (-> params (els/update-px-all els/rotate-els c a))))
+
 (defn scale
   ([params ii c n] (-> params (els/update-px ii  els/scale-els c n)))
   ([params    c n] (-> params (els/update-px-all els/scale-els c n))))

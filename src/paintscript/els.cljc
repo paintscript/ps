@@ -135,6 +135,11 @@
 (defn translate-els [els xyd]
   (map-xys (partial u/v+ xyd) els))
 
+;; --- rotate
+
+(defn rotate-els [els ctr alpha]
+  (map-xys #(u/tl-point-around ctr % alpha) els))
+
 ;; --- meta
 
 (defn- with-xy-abs-meta [xy1 xy2] (with-meta xy1 {:xy-abs xy2}))
@@ -241,6 +246,8 @@
     :keys [close? width mirror]
     {scale-ctr    :center
      scale-factor :factor :as scale} :scale
+    {rot-ctr :center
+     rot-deg :degree :as rotate} :rotate
     translate :translate
     {mirror-mode  :mode
      mirror-pos   :pos
@@ -252,6 +259,7 @@
       (->> (resolve-els-refs defs))
       (cond-> scale     (scale-els scale-ctr scale-factor)
               translate (translate-els translate)
+              rotate    (rotate-els rot-ctr rot-deg)
               close?    (concat [[:z]])
 
               (and mirror
