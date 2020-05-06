@@ -102,7 +102,8 @@
   (->> els
        (mapv (fn [[el-k & xys :as el]]
                (let [el' (case el-k
-                           :A (-> el (update 3 f))
+                           :A      (-> el (update 3 f))
+                           :circle (-> el (update-in [1 :center] f))
                            (vec
                             (cons el-k
                                   (map f xys))))]

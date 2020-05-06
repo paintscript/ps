@@ -22,9 +22,17 @@
                    [xp yp :as _xy-prev]] paired-with-prev]
               ["A" [(- x xp) (- y yp)] [0 arc-middle] [x y]]))))
 
+(defn- circle-path [{:keys [r]
+                     [cx cy] :center}]
+  (list "M" [cx cy] "m" [(- r) 0]
+        "a" [r r] [0 1 0] [(* 2 r) 0]
+        "a" [r r] [0 1 0] [(- (* 2 r)) 0]))
+
 (defn- el->out
   [{:as el :keys [el-k opts args]}]
   (case el-k
+    :circle (circle-path opts)
+
     :arc  (arcs args opts)
     :arc* (arcs args (assoc opts :ctd? true))
     :M    (cons "M" args)

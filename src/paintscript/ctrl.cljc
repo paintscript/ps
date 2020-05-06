@@ -15,8 +15,12 @@
             [paintscript.s-log :as s-log]))
 
 (def params-init
-  {:defs {}, :script [[:path {:rotate {:degree 45 :center [50 50]}}
-                       [:M [15 50]] [:L [85 50]]]]})
+  {:defs {},
+   :script
+   [[:path
+     {:class-k "solid"
+      :translate [10 10]}
+     [:circle {:center [50 50] :r 10}]]]})
 
 (defn- xy-mouse [ev]
   [(-> ev .-clientX)
