@@ -241,10 +241,24 @@
 
 ;; --- path opts
 
+(declare apply-path-opts)
+
+(defn- apply-repeat [els params opts]
+  (let [opts' (-> opts
+                  (dissoc :repeat)
+                  (merge (:repeat opts)))]
+    (apply concat
+           (reduce (fn [[els-prev :as acc] _]
+                     (let [els' (->> els-prev
+                                     (apply-path-opts params opts'))]
+                       (conj acc els')))
+                   (list els)
+                   (range 0 (get-in opts [:repeat :times]))))))
+
 (defn apply-path-opts
   [{:as params :keys [defs debug? coords?]}
    {:as opts
-    :keys [close? width mirror]
+    :keys [close? width mirror repeat]
     {scale-ctr    :center
      scale-factor :factor :as scale} :scale
     {rot-ctr :center
@@ -262,6 +276,8 @@
               translate (translate-els translate)
               rotate    (rotate-els rot-ctr rot-deg)
               close?    (concat [[:z]])
+              (and repeat
+                   (not debug?)) (apply-repeat params opts)
 
               (and mirror
                    (not coords?))

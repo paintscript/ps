@@ -86,7 +86,7 @@
            pth [:path (merge attrs {:d d'})]]
        (if (or translate scale-factor)
          [tf {:tl translate
-              :sc [scale-factor]} pth]
+              :sc (some-> scale-factor vector)} pth]
          pth))
      (if debug?
        (let [pnts-seq (render/path-pnts s-opts p-opts els)]

@@ -14,13 +14,19 @@
             [paintscript.conv :as conv]
             [paintscript.s-log :as s-log]))
 
+(def params-clear {:defs {} :script []})
+
 (def params-init
   {:defs {},
    :script
    [[:path
-     {:class-k "solid"
-      :translate [10 10]}
-     [:circle {:center [50 50] :r 10}]]]})
+     {:class-k "solid", :repeat {:translate [30 0], :times 2}}
+     [:circle {:center [20 50], :r 5}]]
+    [:path
+     {:class-k "solid",
+      :repeat {:rotate {:degree 60, :center [50 50]}, :times 6}}
+     [:M [50 8]]
+     [:L [39 15] [61 15]]]]})
 
 (defn- xy-mouse [ev]
   [(-> ev .-clientX)
@@ -178,7 +184,7 @@
       :rotate     (let [[alpha center] args]
                     {:params (-> params (ops/rotate sel center alpha))})
 
-      :clear      {:params (-> params (merge params-init))
+      :clear      {:params (-> params (merge params-clear))
                    :ui     (-> ui (merge {:sel nil :snap nil}))}
 
       :def        (let [[pk] args
