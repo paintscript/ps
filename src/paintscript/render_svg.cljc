@@ -94,10 +94,56 @@
        (let [out-seq (render/path svg-renderer s-opts p-opts els)]
          [:path (merge attrs {:d (apply d out-seq)})])))))
 
+(defn- scale->tl [canvas-dims {:keys [factor center]}]
+  (let [ratio      (mapv / center canvas-dims)
+        dims-delta (mapv #(-> % (* (- factor 1))) canvas-dims)
+        tl         (mapv #(-> %1 (* %2) -) dims-delta ratio)]
+    tl))
+
+(defn- margin-side [margin side-k]
+  (get margin (case side-k
+                :left  (case (count margin)
+                         2 1
+                         4 3)
+                :right 1)))
+
+(defn- layout-builder [{:as script-opts :keys [defs]}
+                       obj-opts' els]
+  [:g (->> els
+           (reduce (fn [[out offset] el]
+                     (assert (el/ref? el))
+                     (let [{:as painting, {:keys [dims]} :canvas}
+                           (els/resolve-p-ref defs el)
+
+                           {:keys [margin translate]
+                            {sc-ctr :center
+                             sc-fct :factor :as scale} :scale}
+                           (els/get-opts el)
+
+                           out+
+                           ^{:key (hash [offset el])}
+                           [tf {:tl (-> [offset 0]
+                                        (cond->  margin    (update 0 + (margin-side margin :left)))
+                                        (cond->> translate (mapv + translate))
+                                        (cond->> scale     (mapv + (scale->tl (get-in painting [:canvas :dims]) scale))))
+                                :sc (when scale
+                                      [sc-fct])}
+                            (paint (merge script-opts painting))]
+
+                           offset+ (-> (first dims)
+                                       (cond-> translate (+ (first translate))
+                                               scale     (* sc-fct)
+                                               margin    (+ (margin-side margin :left)
+                                                            (margin-side margin :right))))]
+                       [(conj out out+)
+                        (+ offset offset+)]))
+                   [nil 0])
+           first)])
+
 (defn paint
   [{:as script-opts :keys [variant defs styles attrs script data?]}]
   [:g
-   (for [[pi [obj-k {:as p-opts :keys [disabled? variant-k class-k]} & els :as obj]]
+   (for [[pi [obj-k {:as obj-opts :keys [disabled? variant-k class-k]} & els :as obj]]
          (map-indexed vector script)
          :when (and (not disabled?)
                     (or (not variant)
@@ -107,7 +153,7 @@
                               (get styles class-k
                                    (get styles "outline"))
                               (get styles "outline"))
-               p-opts'      (-> p-opts
+               obj-opts'    (-> obj-opts
                                 (->> (merge (select-keys styles-attrs
                                                          [:scale :translate])))
                                 (update :attrs merge
@@ -117,7 +163,8 @@
 
      (with-meta
        (case obj-k
-         :path (path-builder script-opts p-opts' pi els)
+         :path   (path-builder   script-opts obj-opts' pi els)
+         :layout (layout-builder script-opts obj-opts' els)
 
          (-> obj
              (update 1 #(-> %

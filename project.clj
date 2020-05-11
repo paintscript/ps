@@ -1,4 +1,4 @@
-(defproject paintscript "0.2.25"
+(defproject paintscript "0.2.26"
   :dependencies [[org.clojure/clojure "1.10.0"]
                  [org.clojure/clojurescript "1.10.520"]
                  [reagent "0.8.1"]
@@ -7,7 +7,7 @@
                  [z-com "0.8.22"]
                  [keybind "2.2.0"]
                  [urlkit "0.3.3"]
-                 [urlkit-util "0.1.2"]]
+                 [urlkit-util "0.3.3"]]
 
   :source-paths ["src/"]
   :plugins      [[lein-cljsbuild "1.1.7"]

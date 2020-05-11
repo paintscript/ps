@@ -210,8 +210,13 @@
                  [el (args-->pnts el eli (meta el))])
                el-recs))
 
+(defn get-opts [el]
+  (let [v (get el 1)]
+    (when (map? v) v)))
+
 (defn resolve-els-ref [defs ref] (get    defs (get ref 1)))
 (defn resolve-d-ref   [defs ref] (get-in defs [:d (get ref 1)]))
+(defn resolve-p-ref   [defs ref] (get-in defs [:paintings (last ref)]))
 
 (defn resolve-els-refs
   [defs els]

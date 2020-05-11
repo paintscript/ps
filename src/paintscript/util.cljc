@@ -119,7 +119,7 @@
    [(* radius (cos' (- alpha)))
     (* radius (sin' (- alpha)))])
   ([center radius alpha]
-   (mapv + center (point-at-angle radius alpha))))
+   (mapv #(round1 (+ %1 %2)) center (point-at-angle radius alpha))))
 
 (defn tl-point-around [ctr pnt alphad]
   (let [alpha0 (angle-between ctr pnt)

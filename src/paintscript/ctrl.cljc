@@ -17,16 +17,21 @@
 (def params-clear {:defs {} :script []})
 
 (def params-init
-  {:defs {},
+  {:canvas {:dims [200 100]}
+   :defs {:paintings
+          {"reps"
+           {:canvas {:dims [100 100]}
+            :script
+            [[:path
+              {:class-k "solid", :repeat {:translate [30 0], :times 2}}
+              [:circle {:center [20 50], :r 5}]]
+             [:path
+              {:class-k "solid",
+               :repeat {:rotate {:degree 60, :center [50 50]}, :times 6}}
+              [:M [50 8]]
+              [:L [39 15] [61 15]]]]}}},
    :script
-   [[:path
-     {:class-k "solid", :repeat {:translate [30 0], :times 2}}
-     [:circle {:center [20 50], :r 5}]]
-    [:path
-     {:class-k "solid",
-      :repeat {:rotate {:degree 60, :center [50 50]}, :times 6}}
-     [:M [50 8]]
-     [:L [39 15] [61 15]]]]})
+   [[:layout {} [:ref {:scale {:factor 1.1 :center [50 50]} :margin [0 5]} "reps"] [:ref "reps"]]]})
 
 (defn- xy-mouse [ev]
   [(-> ev .-clientX)
