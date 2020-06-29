@@ -32,6 +32,8 @@ div.app {
   --control-col:         hsla(120,100%,50%,0.3);
   --script-height:       calc(100vh - var(--controls-height) - var(--status-item-height));
   --script-height-short: calc(var(--script-height) - var(--status-height));
+  --code-size:           15px;
+  --code-font:           "Helvetica";
 
   * { box-sizing: border-box; }
 }
@@ -56,7 +58,9 @@ div.script.sidebar {
   }
 
   > textarea {
-    height: var(--script-height);
+    height:      var(--script-height);
+    font-size:   var(--code-size);
+    font-family: var(--code-font);
   }
 
   > ol.log {
@@ -94,7 +98,8 @@ div.script.sidebar {
       padding: var(--pd);
       height: 100%;
       line-height: calc(var(--status-item-height) - (2 * var(--pd)));
-      font-size: inherit;
+      font-size:   var(--code-size);
+      font-family: var(--code-font);
     }
   }
 

@@ -14,7 +14,8 @@
 
             [paintscript.render-svg :as render-svg]))
 
-(defn- pprint' [edn] (with-out-str *out* (pprint edn)))
+(defn- pprint' [edn]
+  (with-out-str *out* (pprint edn)))
 
 (defn- canvas-sidebar
   [!config !params !ui !shell !s-log !tab

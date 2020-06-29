@@ -157,6 +157,7 @@
                                 (->> (merge (select-keys styles-attrs
                                                          [:scale :translate])))
                                 (update :attrs merge
+                                        attrs
                                         (dissoc styles-attrs
                                                 :scale :translate))
                                 (dissoc :disabled?))]]
