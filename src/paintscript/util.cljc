@@ -15,25 +15,25 @@
 ;; --- numbers
 
 (defn round  [n] #?(:cljs (js/Math.round n) :clj n))
-(defn round1 [n] #?(:cljs (-> n (+ js/Number.EPSILON) (* 10)  Math.round (/ 10))
+(defn round1 [n] #?(:cljs (-> n (+ js/Number.EPSILON) (* 10)  js/Math.round (/ 10))
                     :clj  n))
-(defn round2 [n] #?(:cljs (-> n (+ js/Number.EPSILON) (* 100) Math.round (/ 100))
+(defn round2 [n] #?(:cljs (-> n (+ js/Number.EPSILON) (* 100) js/Math.round (/ 100))
                     :clj  n))
 
 (defn sign [n] (if (neg? n) -1 1))
 
 ;; --- trigonometry
 
-(def PI Math/PI)
+(def PI #?(:clj Math/PI :cljs js/Math.PI))
 
 (defn rad [deg] (* deg (/ PI 180)))
 (defn deg [rad] (* rad (/ 180 PI)))
 
-(def pow  #(Math/pow %1 %2))
-(def sqrt #(Math/sqrt %))
-(def cos  #(Math/cos  %))
-(def sin  #(Math/sin  %))
-(def atan #(Math/atan %))
+(def pow  #(#?(:clj Math/pow  :cljs js/Math.pow)  %1 %2))
+(def sqrt #(#?(:clj Math/sqrt :cljs js/Math.sqrt) %))
+(def cos  #(#?(:clj Math/cos  :cljs js/Math.cos)  %))
+(def sin  #(#?(:clj Math/sin  :cljs js/Math.sin)  %))
+(def atan #(#?(:clj Math/atan :cljs js/Math.atan) %))
 
 (def cos'  (comp cos rad))
 (def sin'  (comp sin rad))
@@ -110,8 +110,8 @@
                 (/ (dec n-segs))
                 (*  i-seg)
                 (- offset))
-        x   (* rx (Math/cos rad))
-        y   (* ry (Math/sin rad))]
+        x   (* rx (cos rad))
+        y   (* ry (sin rad))]
     [x y]))
 
 (defn- point-at-angle
