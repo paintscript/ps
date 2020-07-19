@@ -3,7 +3,8 @@
 
 (defprotocol Renderer
   (els->out [_ els])
-  (group    [_ els])
+  (group    [_ els]
+            [_ opts els])
   (tf       [_ opts el])
   (tf*      [_ opts els])
   (paint    [_ ps])

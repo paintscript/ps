@@ -63,7 +63,8 @@
 (def svg-renderer
   (reify render/Renderer
     (els->out [_ els] (->> els (map el->out) flatten))
-    (group    [_ els] (vec (cons :g els)))
+    (group    [_ els]      (vec (cons :g els)))
+    (group    [_ opts els] (vec (concat [:g opts] els)))
     (tf       [_ opts el]  (shk/tf opts el))
     (tf*      [_ opts els] (apply shk/tf* opts els))
     (paint    [_ ps] (paint ps))
