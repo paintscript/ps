@@ -1,8 +1,8 @@
-(defproject paintscript "0.2.29"
+(defproject paintscript "0.2.30"
   :dependencies [[org.clojure/clojure "1.10.0"]
                  [org.clojure/clojurescript "1.10.520"]
                  [reagent "0.8.1"]
-                 [svg-hiccup-kit "0.2.4"]
+                 [svg-hiccup-kit "0.2.8"]
                  [xspace "0.2.14"]
                  [z-com "0.8.22"]
                  [keybind "2.2.0"]

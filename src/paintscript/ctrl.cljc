@@ -17,21 +17,29 @@
 (def params-clear {:defs {} :script []})
 
 (def params-init
-  {:canvas {:dims [200 100]}
-   :defs {:paintings
-          {"reps"
-           {:canvas {:dims [100 100]}
-            :script
-            [[:path
-              {:class-k "solid", :repeat {:translate [30 0], :times 2}}
-              [:circle {:center [20 50], :r 5}]]
-             [:path
-              {:class-k "solid",
-               :repeat {:rotate {:degree 60, :center [50 50]}, :times 6}}
-              [:M [50 8]]
-              [:L [39 15] [61 15]]]]}}},
+  {:canvas {:dims [100 100]},
+   :defs
+   {:paintings
+    {"reps"
+     {:canvas {:dims [100 100]},
+      :script
+      [[:path
+        {:class-k "solid", :repeat {:translate [30 0], :times 2}}
+        [:circle {:center [20 50], :r 5}]]
+       [:path
+        {:class-k "solid",
+         :repeat {:rotate {:degree 60, :center [50 50]}, :times 6}}
+        [:M [50 8]]
+        [:L [39 15] [61 15]]]]}}},
    :script
-   [[:layout {} [:ref {:scale {:factor 1.1 :center [50 50]} :margin [0 5]} "reps"] [:ref "reps"]]]})
+   [[:layout {} [:ref "reps"]]
+    [:path
+     {:class-k "outline",
+      :repeat
+      {:rotate {:degree 60, :center [50 50]}, :times 5, :mode :fuse}}
+     [:M [57 37]]
+     [:L [50 20]]
+     [:L [43 37]]]]})
 
 (defn- xy-mouse [ev]
   [(-> ev .-clientX)

@@ -248,17 +248,32 @@
 
 (declare apply-path-opts)
 
-(defn- apply-repeat [els params opts]
+(defn- apply-repeat [els params
+                     {:as opts
+                      {repeat-times :times
+                       repeat-mode  :mode} :repeat}]
   (let [opts' (-> opts
                   (dissoc :repeat)
-                  (merge (:repeat opts)))]
-    (apply concat
-           (reduce (fn [[els-prev :as acc] _]
-                     (let [els' (->> els-prev
-                                     (apply-path-opts params opts'))]
-                       (conj acc els')))
-                   (list els)
-                   (range 0 (get-in opts [:repeat :times]))))))
+                  (merge (:repeat opts)))
+
+        [els-head
+         els-init] (if (= :fuse repeat-mode)
+                     [(take 1 els)
+                      (rest els)]
+                     [nil els])]
+
+    (-> (apply concat
+               els-head
+               (reverse
+                (reduce (fn [[els-prev :as acc] _i]
+                          (let [els' (->> els-prev
+                                          (apply-path-opts params opts'))]
+                            (conj acc els')))
+                        (list els-init)
+                        (range 0 repeat-times))))
+        (cond-> (= :fuse repeat-mode)
+                (-> drop-last
+                    (concat [[:z]]))))))
 
 (defn apply-path-opts
   [{:as params :keys [defs debug? coords?]}
