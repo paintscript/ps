@@ -1,10 +1,9 @@
-(defproject paintscript "0.2.30"
-  :dependencies [[org.clojure/clojure "1.10.0"]
-                 [org.clojure/clojurescript "1.10.520"]
-                 [reagent "0.8.1"]
+(defproject paintscript "0.2.31"
+  :dependencies [[org.clojure/clojure "1.10.1"]
+                 [org.clojure/clojurescript "1.10.773"]
+                 [reagent "0.10.0"]
                  [svg-hiccup-kit "0.2.8"]
-                 [xspace "0.2.14"]
-                 [z-com "0.8.22"]
+                 [z-com "0.8.28"]
                  [keybind "2.2.0"]
                  [urlkit "0.3.3"]
                  [urlkit-util "0.3.3"]]
@@ -17,7 +16,8 @@
                                     "resources-docs/public/js/compiled/"]
 
   :profiles
-  {:xx     {:test-paths ["xspace/"]}
+  {:xx     {:dependencies [[xspace/xspace-core "0.2.16"]]
+            :test-paths   ["xspace/"]}
    :kaocha [:xx
             {:dependencies [[lambdaisland/kaocha "0.0-565"]]}]
    :docs   {:resource-paths ["resources-docs/"]
