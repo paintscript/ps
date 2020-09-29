@@ -3,5 +3,10 @@ target/
 node_modules/
 js/
 css/
-!*.json
 *.log
+*creds*
+*tfstate*
+.terraform
+*.json
+*.xml
+.lein*
