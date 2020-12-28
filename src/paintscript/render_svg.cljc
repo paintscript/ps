@@ -46,6 +46,7 @@
     :h    (cons "h" args)
 
     :A    (let [[r  p  tgt] args] (list "A" r  p   tgt))
+    :a    (let [[r  p  tgt] args] (list "a" r  p   tgt))
     :S    (let [[   c2 tgt] args] (list "S"    c2  tgt))
     :s    (let [[   c2 tgt] args] (list "s"    c2  tgt))
     :C    (let [[c1 c2 tgt] args] (list "C" c1 c2  tgt))

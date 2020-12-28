@@ -105,13 +105,21 @@
 
    (xx {:= {:op :rel->abs}}
 
-       (x-> :params {:script
+       (x-> "l"
+            :params {:script
                      [[:path {} [:M [5 5]] [:l [5 5]]]
                       [:path {} [:M [10 10]]]]}
             :=>     {:defs {}
                      :script
                      [[:path {} [:M [5 5]] [:L [10 10]]]
-                      [:path {} [:M [10 10]]]]}))])
+                      [:path {} [:M [10 10]]]]})
+
+       (x-> "a"
+            :params {:script
+                     [[:path {} [:M [5 5]] [:a [5 5] [0 0 1] [7 7]]]]}
+            :=>     {:defs {}
+                     :script
+                     [[:path {} [:M [5 5]] [:A [5 5] [0 0 1] [12 12]]]]}))])
 
 (deftest ops-test
   (x/traverse-xspace ops-xspace-cfg

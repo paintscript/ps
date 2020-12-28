@@ -1,4 +1,5 @@
 (ns paintscript.el
+  "https://developer.mozilla.org/en-US/docs/Web/SVG/Tutorial/Paths"
   (:require [clojure.set :as set]
             [paintscript.util :as u]))
 
@@ -9,12 +10,12 @@
 
 (def has-cp?   #{      :c :q,          :s     :c1
                        :C :Q,          :S     :C1})
-(def relative? #{:m :l :c :q,    :v :h :s :t, :c1})
-(def absolute? #{:M :L :C :Q :z, :V :H :S :T, :C1, :arc})
+(def relative? #{:m :l :c :q,    :v :h :s :t, :c1, :a})
+(def absolute? #{:M :L :C :Q :z, :V :H :S :T, :C1, :A :arc})
 (def full?     #{:m :l :c :q
                  :M :L :C :Q :z})
 (def short?    #{                :v :h :s :t, :c1
-                                 :V :H :S :T, :C1, :arc})
+                                 :V :H :S :T, :C1,    :arc})
 
 (def el?       (set/union relative? absolute?))
 
@@ -52,6 +53,10 @@
   (let [[tgt] (map #(u/v+ % tgt-prev) pnts)
         c1 (flip-c2 cp-prev tgt-prev)]
     [[:T tgt] tgt c1]))
+
+(defmethod rel->abs :a [[_k r p tgt :as elv] tgt-prev _cp-prev]
+  (let [tgt' (u/v+ tgt tgt-prev)]
+    [[:A r p tgt'] tgt' nil]))
 
 (defn- rel->abs--pnt-seq [tgt-prev pnt-seq]
   (first

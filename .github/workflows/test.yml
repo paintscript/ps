@@ -1,0 +1,14 @@
+name: test
+on: [push]
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: preamble
+        run: |
+          M=${{ secrets.MVN_REPO }}
+          cat << EOF > ./profiles.clj
+            {:user {:repositories {"mvn" {:url "$M" :checksum :ignore}}}}
+          EOF
+      - run: bin/xx
