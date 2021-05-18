@@ -109,8 +109,9 @@
                          4 3)
                 :right 1)))
 
-(defn- layout-builder [{:as script-opts :keys [defs]}
-                       obj-opts' els]
+(defn- layout-builder
+  [{:as script-opts :keys [defs]}
+   obj-opts' els]
   [:g (->> els
            (reduce (fn [[out offset] el]
                      (assert (el/ref? el))
@@ -249,7 +250,9 @@
 #?(:cljs
    (defn plot-coords [opts pi els pnts-seq]
      (for [[el pnts] pnts-seq
-           {:as pnt :keys [xy ii-pnt i-main]} pnts
+           {:as pnt :keys [xy ii-pnt i-main]} (->> pnts
+                                                   ;; NOTE: render CPs last
+                                                   (sort-by :i-main))
            :let [_ (assert ii-pnt)]]
        ^{:key (hash ii-pnt)}
        [coord opts els el pnt ii-pnt])))
@@ -340,7 +343,7 @@
                                                        p-opts
                                                        els')]
                      ^{:key pi}
-                     [:g
+                     [:g.coords-plot
                       (plot-coords {:scaled        scale
                                     :coord-size    10
                                     :report!       report!

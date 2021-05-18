@@ -1,4 +1,4 @@
-@import "../../z-com/resources/scss/z-com";
+@import "../../../z-com/components/menu/resources/scss/menu";
 @import "gallery";
 
 html, body {
@@ -9,12 +9,13 @@ html, body {
 div.app {
   * { box-sizing: border-box; }
 
+  --blue-dark:           hsl(240deg 100% 80%);
   --pd:                  10px;
   --pd-half:             5px;
   --pd-double:           20px;
-  --status-item-height:  50px;
+  --panel-height:        50px;
   --status-item-count:   4;
-  --status-height:       calc(var(--status-item-height) * var(--status-item-count));
+  --status-height:       calc(var(--panel-height) * var(--status-item-count));
   --target-col:          hsla(0,0%,50%,0.3); //hsla(240,100%,50%,0.3);
 
   --path-bg:             hsl(0,0%,80%);
@@ -30,7 +31,7 @@ div.app {
   --controls-height:     50px;
   --controls-bg:         hsl(0,0%,95%);
   --control-col:         hsla(120,100%,50%,0.3);
-  --script-height:       calc(100vh - var(--controls-height) - var(--status-item-height));
+  --script-height:       calc(100vh - var(--controls-height) - var(--panel-height));
   --script-height-short: calc(var(--script-height) - var(--status-height));
   --code-size:           15px;
   --code-font:           "Helvetica";
@@ -52,7 +53,7 @@ div.script.sidebar {
     &.unsaved-changes div.zc-button.save {
       background-color: hsl(0,100%,90%);
     }
-    height: var(--controls-height);
+    height:           var(--controls-height);
     background-color: var(--controls-bg);
     div.zc.zc-button { --height: var(--controls-height); }
   }
@@ -92,12 +93,20 @@ div.script.sidebar {
 
   > div.shell {
     padding: 0;
-    height: var(--status-item-height);
+    height: var(--panel-height);
     border-top: 1px solid hsl(0,0%,90%);
+    box-sizing: content-box;
     textarea {
+      &:focus {
+        background-color: var(--blue-dark);
+        color: white;
+        &::placeholder {
+          color: white;
+        }
+      }
       padding: var(--pd);
       height: 100%;
-      line-height: calc(var(--status-item-height) - (2 * var(--pd)));
+      line-height: calc(var(--panel-height) - (2 * var(--pd)));
       font-size:   var(--code-size);
       font-family: var(--code-font);
     }
@@ -118,7 +127,7 @@ div.script.sidebar {
         overflow:     hidden;
         border-top:   1px solid hsl(0,0%,90%);
         white-space:  nowrap;
-        height:       var(--status-item-height);
+        height:       var(--panel-height);
         padding-left: 10px;
         display:      flex;
         align-items:  center;
@@ -129,7 +138,7 @@ div.script.sidebar {
         div.controls {
           div.zc-button {
             box-sizing: border-box;
-            --height:   calc(var(--status-item-height) - 1px);
+            --height:   calc(var(--panel-height) - 1px);
           }
           &.crud { position: absolute; right: 0; }
         }

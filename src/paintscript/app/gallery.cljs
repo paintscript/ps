@@ -1,4 +1,4 @@
-(ns paintscript.gallery
+(ns paintscript.app.gallery
   (:require [cljs.pprint :refer [pprint]]
             [clojure.string :as str]
             [cljs.reader :refer [read-string]]
@@ -7,7 +7,7 @@
             [reagent.core :as r]
 
             [paintscript.util :as u]
-            [paintscript.canvas :as canvas]
+            [paintscript.app.canvas :as canvas]
             [paintscript.render-svg :as render-svg]))
 
 (defn- pprint' [edn] (with-out-str *out* (pprint edn)))

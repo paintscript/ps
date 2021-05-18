@@ -1,0 +1,17 @@
+#!/usr/bin/env sh
+
+JAR=paintscript.jar
+VER=$(cat version)
+
+# https://github.com/seancorfield/depstar
+clojure -X:depstar \
+        jar :jar         $JAR \
+            :sync-pom    true \
+            :artifact-id paintscript \
+            :group-id    paintscript \
+            :version     \"$VER\"
+
+unzip -l $JAR
+
+if [ $1 ]; then extra_args="-DlocalRepositoryPath=$1"; fi
+mvn install:install-file -Dfile=$JAR -DpomFile=pom.xml $extra_args

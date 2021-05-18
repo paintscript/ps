@@ -1,0 +1,25 @@
+{:mvn/repos {"ps-mvn" {:url "https://paintscript.gitlab.io/mvn" :checksum :ignore}}
+ :deps  {thheller/shadow-cljs {:mvn/version "2.13.0"}
+
+         org.clojure/clojure {:mvn/version "1.10.3"}
+         org.clojure/clojurescript {:mvn/version "1.10.844"}
+         org.clojure/core.async {:mvn/version "1.3.610"}
+
+         reagent/reagent {:mvn/version "1.0.0"}
+         keybind/keybind {:mvn/version "2.2.0"}
+
+         svg-hiccup-kit/svg-hiccup-kit {:mvn/version "0.2.9"}
+         z-com/z-com {:mvn/version "0.8.30"}
+         urlkit/urlkit {:mvn/version "0.3.7"}
+         urlkit-util/urlkit-util {:mvn/version "0.3.3"}}
+ :paths ["src/"
+         "resources-app/"]
+ :aliases
+ {:xx {:extra-deps  {org.clojure/test.check {:mvn/version "1.1.0"}
+                     xspace/xspace-core {:mvn/version "0.2.21"}
+                     lambdaisland/kaocha {:mvn/version "1.0.690"}}
+       :extra-paths ["xspace/"]}
+  :depstar {:replace-deps
+            {seancorfield/depstar {:mvn/version "2.0.216"}}
+            :ns-default hf.depstar
+            :exec-args {}}}}

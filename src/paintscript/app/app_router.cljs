@@ -1,13 +1,13 @@
- (ns paintscript.app
+ (ns paintscript.app.app-router
   (:require [reagent.core :as r]
             [reagent.dom :as rd]
             [cljs.reader :refer [read-string]]
             [urlkit.core :as uk]
             [urlkit.sync :as sync]
 
-            [paintscript.canvas :refer [canvas]]
-            [paintscript.gallery :refer [galleries]]
-            [paintscript.ctrl :as ctrl]))
+            [paintscript.app.canvas :refer [canvas]]
+            [paintscript.app.gallery :refer [galleries]]
+            [paintscript.app.ctl :as ctrl]))
 
 (defn read-edn! [data-k]
   (some-> js/window.localStorage
@@ -86,9 +86,8 @@
   (rd/render [#'app]
             (.getElementById js/document "app")))
 
-(defonce _init
-  (do
-    (sync/init! c-url-sync)
-    (mount-root!)))
+(defn init! []
+  (sync/init! c-url-sync)
+  (mount-root!))
 
-(defn on-js-reload [] (mount-root!))
+(defn ^:dev/after-load  _after-load [] (init!))

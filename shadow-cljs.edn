@@ -1,0 +1,19 @@
+{:deps     {:aliases []}
+ :dev-http {3449 "resources-app/public/"}
+ :builds
+ {:app {:target  :browser
+
+        :modules {:main {:init-fn paintscript.app.app-router/init!}}
+
+        :dev     {:output-dir "resources-app/public/js/"
+                  :asset-path "/js/"
+                  :devtools {:browser-inject :app}}
+        :release {:output-dir "resources-app/public/js/"
+                  :asset-path "/js/"}
+
+        :compiler-options {;; NOTE: :auto gens warnings for marker protos
+                           :infer-externs true
+
+                           ;; --- debug
+                           :source-map true
+                           :elide-asserts false}}}}

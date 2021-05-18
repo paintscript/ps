@@ -1,4 +1,4 @@
-(ns paintscript.canvas
+(ns paintscript.app.canvas
   (:require [clojure.string :as str]
             [cljs.pprint :refer [pprint]]
             [cljs.reader :refer [read-string]]
@@ -9,7 +9,7 @@
 
             [paintscript.els :as els]
             [paintscript.nav :as nav]
-            [paintscript.ctrl :as ctrl]
+            [paintscript.app.ctl :as ctrl]
             [paintscript.s-log :as s-log]
 
             [paintscript.render-svg :as render-svg]))

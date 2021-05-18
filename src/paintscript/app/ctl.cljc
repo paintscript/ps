@@ -1,4 +1,4 @@
-(ns paintscript.ctrl
+(ns paintscript.app.ctl
   (:require [clojure.pprint :refer [pprint]]
             #?(:cljs [reagent.core :as r :refer [atom]])
             #?(:cljs [cljs.reader :refer [read-string]])
@@ -39,7 +39,12 @@
       {:rotate {:degree 60, :center [50 50]}, :times 5, :mode :fuse}}
      [:M [57 37]]
      [:L [50 20]]
-     [:L [43 37]]]]})
+     [:L [43 37]]]
+
+    [:path
+     {:attrs {:style {:stroke "red"}}}
+     [:M [10 10]]
+     [:C [10 10] [90 10] [90 10]]]]})
 
 (defn- xy-mouse [ev]
   [(-> ev .-clientX)
@@ -88,7 +93,9 @@
                                      [50 50])]
                         [:scale center n])
         "mirror"      (let [[axis pos] args]
-                        [:mirror (some-> axis read-string) (some-> pos read-string)])
+                        [:mirror
+                         (some-> axis read-string)
+                         (some-> pos  read-string)])
 
         "to"          [:el-tf (-> args first keyword)]
 

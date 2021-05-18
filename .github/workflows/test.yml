@@ -4,11 +4,34 @@ jobs:
   test:
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/setup-java@v1
+        with:
+          java-version: 1.8
+      - uses: DeLaGuardo/setup-clojure@3.2
+        with:
+          cli: 1.10.1.693
       - uses: actions/checkout@v2
-      - name: preamble
+      - run: bin/xx 1
+      - name: assets
         run: |
-          M=${{ secrets.MVN_REPO }}
-          cat << EOF > ./profiles.clj
-            {:user {:repositories {"mvn" {:url "$M" :checksum :ignore}}}}
-          EOF
-      - run: bin/xx
+          (JAR=~/.m2/repository/z-com/z-com/0.8.30/z-com-0.8.30.jar;
+           cd .. &&
+           pwd &&
+           (mkdir -p z-com/components/menu/resources/; cd $_; unzip $JAR scss/menu.scss -d .))
+          npm i
+          bin/scss r
+          cp CNAME ./resources-app/public/
+      - run: bin/app r
+
+      - uses: peaceiris/actions-gh-pages@v3
+        with:
+          deploy_key: ${{ secrets.PAINTSCRIPT_GITHUB_IO }}
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./resources-app/public
+          publish_branch: master
+          external_repository: paintscript/paintscript.github.io
+      # - uses: actions/upload-artifact@v2
+      #   with:
+      #     name: app-js
+      #     path: |
+      #       resources-app/public/js/
