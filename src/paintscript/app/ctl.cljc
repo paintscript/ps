@@ -19,7 +19,7 @@
 (def cmpt0
   {:canvas {:dims [100 100]},
    :defs
-   {:paintings
+   {:components
     {"reps"
      {:canvas {:dims [100 100]},
       :script

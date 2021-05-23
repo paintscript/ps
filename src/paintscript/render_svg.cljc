@@ -2,7 +2,7 @@
   (:require [clojure.string :as str]
 
             [svg-hiccup-kit.core :as shk :refer [d d2 tf tf*]]
-            #?(:cljs [reagent.core :as r :refer [atom]])
+            #?(:cljs [reagent.core :as r])
 
             [paintscript.util :as u]
             [paintscript.el-path :as el-path]
@@ -62,13 +62,14 @@
                 :right 1)))
 
 (defn- layout-builder
+  "compose a sequence of components into one"
   [{:as script-opts :keys [defs]}
    obj-opts' els]
   [:g (->> els
            (reduce (fn [[out offset] el]
                      (assert (el-path/ref? el))
-                     (let [{:as painting, {:keys [dims]} :canvas}
-                           (els/resolve-p-ref defs el)
+                     (let [{:as cmpt
+                            {:keys [dims]} :canvas} (els/resolve-cmpt-ref defs el)
 
                            {:keys [margin translate]
                             {sc-ctr :center
@@ -80,10 +81,10 @@
                            [tf {:tl (-> [offset 0]
                                         (cond->  margin    (update 0 + (margin-side margin :left)))
                                         (cond->> translate (mapv + translate))
-                                        (cond->> scale     (mapv + (scale->tl (get-in painting [:canvas :dims]) scale))))
+                                        (cond->> scale     (mapv + (scale->tl (get-in cmpt [:canvas :dims]) scale))))
                                 :sc (when scale
                                       [sc-fct])}
-                            (paint (merge script-opts painting))]
+                            (paint (merge script-opts cmpt))]
 
                            offset+ (-> (first dims)
                                        (cond-> translate (+ (first translate))
@@ -95,41 +96,66 @@
                    [nil 0])
            first)])
 
+(defn- apply-style-def
+  "notes:
+   - transform properties in a style-def are handled as obj-opts
+   - everything else as attrs"
+  [cmpt {:as obj-opts
+         :keys [class-k]}]
+  (let [style-def (or (when class-k
+                        (get (:styles cmpt) class-k))
+                      (get (:styles cmpt) "outline"))
+        attrs'    (u/deep-merge (:attrs cmpt)
+                                (-> style-def
+                                    (dissoc :scale :translate :rotate))
+                                (:attrs obj-opts))
+        tf-opts   (select-keys style-def
+                               [:scale :translate :rotate])]
+    [attrs'
+     tf-opts]))
+
+(defn- derive-obj-hiccup
+  [{:as cmpt :keys [variant defs attrs script data?]}
+   obj-i [obj-k obj-opts & els :as obj]]
+  (let [[attrs'
+         tf-opts]  (apply-style-def cmpt obj-opts)
+        obj-opts'  (-> obj-opts
+                       (dissoc :class-k
+                               :variant-k
+                               :disabled?))
+
+        obj-opts'  (case obj-k
+                     (:path
+                      :layout) (-> obj-opts'
+                                   (merge  tf-opts)
+                                   (assoc  :attrs attrs')
+                                   (dissoc :disabled?))
+                     (-> obj-opts'
+                         ;; NOTE: tf-opts not supported yet
+                         (merge attrs')))]
+    (case obj-k
+      :path   (path-builder   cmpt obj-opts' obj-i els)
+      :layout (layout-builder cmpt obj-opts' els)
+
+      (:rect
+       :circle
+       :ellipse) (-> obj (assoc 1 obj-opts')))))
+
 (defn paint
-  [{:as script-opts :keys [variant defs styles attrs script data?]}]
+  [cmpt]
   [:g
-   (for [[pi [obj-k {:as obj-opts :keys [disabled? variant-k class-k]} & els :as obj]]
-         (map-indexed vector script)
-         :when (and (not disabled?)
-                    (or (not variant)
-                        (not variant-k)
-                        (= variant variant-k)))
-         :let [styles-attrs (if class-k
-                              (get styles class-k
-                                   (get styles "outline"))
-                              (get styles "outline"))
-               obj-opts'    (-> obj-opts
-                                (->> (merge (select-keys styles-attrs
-                                                         [:scale :translate])))
-                                (update :attrs merge
-                                        attrs
-                                        (dissoc styles-attrs
-                                                :scale :translate))
-                                (dissoc :disabled?))]]
-
-     (with-meta
-       (case obj-k
-         :path   (path-builder   script-opts obj-opts' pi els)
-         :layout (layout-builder script-opts obj-opts' els)
-
-         (-> obj
-             (update 1 #(-> %
-                            (dissoc :class-k
-                                    :variant-k
-                                    :disabled?)
-                            (merge attrs
-                                   styles-attrs)))))
-       {:key pi}))])
+   (for [[obj-i
+          [obj-k
+           obj-opts
+           :as obj]] (->> (:script cmpt)
+                          (map-indexed vector))
+         :when       (and (not (:disabled? obj-opts))
+                          (or (not (:variant cmpt))
+                              (not (:variant-k obj-opts))
+                              (= (:variant cmpt)
+                                 (:variant-k obj-opts))))]
+     ^{:key obj-i}
+     [derive-obj-hiccup cmpt obj-i obj])])
 
 
 ;; -----------------------------------------------------------------------------
@@ -143,7 +169,7 @@
       {:as el  :keys [el-k]}
       {:as pnt :keys [xy xy-abs i-main]}
       [src-k pi eli _ :as ii-pnt]]
-     (r/with-let [!hover? (atom false)]
+     (r/with-let [!hover? (r/atom false)]
        (when
          (vector? xy) ;; skip v/V, h/H
          (let [[x y]     (->> (if (el-path/relative? el-k)
@@ -238,7 +264,7 @@
                        :or   {dims [100 100] coords? true}} :canvas}
                      (-> cmpt
                          (cond-> (keyword? variant) (assoc :variant variant)
-                                 (map?     variant) (u/merge-configs variant)))
+                                 (map?     variant) (u/deep-merge variant)))
 
                      [w h] (->> dims (mapv #(* % scale)))]]
 
@@ -263,10 +289,11 @@
 
                ;; --- output
 
-               (when (:script config)
-                 [:g.main
-                  [paint (u/merge-configs config
-                                          variant)]])
+               (when-let [script-pre (:script/pre config)]
+                 [:g.main.pre
+                  [paint (-> (u/deep-merge config
+                                              variant)
+                             (assoc :script script-pre))]])
 
                [:g.main
                 [paint cmpt]]

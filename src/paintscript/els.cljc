@@ -214,9 +214,9 @@
   (let [v (get el 1)]
     (when (map? v) v)))
 
-(defn resolve-els-ref [defs ref] (get    defs (get ref 1)))
-(defn resolve-d-ref   [defs ref] (get-in defs [:d (get ref 1)]))
-(defn resolve-p-ref   [defs ref] (get-in defs [:paintings (last ref)]))
+(defn resolve-els-ref  [defs ref] (get    defs (get ref 1)))
+(defn resolve-d-ref    [defs ref] (get-in defs [:d (get ref 1)]))
+(defn resolve-cmpt-ref [defs ref] (get-in defs [:components (last ref)]))
 
 (defn resolve-els-refs
   [defs els]
@@ -248,10 +248,11 @@
 
 (declare apply-path-opts)
 
-(defn- apply-repeat [els cmpt
-                     {:as opts
-                      {repeat-times :times
-                       repeat-mode  :mode} :repeat}]
+(defn- apply-repeat
+  [els cmpt
+   {:as opts
+    {repeat-times :times
+     repeat-mode  :mode} :repeat}]
   (let [opts' (-> opts
                   (dissoc :repeat)
                   (merge (:repeat opts)))
@@ -279,11 +280,17 @@
   [{:as cmpt :keys [defs debug? coords?]}
    {:as opts
     :keys [close? width mirror repeat]
-    {scale-ctr    :center
-     scale-factor :factor :as scale} :scale
-    {rot-ctr :center
-     rot-deg :degree :as rotate} :rotate
+
+    {:as scale
+     scale-ctr    :center
+     scale-factor :factor} :scale
+
+    {:as rotate
+     rot-ctr :center
+     rot-deg :degree} :rotate
+
     translate :translate
+
     {mirror-mode  :mode
      mirror-pos   :pos
      mirror-axis  :axis

@@ -14,14 +14,14 @@
 
 (defn- gallery-sidebar
   [dispatch! !c-gallery !c-gallery-committed !root-def !root-def-committed !tab !shell]
-  (let [cg  @!c-gallery
-        gg  @!root-def
-        tab @!tab
-        state-changes? (or (not= gg @!root-def-committed)
-                           (not= cg @!c-gallery-committed))]
+  (let [cg    @!c-gallery
+        gg    @!root-def
+        tab   @!tab
+        diff? (or (not= gg @!root-def-committed)
+                  (not= cg @!c-gallery-committed))]
     [:div.sidebar.script
      [:div.controls
-      {:class (when state-changes? "unsaved-changes")}
+      {:class (when diff? "unsaved-changes")}
       (for [tab-k [:script :config]]
         ^{:key tab-k}
         [zc/button
@@ -31,7 +31,7 @@
       [zc/button
        :class "save"
        :label "save"
-       :disabled? (not state-changes?)
+       :disabled? (not diff?)
        :on-click #(dispatch! [:save-edn])]]
 
      (case tab
@@ -81,7 +81,7 @@
 
         ;; --- gallery list
         (for [[g-id {:as gallery :keys [title paintings]}] galleries]
-          ^{:key (hash gallery)}
+          ^{:key g-id}
           [:div.gallery
            [:h1 (or title g-id)]
            [:div.paintings
@@ -90,14 +90,14 @@
             (for [[painting-id
                    {:as painting :keys [component]}] (->> paintings
                                                           sort)
-                  :let [c  (u/merge-configs ;; TODO: reverse order?
-                                            (-> painting :config)
+                  :let [c  (u/deep-merge (-> root-def :config)
                                             (-> gallery  :config)
-                                            (-> root-def :config))
+                                            (-> painting :config)
+                                            )
                         c' (-> (or c
                                    c-base)
                                (assoc-in [:canvas :coords?] false))]]
-              ^{:key (hash painting)}
+              ^{:key painting-id}
               [:div.gallery-item
                {:on-click #(app-dispatch! [:set-canvas [c component]])}
                [:div.gallery-item-title (or (:title painting)

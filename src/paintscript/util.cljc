@@ -8,7 +8,7 @@
 (defn merge-maps [& args]
   (if (every? map? args) (apply merge args) (last args)))
 
-(defn merge-configs [& args]
+(defn deep-merge [& args]
   (apply merge-with merge-maps args))
 
 ;; --- vecs
