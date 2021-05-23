@@ -33,7 +33,8 @@
                 [:L [39 15] [61 15]]]]}
 
      "group" {:canvas {:dims [30 30]}
-              :config {:attrs {:vector-effect "non-scaling-stroke"}}
+              :attrs {:style {:stroke-width 2
+                              :vector-effect "non-scaling-stroke"}}
               :script
               [[:circle {:r 15 :cx 0   :cy  0 :fill "none" :stroke "yellow"}]
                [:circle {:r 2  :cx -10.5 :cy  10.5 :fill "red" :stroke "none"}]
@@ -55,8 +56,9 @@
      [:M [10 10]]
      [:C [10 10] [90 10] [90 10]]]
 
-    [:ref {:translate [50 50]
-           :scale {:factor 1.2}} "group"]]})
+    [:ref {:repeat {:tfs+ [{:tl [50 50] :sc 1.2}
+                           {:tl [10 10] :sc 1.2 :rt 15}]}}
+     "group"]]})
 
 (defn- xy-mouse [ev]
   [(-> ev .-clientX)
@@ -104,6 +106,9 @@
                                      (read-xy-str [cx cy])
                                      [50 50])]
                         [:scale center n])
+
+        "reverse"     [:reverse]
+
         "mirror"      (let [[axis pos] args]
                         [:mirror
                          (some-> axis read-string)
@@ -199,6 +204,8 @@
                      {:cmpt (-> cmpt (ops/scale sel ctr k))})
       :mirror      (let [[axis pos] args]
                      {:cmpt (-> cmpt (ops/mirror (or axis 0) (or pos 100) sel))})
+
+      :reverse     {:cmpt (-> cmpt (ops/reverse-path sel))}
 
       :round       (let [n arg]
                      {:cmpt

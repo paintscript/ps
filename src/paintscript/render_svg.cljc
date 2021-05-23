@@ -130,6 +130,35 @@
     [attrs'
      tf-opts]))
 
+(defn- add-tf-params [params0 params1]
+  (-> params0
+      (merge params1)
+      (cond-> (and (:tl params0)
+                   (:tl params1)) (assoc :tl (mapv +
+                                                   (:tl params0)
+                                                   (:tl params1)))
+              (and (:rt params0)
+                   (:rt params1)) (assoc :rt (+ (:rt params0)
+                                                (:rt params1)))
+              (and (:sc params0)
+                   (:sc params1)) (assoc :sc (* (:sc params0)
+                                                (:sc params1))))))
+
+(defn tf-chain
+  [component param-chain]
+  (let [[_ cc] (reduce (fn [[params0 cc] {:as params :keys [reference]
+                                          :or {reference :prev}}]
+                         (case reference
+                           :prev (let [params* (add-tf-params params0
+                                                              params)]
+                                   [params*
+                                    (conj cc [tf params* component])])
+                           :none [params
+                                  (conj cc [tf params component])]))
+                       [nil []]
+                       param-chain)]
+    (vec (cons :g cc))))
+
 (defn- derive-obj-hiccup
   [{:as cmpt :keys [variant defs attrs script data?]}
    obj-i [obj-k obj-opts & els :as obj]]
@@ -153,12 +182,17 @@
     (case obj-k
       :path   (path-builder   cmpt obj-opts' obj-i els)
       :layout (layout-builder cmpt obj-opts' els)
-      :ref    (let [cmpt-ref (els/resolve-cmpt-ref (:defs cmpt) obj)
-                    cmpt*    (u/deep-merge cmpt
-                                           cmpt-ref)]
-                (assert cmpt-ref)
-                [tf (derive-cmpt-tf (els/get-opts obj) cmpt*)
-                 (paint cmpt*)])
+      :ref    (let [cmpt-ref    (els/resolve-cmpt-ref (:defs cmpt) obj)
+                    cmpt*       (u/deep-merge cmpt
+                                              cmpt-ref)
+                    cmpt-hiccup (paint cmpt*)
+                    opts        (els/get-opts obj)]
+                (if-let [{:keys [tfs+]} (:repeat opts)]
+                  (cond
+                    ;; NOTE: uses svg-hiccup-kit's (different) tf params
+                    tfs+ (tf-chain cmpt-hiccup tfs+))
+                  [tf (derive-cmpt-tf opts cmpt*)
+                   cmpt-hiccup]))
 
       (:rect
        :circle

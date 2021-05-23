@@ -33,20 +33,23 @@
     ~> ([:C 7 8 9] [:C 4 5 6] [:L 2 3] [:M 1])
     => ([:C 8 7 6] [:C 5 4 3] [:L 2 1])
   "
-  [els]
+  [{:keys [drop-last?]} els]
   (loop [[el & els-tail] els
          acc []
          tgt-prev nil]
     (if-not el
-      (reverse acc)
+      (-> (reverse acc)
+          (cond-> (not drop-last?)
+                  (conj [:M tgt-prev])))
       (let [[el' tgt] (el/el->reversed el tgt-prev)]
         (recur els-tail (-> acc (cond-> el' (conj el'))) tgt)))))
 
-(defn- reverse-els
-  [width els]
-  (->> els
-       normalize-els
-       reverse-el-xys))
+(defn reverse-els
+  ([els] (reverse-els nil els))
+  ([opts els]
+   (->> els
+        normalize-els
+        (reverse-el-xys opts))))
 
 ;; --- mirror
 
@@ -87,7 +90,7 @@
               (concat
                els-part
                (->> (case mode
-                      :merged   (->> els-part (reverse-els pos))
+                      :merged   (->> els-part (reverse-els {:drop-last? true}))
                       :separate (->  els-part
                                      (normalize-els
                                       ;; - :rel->abs for math
@@ -265,18 +268,18 @@
                       (rest els)]
                      [nil els])]
 
-    (-> (apply concat
-               els-head
-               (reverse
-                (reduce (fn [[els-prev :as acc] _i]
-                          (let [els' (->> els-prev
-                                          (apply-path-opts cmpt opts'))]
-                            (conj acc els')))
-                        (list els-init)
-                        (range 0 repeat-times))))
-        (cond-> (= :fuse repeat-mode)
-                (-> drop-last
-                    (concat [[:z]]))))))
+    (->> (range 0 repeat-times)
+         (reduce (fn [[els-prev :as acc] _i]
+                   (let [els+ (->> els-prev
+                                   (apply-path-opts cmpt opts'))]
+                     (conj acc els+)))
+                 (list els-init))
+         reverse
+         (apply concat els-head)
+         (#(cond-> %
+                   (= :fuse repeat-mode)
+                   (-> drop-last
+                       (concat [[:z]])))))))
 
 (defn apply-path-opts
   [{:as cmpt :keys [defs debug? coords?]}

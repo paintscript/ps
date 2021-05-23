@@ -161,6 +161,10 @@
   ([cmpt axis pos ii] (-> cmpt (els/update-px ii  #(els/mirror-els axis pos %))))
   ([cmpt axis pos]    (-> cmpt (els/update-px-all #(els/mirror-els axis pos %)))))
 
+(defn reverse-path
+  ([cmpt ii] (-> cmpt (els/update-px ii  els/reverse-els)))
+  ([cmpt]    (-> cmpt (els/update-px-all els/reverse-els))))
+
 (defn update-p-opts [cmpt ii f & args]
   (let [p-opts-i (concat (take 2 ii) [1])]
     (apply update-in cmpt p-opts-i f args)))
