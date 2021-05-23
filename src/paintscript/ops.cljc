@@ -2,29 +2,6 @@
   (:require [paintscript.util :as u]
             [paintscript.els :as els]))
 
-;; --- generic
-
-(defn vec-insert
-  [coll i el]
-  (vec
-   (concat (subvec coll 0 i)
-           [el]
-           (subvec coll i (count coll)))))
-
-(defn vec-replace [coll i el]
-  (vec
-   (concat (subvec coll 0 i)
-           [el]
-           (subvec coll (inc i) (count coll)))))
-
-(defn vec-remove
-  [coll i]
-  (vec
-   (concat (subvec coll 0 i)
-           (subvec coll (inc i) (count coll)))))
-
-(defn vec-append [coll i el] (vec-insert coll (inc i) el))
-
 ;; --- info
 
 (defn has-pred? [pi] (pos? pi))
@@ -43,7 +20,7 @@
 (defn get-pred-tgt [els eli]
   (-> (get els (-> eli (- 1))) get-tgt))
 
-(defn tail-iii [{:as params :keys [script]}]
+(defn tail-iii [{:as cmpt :keys [script]}]
   (let [pi  (-> script count (- 1) (max 0))
         eli (-> script (get pi) count (- 1) (max 1))
         xyi (some-> script (get-in [pi eli]) count (- 1))]
@@ -87,13 +64,13 @@
   ([els eli xyi pnt]
    (let [xyi' (+ xyi xyi-offset)]
      (-> els
-         (update eli vec-append xyi' pnt)))))
+         (update eli u/vec-append xyi' pnt)))))
 
 (defn del-pnt
   [els eli xyi]
   (let [xyi' (+ xyi xyi-offset)]
     (-> els
-        (update eli vec-remove xyi'))))
+        (update eli u/vec-remove xyi'))))
 
 ;; --- els
 
@@ -111,13 +88,13 @@
   ([els eli] (append-el els eli (infer-succ-el els eli)))
   ([els eli el]
    (if eli
-     (-> els (vec-append eli el))
+     (-> els (u/vec-append eli el))
      [el])))
 
 (defn del-el
   [els eli]
   (-> els
-      (vec-remove eli)))
+      (u/vec-remove eli)))
 
 (defn transform-el
   [els eli to]
@@ -145,45 +122,45 @@
                      :S [:S c tgt]
                      :C [:C (last el-1) c tgt])))]
     (-> els
-        (vec-replace eli el'))))
+        (u/vec-replace eli el'))))
 
-;; --- params
+;; --- cmpt
 
 (defn append-pth
   [script pi]
   (-> script
-      (vec-append pi [:path {} [:M [10 10]]])))
+      (u/vec-append pi [:path {} [:M [10 10]]])))
 
-(defn del-pth [script pi] (-> script (vec-remove pi)))
+(defn del-pth [script pi] (-> script (u/vec-remove pi)))
 
 (defn translate
-  ([params ii n] (-> params (els/update-px ii  els/translate-els n)))
-  ([params    n] (-> params (els/update-px-all els/translate-els n))))
+  ([cmpt ii n] (-> cmpt (els/update-px ii  els/translate-els n)))
+  ([cmpt    n] (-> cmpt (els/update-px-all els/translate-els n))))
 
 (defn rotate
-  ([params ii c a] (-> params (els/update-px ii  els/rotate-els c a)))
-  ([params    c a] (-> params (els/update-px-all els/rotate-els c a))))
+  ([cmpt ii c a] (-> cmpt (els/update-px ii  els/rotate-els c a)))
+  ([cmpt    c a] (-> cmpt (els/update-px-all els/rotate-els c a))))
 
 (defn scale
-  ([params ii c n] (-> params (els/update-px ii  els/scale-els c n)))
-  ([params    c n] (-> params (els/update-px-all els/scale-els c n))))
+  ([cmpt ii c n] (-> cmpt (els/update-px ii  els/scale-els c n)))
+  ([cmpt    c n] (-> cmpt (els/update-px-all els/scale-els c n))))
 
 (defn absolute
-  ([params ii] (-> params (els/update-px ii  els/normalize-els :op :rel->abs)))
-  ([params]    (-> params (els/update-px-all els/normalize-els :op :rel->abs))))
+  ([cmpt ii] (-> cmpt (els/update-px ii  els/normalize-els :op :rel->abs)))
+  ([cmpt]    (-> cmpt (els/update-px-all els/normalize-els :op :rel->abs))))
 
 (defn full
-  ([params ii] (-> params (els/update-px ii  els/normalize-els :op :short->full)))
-  ([params]    (-> params (els/update-px-all els/normalize-els :op :short->full))))
+  ([cmpt ii] (-> cmpt (els/update-px ii  els/normalize-els :op :short->full)))
+  ([cmpt]    (-> cmpt (els/update-px-all els/normalize-els :op :short->full))))
 
 (defn normalize
-  ([params ii] (-> params (els/update-px ii  els/normalize-els :op :all)))
-  ([params]    (-> params (els/update-px-all els/normalize-els :op :all))))
+  ([cmpt ii] (-> cmpt (els/update-px ii  els/normalize-els :op :all)))
+  ([cmpt]    (-> cmpt (els/update-px-all els/normalize-els :op :all))))
 
 (defn mirror
-  ([params axis pos ii] (-> params (els/update-px ii  #(els/mirror-els axis pos %))))
-  ([params axis pos]    (-> params (els/update-px-all #(els/mirror-els axis pos %)))))
+  ([cmpt axis pos ii] (-> cmpt (els/update-px ii  #(els/mirror-els axis pos %))))
+  ([cmpt axis pos]    (-> cmpt (els/update-px-all #(els/mirror-els axis pos %)))))
 
-(defn update-p-opts [params ii f & args]
+(defn update-p-opts [cmpt ii f & args]
   (let [p-opts-i (concat (take 2 ii) [1])]
-    (apply update-in params p-opts-i f args)))
+    (apply update-in cmpt p-opts-i f args)))

@@ -11,49 +11,16 @@
 
             [paintscript.render :as render]))
 
-(defn- el->out
-  [{:as el :keys [el-k opts args]}]
-  (case el-k
-    :M    (cons "M" args)
-    :m    (cons "m" args)
-    :L    (cons "L" args)
-    :l    (cons "l" args)
-
-    :V    (cons "V" args)
-    :H    (cons "H" args)
-    :v    (cons "v" args)
-    :h    (cons "h" args)
-
-    :z    (list "z")
-    :A    (let [[r  p  tgt] args] (list "A" r  p   tgt))
-    :a    (let [[r  p  tgt] args] (list "a" r  p   tgt))
-    :Q    (let [[c     tgt] args] (list "Q" c      tgt))
-    :q    (let [[c     tgt] args] (list "q" c      tgt))
-    :T    (let [[c1    tgt] args] (list "T" c1 tgt tgt))
-    :t    (let [[c1    tgt] args] (list "t" c1 tgt tgt))
-    :S    (let [[   c2 tgt] args] (list "S"    c2  tgt))
-    :s    (let [[   c2 tgt] args] (list "s"    c2  tgt))
-    :C    (let [[c1 c2 tgt] args] (list "C" c1 c2  tgt))
-    :c    (let [[c1 c2 tgt] args] (list "c" c1 c2  tgt))
-
-    ;; --- extensions
-    :C1   (let [[c1    tgt] args] (list "C" c1 tgt tgt))
-    :c1   (let [[c1    tgt] args] (list "c" c1 tgt tgt))
-
-    :circle (el-path/circle-path opts)
-    :arc    (el-path/arcs args opts)
-    :arc*   (el-path/arcs args (assoc opts :ctd? true))))
-
 (declare paint)
 
 (def svg-renderer
   (reify render/Renderer
-    (els->out [_ els] (->> els (map el->out) flatten))
+    (els->out [_ els]      (el-path/els->out els))
     (group    [_ els]      (vec (cons :g els)))
     (group    [_ opts els] (vec (concat [:g opts] els)))
     (tf       [_ opts el]  (shk/tf opts el))
     (tf*      [_ opts els] (apply shk/tf* opts els))
-    (paint    [_ ps] (paint ps))
+    (paint    [_ ps]       (paint ps))
     (paint*   [_ ps-out _ _] ps-out)))
 
 (declare plot-coords)
@@ -245,20 +212,19 @@
 
 #?(:cljs
    (defn canvas-paint
-     ([config params] (canvas-paint nil config params))
+     ([config cmpt] (canvas-paint nil config cmpt))
      ([[hov sel dispatch! report! report-hov! set-ref! dnd-fns]
-       config params]
+       config cmpt]
       (let [{:keys [variant]
              {:as   canvas
-              :keys [variants]} :canvas}
-            params
+              :keys [variants]} :canvas} cmpt
 
             [src-k-sel
              pi-sel
              eli-sel
              xyi-sel] sel
 
-            out-tups (->> (:script params)
+            out-tups (->> (:script cmpt)
                           (map-indexed
                            (fn [pi [_k p-opts & els :as path]]
                              [pi p-opts els])))]
@@ -266,11 +232,11 @@
          (for [variant (or variants
                            (some-> variant list)
                            [nil])
-               :let [{:as params
+               :let [{:as cmpt
                       {:as   canvas
                        :keys [scale dims coords?]
                        :or   {dims [100 100] coords? true}} :canvas}
-                     (-> params
+                     (-> cmpt
                          (cond-> (keyword? variant) (assoc :variant variant)
                                  (map?     variant) (u/merge-configs variant)))
 
@@ -289,19 +255,18 @@
 
                (when (:script config)
                  [:g.main
-                  [paint (u/merge-configs
-                          config
-                          variant)]])
+                  [paint (u/merge-configs config
+                                          variant)]])
 
                [:g.main
-                [paint params]]
+                [paint cmpt]]
 
                ;; --- selected segment
 
                (when (and sel (or (and (= :defs src-k-sel)
                                        (get sel 2))
                                   (> eli-sel nav/eli0)))
-                 (let [els'    (-> (nav/params> params :src-k src-k-sel :pi pi-sel)
+                 (let [els'    (-> (nav/cmpt> cmpt :src-k src-k-sel :pi pi-sel)
                                    ;; to render an individual el it needs to be full & abs:
                                    (els/update-p-els els/normalize-els)
                                    (->> (take (inc eli-sel))
@@ -317,12 +282,12 @@
                 [:g.coords
                  (for [[pi {:as p-opts :keys [variant-k]} els] out-tups
                        :when (and (not (:disabled? p-opts))
-                                  (or (not (:variant params))
+                                  (or (not (:variant cmpt))
                                       (not variant-k)
-                                      (= (:variant params) variant-k)
-                                      (= (:variant params) variant-k)))]
+                                      (= (:variant cmpt) variant-k)
+                                      (= (:variant cmpt) variant-k)))]
                    (let [els'        (->> els
-                                          (els/resolve-els-refs (:defs params))
+                                          (els/resolve-els-refs (:defs cmpt))
                                           (els/attach-xy-abs-meta))
                          el-pnts-seq (render/path-pnts {:debug? true
                                                         :coords? true}

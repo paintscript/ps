@@ -10,18 +10,18 @@
   (paint    [_ ps])
   (paint*   [_ ps-out container-size el-size]))
 
-(defn path-pnts [params opts els]
-  (let [els'    (els/apply-path-opts params opts els)
+(defn path-pnts [cmpt opts els]
+  (let [els'    (els/apply-path-opts cmpt opts els)
         el-recs (map els/el-vec-->el-rec els')]
     (els/el-pnts el-recs)))
 
 (defn path
   ([r els]      (path r nil nil  els))
   ([r opts els] (path r nil opts els))
-  ([r params opts els]
-   (let [els'    (els/apply-path-opts params opts els)
+  ([r cmpt opts els]
+   (let [els'    (els/apply-path-opts cmpt opts els)
          el-recs (map els/el-vec-->el-rec els')
          out-seq (els->out r el-recs)]
-     (if (:debug? params)
+     (if (:debug? cmpt)
        [out-seq (els/el-pnts el-recs)]
        out-seq))))

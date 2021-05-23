@@ -8,25 +8,25 @@
    {:xx (fn [_ctx {:keys [title]} f] (testing title (f)))
     :x->
     (fn [ctx c args]
-      (let [{:keys [op params script els pnt ii i to tl =>]}
+      (let [{:keys [op cmpt script els pnt ii i to tl =>]}
             (merge (-> ctx :args) args)]
         (is (= =>
                (case op
-                 :append-pnt (if pnt
-                               (apply ops/append-pnt els (concat ii [pnt]))
-                               (apply ops/append-pnt els ii))
-                 :del-pnt    (apply ops/del-pnt    els ii)
-                 :append-el  (apply ops/append-el  els ii)
-                 :del-el     (apply ops/del-el     els ii)
-                 :append-pth (apply ops/append-pth script ii)
-                 :del-pth    (apply ops/del-pth    script ii)
-                 :tl-pth     (ops/translate params ii tl)
-                 :rel->abs   (ops/absolute params)
-                 :transform-el (ops/transform-el els i to))))))}})
+                 :ops/append-pnt   (if pnt
+                                     (apply ops/append-pnt els (concat ii [pnt]))
+                                     (apply ops/append-pnt els ii))
+                 :ops/del-pnt      (apply ops/del-pnt    els ii)
+                 :ops/append-el    (apply ops/append-el  els ii)
+                 :ops/del-el       (apply ops/del-el     els ii)
+                 :ops/append-pth   (apply ops/append-pth script ii)
+                 :ops/del-pth      (apply ops/del-pth    script ii)
+                 :ops/tl-pth       (ops/translate cmpt ii tl)
+                 :ops/rel->abs     (ops/absolute cmpt)
+                 :ops/transform-el (ops/transform-el els i to))))))}})
 
 (def ops-xspace
   [;; pnt
-   (xx {:= {:op :append-pnt}}
+   (xx {:= {:op :ops/append-pnt}}
 
        (xx {:title "infer pnt (|2|)"
             := {:els [[:L [0 0] [5 5]]]
@@ -46,26 +46,26 @@
             :ii  [0 0]
             :=>  [[:L [5 5] [10 10]]]))
 
-   (xx {:= {:op :del-pnt}}
+   (xx {:= {:op :ops/del-pnt}}
 
        (x-> :els [[:L [0 0] [5 5] [10 10]]]
             :ii  [0 1]
             :=>  [[:L [0 0] [10 10]]]))
 
    ;; el
-   (xx {:= {:op :append-el}}
+   (xx {:= {:op :ops/append-el}}
 
        (x-> :els [[:L [0 0] [5 5]]]
             :ii  [0]
             :=>  [[:L [0 0] [5 5]] [:L [15 15]]]))
 
-   (xx {:= {:op :del-el}}
+   (xx {:= {:op :ops/del-el}}
 
        (x-> :els [[:L [0 0] [5 5]] [:L [15 15]]]
             :ii  [0]
             :=>  [[:L [15 15]]]))
 
-   (xx {:= {:op :transform-el}}
+   (xx {:= {:op :ops/transform-el}}
 
        (x-> :els [[:M [0 0]] [:L [5 5]]]
             :i   1
@@ -78,48 +78,48 @@
             :=>  [[:M [0 0]] [:L [5 5]]]))
 
    ;; pth
-   (xx {:= {:op :append-pth}}
+   (xx {:= {:op :ops/append-pth}}
 
        (x-> :script [[:path {} [:M [5 5]]]]
             :ii     [0]
             :=>     [[:path {} [:M [5 5]]]
                      [:path {} [:M [10 10]]]]))
 
-   (xx {:= {:op :del-pth}}
+   (xx {:= {:op :ops/del-pth}}
 
        (x-> :script [[:path {} [:M [5 5]]]
                      [:path {} [:M [10 10]]]]
             :ii     [1]
             :=>     [[:path {} [:M [5 5]]]]))
 
-   (xx {:= {:op :tl-pth}}
+   (xx {:= {:op :ops/tl-pth}}
 
-       (x-> :params {:script
-                     [[:path {} [:M [5 5]]]
-                      [:path {} [:M [10 10]]]]}
-            :ii     [:script 0]
-            :tl     [1 2]
-            :=>     {:script
-                     [[:path {} [:M [6 7]]]
-                      [:path {} [:M [10 10]]]]}))
+       (x-> :cmpt {:script
+                   [[:path {} [:M [5 5]]]
+                    [:path {} [:M [10 10]]]]}
+            :ii   [:script 0]
+            :tl   [1 2]
+            :=>   {:script
+                   [[:path {} [:M [6 7]]]
+                    [:path {} [:M [10 10]]]]}))
 
-   (xx {:= {:op :rel->abs}}
+   (xx {:= {:op :ops/rel->abs}}
 
        (x-> "l"
-            :params {:script
-                     [[:path {} [:M [5 5]] [:l [5 5]]]
-                      [:path {} [:M [10 10]]]]}
-            :=>     {:defs {}
-                     :script
-                     [[:path {} [:M [5 5]] [:L [10 10]]]
-                      [:path {} [:M [10 10]]]]})
+            :cmpt {:script
+                   [[:path {} [:M [5 5]] [:l [5 5]]]
+                    [:path {} [:M [10 10]]]]}
+            :=>   {:defs {}
+                   :script
+                   [[:path {} [:M [5 5]] [:L [10 10]]]
+                    [:path {} [:M [10 10]]]]})
 
        (x-> "a"
-            :params {:script
-                     [[:path {} [:M [5 5]] [:a [5 5] [0 0 1] [7 7]]]]}
-            :=>     {:defs {}
-                     :script
-                     [[:path {} [:M [5 5]] [:A [5 5] [0 0 1] [12 12]]]]}))])
+            :cmpt {:script
+                   [[:path {} [:M [5 5]] [:a [5 5] [0 0 1] [7 7]]]]}
+            :=>   {:defs {}
+                   :script
+                   [[:path {} [:M [5 5]] [:A [5 5] [0 0 1] [12 12]]]]}))])
 
 (deftest ops-test
   (x/traverse-xspace ops-xspace-cfg

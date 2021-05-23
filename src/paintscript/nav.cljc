@@ -3,10 +3,10 @@
 (def eli0 2) ;; offset for first el in path
 (def xyi0 1) ;; offset for first pnt in el
 
-(defn params> [params & {:keys [src-k pi ii iii] :or {src-k :script}}]
-  (cond pi  (get-in params [src-k pi])
-        ii  (get-in params (cons src-k ii))
-        iii (get-in params (cons src-k iii))))
+(defn cmpt> [cmpt & {:keys [src-k pi ii iii] :or {src-k :script}}]
+  (cond pi  (get-in cmpt [src-k pi])
+        ii  (get-in cmpt (cons src-k ii))
+        iii (get-in cmpt (cons src-k iii))))
 
 (defn p> [p & {:keys [eli eln]}]
   (cond eli (get p eli)

@@ -11,6 +11,28 @@
 (defn merge-configs [& args]
   (apply merge-with merge-maps args))
 
+;; --- vecs
+
+(defn vec-insert
+  [coll i el]
+  (vec
+   (concat (subvec coll 0 i)
+           [el]
+           (subvec coll i (count coll)))))
+
+(defn vec-replace [coll i el]
+  (vec
+   (concat (subvec coll 0 i)
+           [el]
+           (subvec coll (inc i) (count coll)))))
+
+(defn vec-remove
+  [coll i]
+  (vec
+   (concat (subvec coll 0 i)
+           (subvec coll (inc i) (count coll)))))
+
+(defn vec-append [coll i el] (vec-insert coll (inc i) el))
 
 ;; --- numbers
 

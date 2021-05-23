@@ -1,17 +1,17 @@
 (ns paintscript.app.s-log)
 
-(defn init [params-init ui-init]
+(defn init [cmpt0 ui-init]
   {:i-active 0
    :s-items  (list
-              {:n      1
-               :op     [:init]
-               :params params-init
-               :ui     ui-init})})
+              {:n    1
+               :op   [:init]
+               :cmpt cmpt0
+               :ui   ui-init})})
 
 (defn undo? [!s-log]
   (-> @!s-log :s-items first :n (not= 1)))
 
-(defn op [!s-log !params !ui op-k & [op-arg]]
+(defn op [!s-log !cmpt !ui op-k & [op-arg]]
   (let [{:keys [i-active
                 s-items]} @!s-log
 
@@ -43,7 +43,7 @@
 
     (reset!  !s-log  {:i-active i-active'
                       :s-items  s-items'})
-    (reset! !params (:params s-active'))
+    (reset! !cmpt (:cmpt s-active'))
     (reset! !ui     (:ui     s-active'))))
 
 (defn items [!s-log]

@@ -114,17 +114,17 @@
    (concat (take 2 p)
            (apply f (drop 2 p) args))))
 
-(defn update-px-all [params f & args]
-  (-> params
+(defn update-px-all [cmpt f & args]
+  (-> cmpt
       (update :defs   (partial u/map-vals #(apply f % args)))
       (update :script (partial mapv       #(apply update-p-els % f args)))))
 
-(defn update-px [params [src-k px :as sel] f & args]
+(defn update-px [cmpt [src-k px :as sel] f & args]
   (if-not sel
-    (apply update-px-all params f args)
+    (apply update-px-all cmpt f args)
     (case src-k
-      :defs   (apply update-in params [src-k px] f args)
-      :script (apply update-in params [src-k px] update-p-els f args))))
+      :defs   (apply update-in cmpt [src-k px] f args)
+      :script (apply update-in cmpt [src-k px] update-p-els f args))))
 
 ;; --- scale
 
@@ -248,7 +248,7 @@
 
 (declare apply-path-opts)
 
-(defn- apply-repeat [els params
+(defn- apply-repeat [els cmpt
                      {:as opts
                       {repeat-times :times
                        repeat-mode  :mode} :repeat}]
@@ -267,7 +267,7 @@
                (reverse
                 (reduce (fn [[els-prev :as acc] _i]
                           (let [els' (->> els-prev
-                                          (apply-path-opts params opts'))]
+                                          (apply-path-opts cmpt opts'))]
                             (conj acc els')))
                         (list els-init)
                         (range 0 repeat-times))))
@@ -276,7 +276,7 @@
                     (concat [[:z]]))))))
 
 (defn apply-path-opts
-  [{:as params :keys [defs debug? coords?]}
+  [{:as cmpt :keys [defs debug? coords?]}
    {:as opts
     :keys [close? width mirror repeat]
     {scale-ctr    :center
@@ -297,7 +297,7 @@
               rotate    (rotate-els rot-ctr rot-deg)
               close?    (concat [[:z]])
               (and repeat
-                   (not debug?)) (apply-repeat params opts)
+                   (not debug?)) (apply-repeat cmpt opts)
 
               (and mirror
                    (not coords?))

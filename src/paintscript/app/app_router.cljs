@@ -54,14 +54,14 @@
                !galleries           (r/atom (read-edn! :galleries))
                !galleries-committed (r/atom @!galleries)
 
-               !params       (r/atom ctrl/params-init)
+               !cmpt0        (r/atom ctrl/cmpt0)
                app-dispatch! (fn [[op-k arg :as op]]
                                (case op-k
                                  :set-canvas
-                                 (let [[config params] arg]
+                                 (let [[config cmpt0] arg]
                                    (reset! !config-canvas (or config
                                                               init-config))
-                                   (reset! !params params)
+                                   (reset! !cmpt0 cmpt0)
                                    (swap!  !app-state assoc :page :canvas))
 
                                  :save-edn
@@ -79,8 +79,8 @@
           !c-gallery !c-gallery-committed
           !galleries !galleries-committed]
          (let [init-config @!config-canvas
-               init-params @!params]
-           [canvas init-config init-params]))])))
+               init-cmpt0  @!cmpt0]
+           [canvas init-config init-cmpt0]))])))
 
 (defn- mount-root! []
   (rd/render [#'app]

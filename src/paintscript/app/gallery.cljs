@@ -13,11 +13,11 @@
 (defn- pprint' [edn] (with-out-str *out* (pprint edn)))
 
 (defn- gallery-sidebar
-  [dispatch! !c-gallery !c-gallery-committed !galleries !galleries-committed !tab !shell]
+  [dispatch! !c-gallery !c-gallery-committed !root-def !root-def-committed !tab !shell]
   (let [cg  @!c-gallery
-        gg  @!galleries
+        gg  @!root-def
         tab @!tab
-        state-changes? (or (not= gg @!galleries-committed)
+        state-changes? (or (not= gg @!root-def-committed)
                            (not= cg @!c-gallery-committed))]
     [:div.sidebar.script
      [:div.controls
@@ -39,7 +39,7 @@
                 {:value     (str/trim (pprint' gg))
                  :on-focus  #(key/disable!)
                  :on-blur   #(key/enable!)
-                 :on-change #(reset! !galleries (-> % .-target .-value read-string))}]
+                 :on-change #(reset! !root-def (-> % .-target .-value read-string))}]
        :config [:textarea
                 {:value     (str/trim (pprint' cg))
                  :on-focus  #(key/disable!)
@@ -63,17 +63,17 @@
                            (-> e (.preventDefault)))))}]]]))
 
 (defn galleries
-  [app-dispatch! !c-gallery !c-gallery-committed !galleries !galleries-committed]
+  [app-dispatch! !c-gallery !c-gallery-committed !root-def !root-def-committed]
   (r/with-let [!shell (r/atom "")
                !tab   (r/atom :script)]
-    (let [c-base @!c-gallery
-          {gg-config :config
-           galleries :galleries} @!galleries]
+    (let [c-base              @!c-gallery
+          {:as root-def
+           :keys [galleries]} @!root-def]
       [:div.galleries
        [:div.sidebar.script-phantom]
        [gallery-sidebar app-dispatch!
         !c-gallery !c-gallery-committed
-        !galleries !galleries-committed
+        !root-def  !root-def-committed
         !tab       !shell]
        [:div.gallery-main
         (for [[g-id {:as gallery :keys [title paintings]}] galleries]
@@ -81,15 +81,15 @@
           [:div.gallery
            [:h1 (or title g-id)]
            [:div.paintings
-            (for [[item-id {:as painting :keys [params]}] paintings
-                  :let [c  (u/merge-configs
-                            (-> painting :config)
-                            (-> gallery  :config)
-                            gg-config)
+            (for [[item-id {:as painting :keys [component]}] paintings
+                  :let [c  (u/merge-configs ;; TODO: reverse order?
+                                            (-> painting :config)
+                                            (-> gallery  :config)
+                                            (-> root-def :config))
                         c' (-> (or c
                                    c-base)
                                (assoc-in [:canvas :coords?] false))]]
               ^{:key (hash painting)}
               [:div.gallery-item
-               {:on-click #(app-dispatch! [:set-canvas [c params]])}
-               [render-svg/canvas-paint c' (merge c' params)]])]])]])))
+               {:on-click #(app-dispatch! [:set-canvas [c component]])}
+               [render-svg/canvas-paint c' (merge c' component)]])]])]])))

@@ -133,11 +133,11 @@
 
    ; (xx {:= {:op :paint}}
    ;
-   ;     (x-> :params {:script [[:path {} [:M [0 0]]]]}
-   ;          :=>     '[:g ([:g [:path {:d "M 0 0"}]])])
+   ;     (x-> :cmpt {:script [[:path {} [:M [0 0]]]]}
+   ;          :=>   '[:g ([:g [:path {:d "M 0 0"}]])])
    ;
-   ;     (x-> :params {:script [[:circle {:cx 10 :cy 10 :r 10}]]}
-   ;          :=>     '[:g ([:circle {:cx 10 :cy 10 :r 10}])]))
+   ;     (x-> :cmpt {:script [[:circle {:cx 10 :cy 10 :r 10}]]}
+   ;          :=>   '[:g ([:circle {:cx 10 :cy 10 :r 10}])]))
    ])
 
 (deftest path-test
