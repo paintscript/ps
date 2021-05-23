@@ -3,6 +3,7 @@ on: [push]
 jobs:
   test:
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
       - uses: actions/setup-java@v1
         with:
@@ -16,7 +17,6 @@ jobs:
         run: |
           (JAR=~/.m2/repository/z-com/z-com/0.8.30/z-com-0.8.30.jar;
            cd .. &&
-           pwd &&
            (mkdir -p z-com/components/menu/resources/; cd $_; unzip $JAR scss/menu.scss -d .))
           npm i
           bin/scss r
@@ -30,6 +30,7 @@ jobs:
           publish_dir: ./resources-app/public
           publish_branch: master
           external_repository: paintscript/paintscript.github.io
+
       # - uses: actions/upload-artifact@v2
       #   with:
       #     name: app-js

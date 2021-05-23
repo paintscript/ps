@@ -1,4 +1,4 @@
-(ns paintscript.s-log)
+(ns paintscript.app.s-log)
 
 (defn init [params-init ui-init]
   {:i-active 0

@@ -1,6 +1,6 @@
 (ns paintscript.els
   (:require [paintscript.util :as u]
-            [paintscript.el :as el]
+            [paintscript.el-path :as el]
             [paintscript.nav :as nav]))
 
 ;; -----------------------------------------------------------------------------
@@ -116,8 +116,8 @@
 
 (defn update-px-all [params f & args]
   (-> params
-      (update :defs   (fn [dd] (u/map-vals #(apply f % args) dd)))
-      (update :script (fn [s]  (mapv #(apply update-p-els % f args) s)))))
+      (update :defs   (partial u/map-vals #(apply f % args)))
+      (update :script (partial mapv       #(apply update-p-els % f args)))))
 
 (defn update-px [params [src-k px :as sel] f & args]
   (if-not sel

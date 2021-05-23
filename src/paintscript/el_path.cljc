@@ -1,9 +1,29 @@
-(ns paintscript.el
+(ns paintscript.el-path
   "https://developer.mozilla.org/en-US/docs/Web/SVG/Tutorial/Paths"
   (:require [clojure.set :as set]
             [paintscript.util :as u]))
 
 (defn flip-bin [n] (case n 0 1 0))
+
+;; -----------------------------------------------------------------------------
+;; path extensions
+
+(defn arcs
+  [arc-xys {:as opts :keys [mode ctd?] :or {mode :concave}}]
+  (let [[head & tail]    arc-xys
+        paired-with-prev (map vector tail (drop-last arc-xys))
+        arc-middle       (str (case mode :concave "0,1" :convex "0,0") )]
+    (concat (when-not ctd?
+              [["M" head]])
+            (for [[[x  y  :as _xy]
+                   [xp yp :as _xy-prev]] paired-with-prev]
+              ["A" [(- x xp) (- y yp)] [0 arc-middle] [x y]]))))
+
+(defn circle-path [{:keys [r]
+                     [cx cy] :center}]
+  (list "M" [cx cy] "m" [(- r) 0]
+        "a" [r r] [0 1 0] [(* 2 r) 0]
+        "a" [r r] [0 1 0] [(- (* 2 r)) 0]))
 
 ;; -----------------------------------------------------------------------------
 ;; classes

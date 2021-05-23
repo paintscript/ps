@@ -10,7 +10,7 @@
             [paintscript.els :as els]
             [paintscript.nav :as nav]
             [paintscript.app.ctl :as ctrl]
-            [paintscript.s-log :as s-log]
+            [paintscript.app.s-log :as s-log]
 
             [paintscript.render-svg :as render-svg]))
 

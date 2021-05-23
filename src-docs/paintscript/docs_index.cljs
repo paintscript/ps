@@ -2,14 +2,17 @@
   (:require [reagent.core :as r]
             [xspace.ui.index :as xs-idx]
             [urlkit-util.app-dispatcher :refer [app-dispatcher]]
-            [paintscript.core-xspace :refer [core-xspace]]
+            [paintscript.util-xspace :refer [util-xspace]]
+            [paintscript.path-xspace :refer [path-xspace]]
+            [paintscript.els-xspace :refer [els-xspace]]
+            [paintscript.ops-xspace :refer [ops-xspace]]
             [paintscript.xspace-view :refer [xspace-paintscript]]))
 
 (defn xspace-index []
   [:div.xspace-index
    [:h2 "xspace-index"]
    [xs-idx/index-seq {:view xspace-paintscript}
-    [["paintscript.core" core-xspace]]]])
+    [["paintscript.path" path-xspace]]]])
 
 (defn docs-index []
   [:div.doc-index

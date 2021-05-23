@@ -7,12 +7,12 @@
             [clojure.walk :as w]
             [svg-hiccup-kit.core :refer [d d2]]
             [paintscript.util :as u]
-            [paintscript.el :as el]
+            [paintscript.el-path :as el]
             [paintscript.ops :as ops]
-            #?(:cljs [paintscript.ops-svg :as ops-svg])
+            #?(:cljs [paintscript.app.ops-svg :as ops-svg])
             [paintscript.nav :as nav]
             [paintscript.conv :as conv]
-            [paintscript.s-log :as s-log]))
+            [paintscript.app.s-log :as s-log]))
 
 (def params-clear {:defs {} :script []})
 

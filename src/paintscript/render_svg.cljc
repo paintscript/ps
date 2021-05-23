@@ -5,36 +5,15 @@
             #?(:cljs [reagent.core :as r :refer [atom]])
 
             [paintscript.util :as u]
-            [paintscript.el :as el]
+            [paintscript.el-path :as el-path]
             [paintscript.els :as els]
             [paintscript.nav :as nav]
 
             [paintscript.render :as render]))
 
-(defn- arcs
-  [arc-xys {:as opts :keys [mode ctd?] :or {mode :concave}}]
-  (let [[head & tail]    arc-xys
-        paired-with-prev (map vector tail (drop-last arc-xys))
-        arc-middle       (str (case mode :concave "0,1" :convex "0,0") )]
-    (concat (when-not ctd?
-              [["M" head]])
-            (for [[[x  y  :as _xy]
-                   [xp yp :as _xy-prev]] paired-with-prev]
-              ["A" [(- x xp) (- y yp)] [0 arc-middle] [x y]]))))
-
-(defn- circle-path [{:keys [r]
-                     [cx cy] :center}]
-  (list "M" [cx cy] "m" [(- r) 0]
-        "a" [r r] [0 1 0] [(* 2 r) 0]
-        "a" [r r] [0 1 0] [(- (* 2 r)) 0]))
-
 (defn- el->out
   [{:as el :keys [el-k opts args]}]
   (case el-k
-    :circle (circle-path opts)
-
-    :arc  (arcs args opts)
-    :arc* (arcs args (assoc opts :ctd? true))
     :M    (cons "M" args)
     :m    (cons "m" args)
     :L    (cons "L" args)
@@ -45,19 +24,25 @@
     :v    (cons "v" args)
     :h    (cons "h" args)
 
+    :z    (list "z")
     :A    (let [[r  p  tgt] args] (list "A" r  p   tgt))
     :a    (let [[r  p  tgt] args] (list "a" r  p   tgt))
-    :S    (let [[   c2 tgt] args] (list "S"    c2  tgt))
-    :s    (let [[   c2 tgt] args] (list "s"    c2  tgt))
-    :C    (let [[c1 c2 tgt] args] (list "C" c1 c2  tgt))
-    :c    (let [[c1 c2 tgt] args] (list "c" c1 c2  tgt))
-    :C1   (let [[c1    tgt] args] (list "C" c1 tgt tgt))
-    :c1   (let [[c1    tgt] args] (list "c" c1 tgt tgt))
     :Q    (let [[c     tgt] args] (list "Q" c      tgt))
     :q    (let [[c     tgt] args] (list "q" c      tgt))
     :T    (let [[c1    tgt] args] (list "T" c1 tgt tgt))
     :t    (let [[c1    tgt] args] (list "t" c1 tgt tgt))
-    :z    (list "z")))
+    :S    (let [[   c2 tgt] args] (list "S"    c2  tgt))
+    :s    (let [[   c2 tgt] args] (list "s"    c2  tgt))
+    :C    (let [[c1 c2 tgt] args] (list "C" c1 c2  tgt))
+    :c    (let [[c1 c2 tgt] args] (list "c" c1 c2  tgt))
+
+    ;; --- extensions
+    :C1   (let [[c1    tgt] args] (list "C" c1 tgt tgt))
+    :c1   (let [[c1    tgt] args] (list "c" c1 tgt tgt))
+
+    :circle (el-path/circle-path opts)
+    :arc    (el-path/arcs args opts)
+    :arc*   (el-path/arcs args (assoc opts :ctd? true))))
 
 (declare paint)
 
@@ -80,7 +65,7 @@
     pi
     els]
    (if-let [d (:d p-opts)]
-     (let [d' (-> d (cond-> (el/ref? d)
+     (let [d' (-> d (cond-> (el-path/ref? d)
                             (->> (els/resolve-d-ref (:defs s-opts)))))
            {:keys [translate]
             {scale-factor :factor} :scale} p-opts
@@ -114,7 +99,7 @@
    obj-opts' els]
   [:g (->> els
            (reduce (fn [[out offset] el]
-                     (assert (el/ref? el))
+                     (assert (el-path/ref? el))
                      (let [{:as painting, {:keys [dims]} :canvas}
                            (els/resolve-p-ref defs el)
 
@@ -179,6 +164,7 @@
                                    styles-attrs)))))
        {:key pi}))])
 
+
 ;; -----------------------------------------------------------------------------
 ;; web
 
@@ -193,7 +179,7 @@
      (r/with-let [!hover? (atom false)]
        (when
          (vector? xy) ;; skip v/V, h/H
-         (let [[x y]     (->> (if (el/relative? el-k)
+         (let [[x y]     (->> (if (el-path/relative? el-k)
                                 xy-abs
                                 xy)
                               (mapv #(* % scaled)))
@@ -209,7 +195,7 @@
                 (let [[x2 y2] (-> els
                                   (nth i-main)
                                   last
-                                  (cond-> (el/relative? el-k)
+                                  (cond-> (el-path/relative? el-k)
                                           (#(-> % els/xy-abs-meta (or %))))
                                   (->> (mapv #(* % scaled))))]
                   [:g

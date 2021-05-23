@@ -1,4 +1,4 @@
-(ns paintscript.ops-svg)
+(ns paintscript.app.ops-svg)
 
 (defn svg-xml-b64 [svg-dom]
   (str "data:image/svg+xml;base64,"
