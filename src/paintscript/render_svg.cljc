@@ -249,6 +249,16 @@
                                 :ref   set-ref!}
                                (get-in config [:canvas :attrs])
                                dnd-fns)
+              [:defs
+               [:pattern#diagonalHatch
+                {:pattern-units "userSpaceOnUse"
+                 :width  5
+                 :height 5}
+                [:path {:d "M  0 5, l 5 -5"
+                        :style {:stroke "var(--blue-light)" :stroke-width 1}}]]]
+              (when (:hatching canvas)
+                [:rect {:width w :height h :fill "url(#diagonalHatch)"}])
+
               [tf* {:sc [scale scale]}
 
                ;; --- output

@@ -66,9 +66,11 @@
   [app-dispatch! !c-gallery !c-gallery-committed !root-def !root-def-committed]
   (r/with-let [!shell (r/atom "")
                !tab   (r/atom :script)]
+
     (let [c-base              @!c-gallery
           {:as root-def
            :keys [galleries]} @!root-def]
+
       [:div.galleries
        [:div.sidebar.script-phantom]
        [gallery-sidebar app-dispatch!
@@ -76,12 +78,18 @@
         !root-def  !root-def-committed
         !tab       !shell]
        [:div.gallery-main
+
+        ;; --- gallery list
         (for [[g-id {:as gallery :keys [title paintings]}] galleries]
           ^{:key (hash gallery)}
           [:div.gallery
            [:h1 (or title g-id)]
            [:div.paintings
-            (for [[item-id {:as painting :keys [component]}] paintings
+
+            ;; --- painting list
+            (for [[painting-id
+                   {:as painting :keys [component]}] (->> paintings
+                                                          sort)
                   :let [c  (u/merge-configs ;; TODO: reverse order?
                                             (-> painting :config)
                                             (-> gallery  :config)
@@ -92,4 +100,6 @@
               ^{:key (hash painting)}
               [:div.gallery-item
                {:on-click #(app-dispatch! [:set-canvas [c component]])}
+               [:div.gallery-item-title (or (:title painting)
+                                            painting-id)]
                [render-svg/canvas-paint c' (merge c' component)]])]])]])))

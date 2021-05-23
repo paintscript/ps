@@ -24,7 +24,7 @@
 
 (def init-config
   {:canvas
-   {:dims [100 100] :scale 4}
+   {:dims [100 100] :scale 4 :hatching true}
 
    :styles
    {"outline" {:stroke "black" :fill "none" :stroke-width 1}

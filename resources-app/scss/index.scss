@@ -9,7 +9,9 @@ html, body {
 div.app {
   * { box-sizing: border-box; }
 
+  --black:               hsl(0deg 0% 20%);
   --blue-dark:           hsl(240deg 100% 80%);
+  --blue-light:          hsl(240deg 100% 90%);
   --pd:                  10px;
   --pd-half:             5px;
   --pd-double:           20px;
@@ -47,7 +49,7 @@ div.script.sidebar {
   position: fixed;
   border-width: 0 3px 0 0;
   border-style: solid;
-  border-color: hsl(0,0%,0%);
+  border-color: var(--black);
 
   > div.controls {
     &.unsaved-changes div.zc-button.save {
