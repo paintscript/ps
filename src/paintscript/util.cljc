@@ -1,4 +1,6 @@
-(ns paintscript.util)
+(ns paintscript.util
+  (:require [clojure.string :as str]
+            [clojure.pprint :refer [pprint]]))
 
 ;; --- colls
 
@@ -148,3 +150,14 @@
         radius (dist ctr pnt)]
     (point-at-angle ctr radius (+ alpha0
                                   alphad))))
+
+(defn pprint*
+  ([edn] (with-out-str *out* (pprint edn)))
+  ([title edn]
+   (println (str title
+                 "\n   "
+                 (str/replace (-> edn
+                                  (cond-> (not (string? edn))
+                                          pprint*))
+                              "\n" "\n   ")))
+   edn))

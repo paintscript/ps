@@ -165,8 +165,7 @@
            (-> el'
                (with-meta (meta el)))))
        els
-       (-> els (normalize-els
-                :op :rel->abs))))
+       (-> els (normalize-els :op :rel->abs))))
 
 (defn- attach-ii-el-meta
   [src-k x-k eli0 els]
@@ -177,11 +176,14 @@
 
 (defn attach-ii-el-meta* [script-pp]
   (->> script-pp
-       (map-indexed (fn [pi p]
-                      (vec
-                       (concat (take 2 p)
-                               (->> (drop 2 p)
-                                    (attach-ii-el-meta :script pi nav/eli0))))))
+       (map-indexed (fn [pi [obj-k :as obj]]
+                      (case obj-k
+                        ;; TODO: add meta support for :ref & geo objects
+                        :ref obj
+                        (vec
+                         (concat (take 2 obj)
+                                 (->> (drop 2 obj)
+                                      (attach-ii-el-meta :script pi nav/eli0)))))))
        vec))
 
 (defrecord El      [el-k opts ii-el i-arg0 args])

@@ -156,13 +156,13 @@
     (let [config   @!config
           cmpt     @!cmpt
 
-          {:keys [sel]} @!ui
+          {:keys
+           [sel]}  @!ui
 
-          cmpt'
-          (-> (merge-with merge
-                          (-> config (dissoc :script))
-                          cmpt)
-              (update :script els/attach-ii-el-meta*))]
+          cmpt'    (-> (merge-with merge
+                                   (-> config (dissoc :script))
+                                   cmpt)
+                       (update :script els/attach-ii-el-meta*))]
 
       [:div.canvas
        [:div.sidebar.script-phantom]
@@ -172,4 +172,5 @@
 
        [canvas-paint'
         [@!hov sel dispatch! report! report-hov! set-ref! dnd-fns]
-        config cmpt']])))
+        config cmpt']
+       ])))

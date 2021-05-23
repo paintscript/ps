@@ -48,7 +48,7 @@
        (let [out-seq (render/path svg-renderer s-opts p-opts els)]
          [:path (merge attrs {:d (apply d out-seq)})])))))
 
-(defn- scale->tl [canvas-dims {:keys [factor center]}]
+(defn- scale->tl [canvas-dims {:as scale :keys [factor center] :or {center [0 0]}}]
   (let [ratio      (mapv / center canvas-dims)
         dims-delta (mapv #(-> % (* (- factor 1))) canvas-dims)
         tl         (mapv #(-> %1 (* %2) -) dims-delta ratio)]
@@ -61,30 +61,46 @@
                          4 3)
                 :right 1)))
 
+(defn- derive-cmpt-tf [{:as tf-params
+                        :keys [margin translate]
+                        {:as scale
+                         sc-ctr :center
+                         sc-fct :factor} :scale} cmpt]
+  {:tl (-> translate
+           (cond->  margin (update 0 + (margin-side margin :left)))
+           (cond->> scale  (mapv + (scale->tl (get-in cmpt [:canvas :dims])
+                                              scale))))
+   :sc (when scale
+         [sc-fct])})
+
 (defn- layout-builder
-  "compose a sequence of components into one"
-  [{:as script-opts :keys [defs]}
+  "compose a sequence of components into one, offset each by the width of prior ones"
+  [{:as cmpt-ctx :keys [defs]}
    obj-opts' els]
   [:g (->> els
            (reduce (fn [[out offset] el]
                      (assert (el-path/ref? el))
-                     (let [{:as cmpt
-                            {:keys [dims]} :canvas} (els/resolve-cmpt-ref defs el)
+                     (let [{:as cmpt-ref
+                            {:keys [dims]} :canvas}  (els/resolve-cmpt-ref defs el)
 
-                           {:keys [margin translate]
-                            {sc-ctr :center
-                             sc-fct :factor :as scale} :scale}
-                           (els/get-opts el)
+                           cmpt* (merge cmpt-ctx
+                                        cmpt-ref)
+
+                           {:as tf-params
+                            :keys [margin translate]
+
+                            {:as scale
+                             sc-ctr :center
+                             sc-fct :factor} :scale} (els/get-opts el)
+
+                           tf-params' (-> tf-params
+                                          (update :translate #(->> (or % [0 0])
+                                                                   (mapv + [offset 0]))))
 
                            out+
                            ^{:key (hash [offset el])}
-                           [tf {:tl (-> [offset 0]
-                                        (cond->  margin    (update 0 + (margin-side margin :left)))
-                                        (cond->> translate (mapv + translate))
-                                        (cond->> scale     (mapv + (scale->tl (get-in cmpt [:canvas :dims]) scale))))
-                                :sc (when scale
-                                      [sc-fct])}
-                            (paint (merge script-opts cmpt))]
+                           [tf (derive-cmpt-tf tf-params' cmpt*)
+                            (paint cmpt*)]
 
                            offset+ (-> (first dims)
                                        (cond-> translate (+ (first translate))
@@ -127,15 +143,22 @@
         obj-opts'  (case obj-k
                      (:path
                       :layout) (-> obj-opts'
-                                   (merge  tf-opts)
+                                   (->> (merge  tf-opts))
                                    (assoc  :attrs attrs')
                                    (dissoc :disabled?))
+                     :ref      obj-opts'
                      (-> obj-opts'
                          ;; NOTE: tf-opts not supported yet
-                         (merge attrs')))]
+                         (->> (merge attrs'))))]
     (case obj-k
       :path   (path-builder   cmpt obj-opts' obj-i els)
       :layout (layout-builder cmpt obj-opts' els)
+      :ref    (let [cmpt-ref (els/resolve-cmpt-ref (:defs cmpt) obj)
+                    cmpt*    (u/deep-merge cmpt
+                                           cmpt-ref)]
+                (assert cmpt-ref)
+                [tf (derive-cmpt-tf (els/get-opts obj) cmpt*)
+                 (paint cmpt*)])
 
       (:rect
        :circle
@@ -252,8 +275,12 @@
 
             out-tups (->> (:script cmpt)
                           (map-indexed
-                           (fn [pi [_k p-opts & els :as path]]
-                             [pi p-opts els])))]
+                           (fn [pi [obj-k p-opts & els :as path]]
+                             (case obj-k
+                               :ref nil ;; TODO: add :ref support
+                               [pi p-opts els])))
+                          (remove nil?))]
+
         [:div.paint
          (for [variant (or variants
                            (some-> variant list)
@@ -282,6 +309,7 @@
                  :height 5}
                 [:path {:d "M  0 5, l 5 -5"
                         :style {:stroke "var(--blue-light)" :stroke-width 1}}]]]
+
               (when (:hatching canvas)
                 [:rect {:width w :height h :fill "url(#diagonalHatch)"}])
 
@@ -292,7 +320,7 @@
                (when-let [script-pre (:script/pre config)]
                  [:g.main.pre
                   [paint (-> (u/deep-merge config
-                                              variant)
+                                           variant)
                              (assoc :script script-pre))]])
 
                [:g.main
