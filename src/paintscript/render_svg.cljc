@@ -293,12 +293,26 @@
        ^{:key (hash ii-pnt)}
        [coord opts els el pnt ii-pnt])))
 
+(defn- derive-background-attrs
+  [{:as config :keys [canvas]}
+   {:keys [url scale translate] :or {scale 1 translate [0 0]}}]
+  (let [[x y] (->> translate
+                   (mapv #(* % (or (:scale canvas) 1))))]
+    {:style {:background-image (str "url('" url "')")
+             :background-size (str (* 100 scale) "%")
+             :background-position (->> [x y]
+                                       (map #(str % "px"))
+                                       (str/join " "))}}))
+
 #?(:cljs
    (defn canvas-paint
      ([config cmpt] (canvas-paint nil config cmpt))
      ([[hov sel dispatch! report! report-hov! set-ref! dnd-fns]
        config cmpt]
-      (let [{:keys [variant]
+      (let [config' (u/deep-merge config
+                                  (:config cmpt))
+
+            {:keys [variant]
              {:as   canvas
               :keys [variants]} :canvas} cmpt
 
@@ -327,22 +341,29 @@
                          (cond-> (keyword? variant) (assoc :variant variant)
                                  (map?     variant) (u/deep-merge variant)))
 
-                     [w h] (->> dims (mapv #(* % scale)))]]
+                     [w h] (->> dims (mapv #(* % scale)))
+
+                     config* (u/deep-merge config'
+                                           cmpt)]]
 
            (try
              ^{:key (hash variant)}
              [:svg (merge-with merge
+                               ; {:width w :height h}
+                               (when-let [bg (get-in config* [:canvas :background])]
+                                 (derive-background-attrs config* bg))
                                {:style {:width w :height h}
                                 :ref   set-ref!}
-                               (get-in config [:canvas :attrs])
+                               (get-in config* [:canvas :attrs])
                                dnd-fns)
               [:defs
                [:pattern#diagonalHatch
                 {:pattern-units "userSpaceOnUse"
                  :width  5
                  :height 5}
-                [:path {:d "M  0 5, l 5 -5"
-                        :style {:stroke "var(--blue-light)" :stroke-width 1}}]]]
+                [:path {:d "M 0 5 L 5 0"
+                        :style {:stroke "var(--blue-light)" :stroke-width 1
+                                :stroke-linecap "square"}}]]]
 
               (when (:hatching canvas)
                 [:rect {:width w :height h :fill "url(#diagonalHatch)"}])

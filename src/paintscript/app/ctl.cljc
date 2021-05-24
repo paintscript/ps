@@ -18,7 +18,10 @@
 
 (def cmpt0
   {:config {:coords? false}
-   :canvas {:dims [100 100]},
+   :canvas {:dims [100 100]
+            :hatching false
+            :variants [{:canvas {:scale 2}}
+                       {:canvas {:scale 4}}]}
    :defs
    {:components
     {"reps"  {:canvas {:dims [100 100]},

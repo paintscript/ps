@@ -26,9 +26,10 @@ div.app {
   --light-grey:          hsl(0,0%,95%);
   --light-grey-alpha:    hsla(0,0%,0%,0.10);
 
-  --sidebar:             30vw;
-  --sidebar-min:         220px;
-  --sidebar-max:         300px;
+  --sidebar:             300px;
+  --canvas:              calc(100vw - var(--sidebar));
+  // --sidebar-min:         220px;
+  // --sidebar-max:         300px;
 
   --controls-height:     50px;
   --controls-bg:         hsl(0,0%,95%);
@@ -163,8 +164,8 @@ div.canvas, div.galleries {
   }
 
   div.sidebar {
-    min-width: var(--sidebar-min);
-    max-width: var(--sidebar-max);
+    // min-width: var(--sidebar-min);
+    // max-width: var(--sidebar-max);
     width:     var(--sidebar);
     height:    100vh;
     flex-shrink: 0;
@@ -174,9 +175,18 @@ div.canvas, div.galleries {
 div.canvas div.paint {
   display: flex;
   align-items: center;
-  justify-content: center;
-  flex-wrap: wrap;
-  width: 100%;
+  // justify-content: center;
+  // flex-wrap: wrap;
+  > * {
+    flex-shrink: 0;
+
+    // NOTE: `justify-content: center` will overflow svg on the left w/o ability
+    // to scroll it into view, therefore auto-margin is used to center horizontally
+    margin: 0 auto;
+  }
+  width: var(--canvas);
+  overflow: scroll;
+
 }
 
 div.paint {
