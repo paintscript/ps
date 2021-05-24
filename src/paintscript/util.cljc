@@ -1,6 +1,8 @@
 (ns paintscript.util
   (:require [clojure.string :as str]
-            [clojure.pprint :refer [pprint]]))
+            [clojure.pprint :refer [pprint]]
+
+            #?(:cljs [keybind.core :as kb])))
 
 ;; --- colls
 
@@ -161,3 +163,11 @@
                                           pprint*))
                               "\n" "\n   ")))
    edn))
+
+; #?(:cljs
+;    (defn init-key-bindings! [kbnds]
+;      (doseq [[id-k [str-k f]] kbnds]
+;        (kb/bind! str-k id-k f))
+;      (fn _term-kb! []
+;        (doseq [[id-k [str-k f]] kbnds]
+;          (kb/unbind! str-k id-k)))))

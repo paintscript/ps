@@ -21,7 +21,8 @@
    :canvas {:dims [100 100]
             :hatching false
             :variants [{:canvas {:scale 2}}
-                       {:canvas {:scale 4}}]}
+                       {:canvas {:scale 4}}]
+            }
    :defs
    {:components
     {"reps"  {:canvas {:dims [100 100]},
@@ -315,72 +316,75 @@
      (when-let [cp-i (some-> (get pth eli') (el/el->cp-i :init))] [[eli' cp-i]]))))
 
 #?(:cljs
- (defn drag-and-drop-fns
-   "attached to SVG element"
-   [!scale !cmpt !ui dispatch!]
-   (let [!snap    (r/cursor !ui [:snap])
-         !sel     (r/cursor !ui [:sel])
-         !sel-set (r/cursor !ui [:sel-set])]
-     {;; NOTE: invoked after canvas/report!
-      :on-mouse-down #(let [{:keys
-                             [xy-svg!
-                              sel
-                              sel-set
-                              insert-mode?]} @!ui
-                            xy               (xy-mouse %)
-                            scale            @!scale
-                            {:keys
-                             [main?
-                              shift?]}       (meta sel)]
-                        (cond
-                          (= 4 (count sel))
-                          ;; --- sel
-                          (do
-                            (let [sel-set'
-                                  (into #{{:ii-xy sel
-                                           :main? main?}}
-                                        (map (fn [eli-cpi]
-                                               {:ii-xy (concat (take 2 sel) eli-cpi)}))
-                                        (when main?
-                                          (pth->cp-ii (get-in @!cmpt (take 2 sel))
-                                                      (nth sel 2))))]
-                              (if shift?
-                                (swap!  !sel-set set/union sel-set')
-                                (reset! !sel-set sel-set')))
-                            (swap! !snap merge
-                                   {:cmpt0 @!cmpt :m0 xy}))
+   (defn drag-and-drop-fns
+     "attached to SVG element"
+     [!cmpt !ui dispatch!]
+     (fn _derive-dnd-fns [!svg-dom scale]
+       (let [!snap    (r/cursor !ui [:snap])
+             !sel     (r/cursor !ui [:sel])
+             !sel-set (r/cursor !ui [:sel-set])
+             xy-svg!  (fn []
+                        (let [rect (-> @!svg-dom (.getBoundingClientRect))]
+                          [(-> rect .-left)
+                           (-> rect .-top)]))]
+         {;; NOTE: invoked after canvas/report!
+          :on-mouse-down #(let [{:keys
+                                 [sel
+                                  sel-set
+                                  insert-mode?]} @!ui
+                                xy               (xy-mouse %)
+                                {:keys
+                                 [main?
+                                  shift?]}       (meta sel)]
+                            (cond
+                              (= 4 (count sel))
+                              ;; --- sel
+                              (do
+                                (let [sel-set'
+                                      (into #{{:ii-xy sel
+                                               :main? main?}}
+                                            (map (fn [eli-cpi]
+                                                   {:ii-xy (concat (take 2 sel) eli-cpi)}))
+                                            (when main?
+                                              (pth->cp-ii (get-in @!cmpt (take 2 sel))
+                                                          (nth sel 2))))]
+                                  (if shift?
+                                    (swap!  !sel-set set/union sel-set')
+                                    (reset! !sel-set sel-set')))
+                                (swap! !snap merge
+                                       {:cmpt0 @!cmpt :m0 xy}))
 
-                          insert-mode?
-                          ;; --- insert
-                          (let [xy  (xy-mouse %)
-                                xy' (as-> (xy-mouse %) xy'
-                                          (mapv - xy' (xy-svg!))
-                                          (mapv / xy' [scale scale])
-                                          (mapv u/round xy'))
-                                el-k (if (seq (:script @!cmpt))
-                                       :L
-                                       :M)]
-                            (dispatch! [:el-append [el-k xy']]))))
-      :on-mouse-move (fn [ev]
-                       (let [{:keys [snap-to-grid?]
-                              {:as snapshot :keys [cmpt0 m0]} :snap} @!ui
-                             scale @!scale]
-                         (when cmpt0
-                           (let [m1  (xy-mouse ev)
-                                 d   (mapv - m1 m0)
-                                 d'  (mapv / d [scale scale])
-                                 d'  (if snap-to-grid?
-                                       (mapv u/round d')
-                                       d')]
-                             (dispatch! [:set-sel-d d'])))))
-      :on-mouse-up   #(let [{:keys [sel sel-prev cmpt0]} @!snap
-                            cmpt @!cmpt]
-                        (reset! !snap {:sel-prev sel})
-                        (when (and sel sel-prev cmpt0
-                                   (= sel sel-prev)
-                                   (= cmpt0 cmpt))
-                          (reset! !sel  nil)
-                          (reset! !snap nil)))})))
+                              insert-mode?
+                              ;; --- insert
+                              (let [xy-ptr (xy-mouse %)
+                                    xy-svg (xy-svg!)
+                                    xy'    (as-> xy-ptr xy*
+                                                 (mapv - xy* xy-svg)
+                                                 (mapv / xy* [scale scale])
+                                                 (mapv u/round xy*))
+                                    el-k   (if (seq (:script @!cmpt))
+                                             :L
+                                             :M)]
+                                (dispatch! [:el-append [el-k xy']]))))
+          :on-mouse-move (fn [ev]
+                           (let [{:keys [snap-to-grid?]
+                                  {:as snapshot :keys [cmpt0 m0]} :snap} @!ui]
+                             (when cmpt0
+                               (let [m1  (xy-mouse ev)
+                                     d   (mapv - m1 m0)
+                                     d'  (mapv / d [scale scale])
+                                     d'  (if snap-to-grid?
+                                           (mapv u/round d')
+                                           d')]
+                                 (dispatch! [:set-sel-d d'])))))
+          :on-mouse-up   #(let [{:keys [sel sel-prev cmpt0]} @!snap
+                                cmpt @!cmpt]
+                            (reset! !snap {:sel-prev sel})
+                            (when (and sel sel-prev cmpt0
+                                       (= sel sel-prev)
+                                       (= cmpt0 cmpt))
+                              (reset! !sel  nil)
+                              (reset! !snap nil)))}))))
 
 (defn keybind-fns [!cmpt !ui dispatch!]
   (let [upd! #(swap! !cmpt assoc-in (:sel @!ui) %)
@@ -389,4 +393,7 @@
      "right"     #(dispatch! [:set-sel-d [1 0]])
      "up"        #(dispatch! [:set-sel-d [0 -1]])
      "down"      #(dispatch! [:set-sel-d [0 1]])
-     "backspace" #(when-let [[x y] (get!)] (dispatch! [:xy-del]))}))
+     "backspace" #(when-let [[x y] (get!)] (dispatch! [:xy-del]))
+     "c"         #(dispatch! [:el-tf :C])
+     "q"         #(dispatch! [:el-tf :Q])
+     "s"         #(dispatch! [:el-tf :S])}))

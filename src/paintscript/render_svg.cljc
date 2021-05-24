@@ -328,126 +328,137 @@
              :transform (str "translate(" x "px," y "px)")}}))
 
 #?(:cljs
+   (defn- canvas-paint-variant
+     [[hov sel dispatch! report! report-hov! derive-dnd-fns :as c-app]
+      config variant
+      {:as cmpt
+       {:as   canvas
+        :keys [scale dims coords?]
+        :or   {dims [100 100]
+               coords? true}} :canvas}
+      out-tups]
+     (r/with-let [!svg-dom (atom nil)
+                  [w h]    (->> dims (mapv #(* % scale)))
+                  dnd-fns  (derive-dnd-fns !svg-dom scale)]
+       (let [config* (u/deep-merge config
+                                   (:config cmpt))
+
+             [src-k-sel
+              pi-sel
+              eli-sel
+              xyi-sel] sel
+
+             cmpt* (u/deep-merge config*
+                                 cmpt)]
+         (try
+           ^{:key (hash variant)}
+           [:svg (u/deep-merge {:width  w
+                                :height h
+                                :ref    #(when (and % (not @!svg-dom)) (reset! !svg-dom %))}
+                               (get-in config* [:canvas :attrs])
+                               dnd-fns)
+            (when-let [bg (get-in config* [:canvas :background])]
+              [:image (derive-background-attrs cmpt* bg [w h])])
+            [:defs
+             [:pattern#diagonalHatch
+              {:pattern-units "userSpaceOnUse"
+               :width  5
+               :height 5}
+              [:path {:d "M 0 5 L 5 0"
+                      :style {:stroke "var(--blue-light)" :stroke-width 1
+                              :stroke-linecap "square"}}]]]
+
+            (when (:hatching canvas)
+              [:rect {:width w :height h :fill "url(#diagonalHatch)"}])
+
+            [tf* {:sc [scale scale]}
+
+             ;; --- output
+
+             (when-let [script-pre (:script/pre config)]
+               [:g.main.pre
+                [paint (-> cmpt*
+                           (assoc :script script-pre))]])
+
+             [:g.main
+              [paint cmpt*]]
+
+             ;; --- selected segment
+
+             (when (and sel (or (and (= :defs src-k-sel)
+                                     (get sel 2))
+                                (> eli-sel nav/eli0)))
+               (let [els'    (-> (nav/cmpt> cmpt :src-k src-k-sel :pi pi-sel)
+                                 ;; to render an individual el it needs to be full & abs:
+                                 (els/update-p-els els/normalize-els)
+                                 (->> (take (inc eli-sel))
+                                      (drop (if (= :defs src-k-sel) 0 nav/eli0)))
+                                 vec)
+                     els-seg (els/get-path-segment src-k-sel els' eli-sel)]
+                 [:g.sel
+                  [path-builder nil {} pi-sel els-seg]]))]
+
+            ;; --- coord circles
+
+            (when coords?
+              [:g.coords
+               (for [[pi {:as p-opts :keys [variant-k]} els] out-tups
+                     :when (and (not (:disabled? p-opts))
+                                (or (not (:variant cmpt))
+                                    (not variant-k)
+                                    (= (:variant cmpt) variant-k)
+                                    (= (:variant cmpt) variant-k)))]
+                 (let [els'        (->> els
+                                        (els/resolve-els-refs (:defs cmpt))
+                                        (els/attach-xy-abs-meta))
+                       el-pnts-seq (render/path-pnts {:debug? true
+                                                      :coords? true}
+                                                     p-opts
+                                                     els')]
+                   ^{:key pi}
+                   [:g.coords-plot
+                    (plot-coords {:scaled        scale
+                                  :coord-size    10
+                                  :report!       report!
+                                  :report-hover! report-hov!
+                                  :sel           sel
+                                  :hov           hov
+                                  :controls?     (= pi-sel pi)}
+                                 pi els' el-pnts-seq)]))])]
+           (catch :default err
+             (println :paint-exec-error)
+             (js/console.log err)
+             (dispatch! [:undo])))))))
+
+#?(:cljs
    (defn canvas-paint
      ([config cmpt] (canvas-paint nil config cmpt))
-     ([[hov sel dispatch! report! report-hov! set-ref! dnd-fns]
-       config cmpt]
-      (let [config' (u/deep-merge config
+     ([c-app config cmpt]
+      (let [;; NOTE: can't be cached b/c 0.x floats hash to 0
+            config' (u/deep-merge config
                                   (:config cmpt))
 
             {:keys [variant]
              {:as   canvas
               :keys [variants]} :canvas} cmpt
 
-            [src-k-sel
-             pi-sel
-             eli-sel
-             xyi-sel] sel
-
             out-tups (->> (:script cmpt)
                           (map-indexed
-                           (fn [pi [obj-k p-opts & els :as path]]
+                           (fn [si [obj-k obj-opts & els]]
                              (case obj-k
                                :ref nil ;; TODO: add :ref support
-                               [pi p-opts els])))
+                               [si obj-opts els])))
                           (remove nil?))]
 
         [:div.paint
          (for [variant (or variants
                            (some-> variant list)
-                           [nil])
-               :let [{:as cmpt
-                      {:as   canvas
-                       :keys [scale dims coords?]
-                       :or   {dims [100 100] coords? true}} :canvas}
-                     (-> cmpt
-                         (cond-> (keyword? variant) (assoc :variant variant)
-                                 (map?     variant) (u/deep-merge variant)))
-
-                     [w h] (->> dims (mapv #(* % scale)))
-
-                     config* (u/deep-merge config'
-                                           cmpt)]]
-
-           (try
-             ^{:key (hash variant)}
-             [:svg (merge-with merge
-                               ; {:width w :height h}
-
-                               {:style {:width w :height h}
-                                :ref   set-ref!}
-                               (get-in config* [:canvas :attrs])
-                               dnd-fns)
-              (when-let [bg (get-in config* [:canvas :background])]
-                [:image (derive-background-attrs config* bg [w h])])
-              [:defs
-               [:pattern#diagonalHatch
-                {:pattern-units "userSpaceOnUse"
-                 :width  5
-                 :height 5}
-                [:path {:d "M 0 5 L 5 0"
-                        :style {:stroke "var(--blue-light)" :stroke-width 1
-                                :stroke-linecap "square"}}]]]
-
-              (when (:hatching canvas)
-                [:rect {:width w :height h :fill "url(#diagonalHatch)"}])
-
-              [tf* {:sc [scale scale]}
-
-               ;; --- output
-
-               (when-let [script-pre (:script/pre config)]
-                 [:g.main.pre
-                  [paint (-> (u/deep-merge config
-                                           variant)
-                             (assoc :script script-pre))]])
-
-               [:g.main
-                [paint cmpt]]
-
-               ;; --- selected segment
-
-               (when (and sel (or (and (= :defs src-k-sel)
-                                       (get sel 2))
-                                  (> eli-sel nav/eli0)))
-                 (let [els'    (-> (nav/cmpt> cmpt :src-k src-k-sel :pi pi-sel)
-                                   ;; to render an individual el it needs to be full & abs:
-                                   (els/update-p-els els/normalize-els)
-                                   (->> (take (inc eli-sel))
-                                        (drop (if (= :defs src-k-sel) 0 nav/eli0)))
-                                   vec)
-                       els-seg (els/get-path-segment src-k-sel els' eli-sel)]
-                   [:g.sel
-                    [path-builder nil {} pi-sel els-seg]]))]
-
-              ;; --- coord circles
-
-              (when coords?
-                [:g.coords
-                 (for [[pi {:as p-opts :keys [variant-k]} els] out-tups
-                       :when (and (not (:disabled? p-opts))
-                                  (or (not (:variant cmpt))
-                                      (not variant-k)
-                                      (= (:variant cmpt) variant-k)
-                                      (= (:variant cmpt) variant-k)))]
-                   (let [els'        (->> els
-                                          (els/resolve-els-refs (:defs cmpt))
-                                          (els/attach-xy-abs-meta))
-                         el-pnts-seq (render/path-pnts {:debug? true
-                                                        :coords? true}
-                                                       p-opts
-                                                       els')]
-                     ^{:key pi}
-                     [:g.coords-plot
-                      (plot-coords {:scaled        scale
-                                    :coord-size    10
-                                    :report!       report!
-                                    :report-hover! report-hov!
-                                    :sel           sel
-                                    :hov           hov
-                                    :controls?     (= pi-sel pi)}
-                                   pi els' el-pnts-seq)]))])]
-             (catch :default err
-               (println :paint-exec-error)
-               (js/console.log err)
-               (dispatch! [:undo]))))]))))
+                           [nil])]
+           (do
+             (assert (not (keyword? variant)))
+             (let [cmpt' (-> cmpt
+                             (cond-> (keyword? variant) (assoc :variant variant)
+                                     variant (u/deep-merge variant)))]
+               ^{:key (hash [variant
+                             (get-in cmpt' [:canvas :scale])])}
+               [canvas-paint-variant c-app config' variant cmpt' out-tups])))]))))

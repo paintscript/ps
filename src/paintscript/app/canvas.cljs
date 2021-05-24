@@ -7,15 +7,13 @@
             [z-com.core :as zc]
             [keybind.core :as key]
 
+            [paintscript.util :as u]
             [paintscript.els :as els]
             [paintscript.nav :as nav]
-            [paintscript.app.ctl :as ctrl]
+            [paintscript.app.ctl :as ctl]
             [paintscript.app.s-log :as s-log]
 
             [paintscript.render-svg :as render-svg]))
-
-(defn- pprint' [edn]
-  (with-out-str *out* (pprint edn)))
 
 (defn- canvas-sidebar
   [!config !cmpt !ui !shell !s-log !tab
@@ -31,16 +29,20 @@
         [zc/button
          :label    (name tab-k)
          :active?  (= tab-k tab)
-         :on-click #(reset! !tab tab-k)])]
+         :on-click #(reset! !tab tab-k)])
+      [zc/button
+       :label    "+"
+       :active?  @(r/cursor !ui [:insert-mode?])
+       :on-click #(dispatch! [:toggle-insert])]]
 
      (case tab
        :script [:textarea
-                {:value     (str/trim (pprint' cmpt))
+                {:value     (str/trim (u/pprint* cmpt))
                  :on-focus  #(key/disable!)
                  :on-blur   #(key/enable!)
                  :on-change #(reset! !cmpt (-> % .-target .-value read-string))}]
        :config [:textarea
-                {:value     (str/trim (pprint' config))
+                {:value     (str/trim (u/pprint* config))
                  :on-focus  #(key/disable!)
                  :on-blur   #(key/enable!)
                  :on-change #(reset! !config (-> % .-target .-value read-string))}]
@@ -106,45 +108,36 @@
                              :snap          nil
                              :snap-to-grid? true
                              :insert-mode?  true}
+
                !ui          (r/atom   ui-init)
-               !sel         (r/cursor !ui [:sel])
-               !sel-set     (r/cursor !ui [:sel-set])
                !config      (r/atom   cfg-init)
-               !scale       (r/cursor !config [:canvas :scale])
                !cmpt        (r/atom   cmpt0)
                !s-log       (r/atom   nil)
                !hov         (r/atom   nil)
                !tab         (r/atom   :script)
                !shell       (r/atom   "")
 
+               !sel         (r/cursor !ui     [:sel])
+               !sel-set     (r/cursor !ui     [:sel-set])
+               !scale       (r/cursor !config [:canvas :scale])
+
                report!      (fn [iii i-main shift?]
                               (reset! !sel (-> iii
                                                (with-meta {:main?  (not i-main)
                                                            :shift? shift?}))))
-               dispatch!    (partial ctrl/dispatch! !config !cmpt !s-log !ui)
-               dnd-fns      (ctrl/drag-and-drop-fns !scale !cmpt !ui dispatch!)
-               kb-fns       (ctrl/keybind-fns              !cmpt !ui dispatch!)
+               dispatch!    (partial ctl/dispatch! !config !cmpt !s-log !ui)
+               dnd-fns      (ctl/drag-and-drop-fns !cmpt !ui dispatch!)
+               kb-fns       (ctl/keybind-fns       !cmpt !ui dispatch!)
                report-hov!  (fn [iii val]
                               (swap! !hov #(cond
                                              val iii
                                              (= iii %) nil
                                              :else %)))
 
+               ; (reset! !s-log (s-log/init @!cmpt @!ui))
+
                _ (doseq [[k f] kb-fns]
                    (key/bind! k (keyword k) f))
-
-               set-ref! (fn [svg-dom]
-                          (when (and svg-dom (not (:xy-svg! @!ui)))
-                            (swap! !ui
-                                   (fn [ui]
-                                     (-> ui
-                                         (assoc :svg-dom svg-dom
-                                                :xy-svg!
-                                                (fn []
-                                                  (let [rect (-> svg-dom (.getBoundingClientRect))]
-                                                    [(-> rect .-left)
-                                                     (-> rect .-top)]))))))
-                            (reset! !s-log (s-log/init @!cmpt @!ui))))
 
                canvas-paint' (with-meta #'render-svg/canvas-paint
                                {:component-did-catch
@@ -153,16 +146,14 @@
                                   (js/console.log e)
                                   (dispatch! [:undo]))})]
 
-    (let [config   @!config
-          cmpt     @!cmpt
-
+    (let [config  @!config
+          cmpt    @!cmpt
           {:keys
-           [sel]}  @!ui
-
-          cmpt'    (-> (merge-with merge
-                                   (-> config (dissoc :script))
-                                   cmpt)
-                       (update :script els/attach-ii-el-meta*))]
+           [sel]} @!ui
+          cmpt'   (-> (merge-with merge
+                                  (-> config (dissoc :script))
+                                  cmpt)
+                      (update :script els/attach-ii-el-meta*))]
 
       [:div.canvas
        [:div.sidebar.script-phantom]
@@ -171,6 +162,6 @@
         config cmpt cmpt' sel dispatch!]
 
        [canvas-paint'
-        [@!hov sel dispatch! report! report-hov! set-ref! dnd-fns]
+        [@!hov sel dispatch! report! report-hov! dnd-fns]
         config cmpt']
        ])))
