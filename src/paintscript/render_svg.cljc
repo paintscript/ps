@@ -295,14 +295,37 @@
 
 (defn- derive-background-attrs
   [{:as config :keys [canvas]}
-   {:keys [url scale translate] :or {scale 1 translate [0 0]}}]
-  (let [[x y] (->> translate
-                   (mapv #(* % (or (:scale canvas) 1))))]
-    {:style {:background-image (str "url('" url "')")
-             :background-size (str (* 100 scale) "%")
-             :background-position (->> [x y]
-                                       (map #(str % "px"))
-                                       (str/join " "))}}))
+   {:keys [align url scale translate opacity]
+    :or {scale 1 translate [0 0] align :center opacity 0.5}
+    wh-img :size}
+   wh-svg]
+  (let [[w-img
+         h-img
+         :as wh-img'] (cond
+                        wh-img
+                        (let [scale* (* scale
+                                        (or (:scale canvas) 1))]
+                          (mapv * [scale*
+                                   scale*] wh-img))
+
+                        :else
+                        (mapv * [scale
+                                 scale] wh-svg))
+
+        [x y] (->> translate
+                   (mapv #(* % (or (:scale canvas) 1))) ;; scale the translation
+                   ((fn [xy]
+                      (case align
+                        :init   xy
+                        :center (let [offset (->> (mapv - wh-img' wh-svg)
+                                                  (mapv #(-> % (/ 2))))]
+                                  (mapv - xy offset))))))]
+
+    {:href url
+     :width w-img
+     :height h-img
+     :style {:opacity opacity
+             :transform (str "translate(" x "px," y "px)")}}))
 
 #?(:cljs
    (defn canvas-paint
@@ -350,12 +373,13 @@
              ^{:key (hash variant)}
              [:svg (merge-with merge
                                ; {:width w :height h}
-                               (when-let [bg (get-in config* [:canvas :background])]
-                                 (derive-background-attrs config* bg))
+
                                {:style {:width w :height h}
                                 :ref   set-ref!}
                                (get-in config* [:canvas :attrs])
                                dnd-fns)
+              (when-let [bg (get-in config* [:canvas :background])]
+                [:image (derive-background-attrs config* bg [w h])])
               [:defs
                [:pattern#diagonalHatch
                 {:pattern-units "userSpaceOnUse"
