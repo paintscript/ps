@@ -13,7 +13,8 @@
          urlkit/urlkit {:mvn/version "0.3.7"}
          urlkit-util/urlkit-util {:mvn/version "0.3.3"}}
  :paths ["src/"
-         "resources-app/"]
+         ; "resources-app/"
+         ]
  :aliases
  {:xx {:extra-deps  {org.clojure/test.check {:mvn/version "1.1.0"}
                      xspace/xspace-core {:mvn/version "0.2.21"}

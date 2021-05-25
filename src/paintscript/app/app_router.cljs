@@ -5,8 +5,8 @@
             [urlkit.core :as uk]
             [urlkit.sync :as sync]
 
-            [paintscript.app.canvas :refer [canvas]]
-            [paintscript.app.gallery :refer [galleries]]
+            [paintscript.app.canvas-module :refer [canvas]]
+            [paintscript.app.gallery-module :refer [galleries]]
             [paintscript.app.ctl :as ctrl]))
 
 (defn read-edn! [data-k]
@@ -23,12 +23,9 @@
    :script []})
 
 (def init-config
-  {:canvas
-   {:dims [100 100] :scale 4 :hatching true}
-
-   :styles
-   {"outline" {:stroke "black" :fill "none" :stroke-width 1}
-    "solid"   {:stroke "none"  :fill "black"}}})
+  {:canvas       {:dims [100 100] :scale 4 :hatching true}
+   :attr-classes {"outline" {:stroke "black" :fill "none" :stroke-width 1}
+                  "solid"   {:stroke "none"  :fill "black"}}})
 
 (def init-config-gallery
   (-> init-config

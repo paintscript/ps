@@ -1,4 +1,4 @@
-(ns paintscript.app.canvas
+(ns paintscript.app.canvas-module
   (:require [clojure.string :as str]
             [cljs.pprint :refer [pprint]]
             [cljs.reader :refer [read-string]]
@@ -13,7 +13,7 @@
             [paintscript.app.ctl :as ctl]
             [paintscript.app.s-log :as s-log]
 
-            [paintscript.render-svg :as render-svg]))
+            [paintscript.canvas :as canvas]))
 
 (defn- canvas-sidebar
   [!config !cmpt !ui !shell !s-log !tab
@@ -139,7 +139,7 @@
                _ (doseq [[k f] kb-fns]
                    (key/bind! k (keyword k) f))
 
-               canvas-paint' (with-meta #'render-svg/canvas-paint
+               canvas-paint' (with-meta #'canvas/canvas-paint
                                {:component-did-catch
                                 (fn [e info]
                                   (println :paint-error e)

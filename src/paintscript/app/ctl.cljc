@@ -20,18 +20,17 @@
   {:config {:coords? false}
    :canvas {:dims [100 100]
             :hatching false
-            :variants [{:canvas {:scale 2}}
-                       {:canvas {:scale 4}}]
-            }
+            :instances [{:canvas {:scale 2}}
+                        {:canvas {:scale 4}}]}
    :defs
    {:components
     {"reps"  {:canvas {:dims [100 100]},
               :script
               [[:path
-                {:class-k "solid", :repeat {:translate [30 0], :times 2}}
+                {:attr-class "solid", :repeat {:translate [30 0], :times 2}}
                 [:circle {:center [20 50], :r 5}]]
                [:path
-                {:class-k "solid",
+                {:attr-class "solid",
                  :repeat {:rotate {:degree 60, :center [50 50]}, :times 6}}
                 [:M [50 8]]
                 [:L [39 15] [61 15]]]]}
@@ -48,7 +47,7 @@
    [[:layout {} [:ref "reps"]]
 
     [:path
-     {:class-k "outline",
+     {:attr-class "outline",
       :repeat
       {:rotate {:degree 60, :center [50 50]}, :times 5, :mode :fuse}}
      [:M [57 37]]
@@ -123,12 +122,12 @@
         ;; --- configure
         "p-mirror"    (let [[?mode-str] args]
                         [:set-p-opts [:mirror {:mode (or (some-> ?mode-str keyword) :separate)}]])
-        "class-k"     (let [[?class] args
-                            class-k (or ?class "outline")]
-                        [:set-p-opts [:class-k class-k]])
-        "variant-k"   (let [[?variant] args
-                            variant-k (or ?variant "outline")]
-                        [:set-p-opts [:variant-k variant-k]])
+        "attr-class"     (let [[?class] args
+                            attr-class (or ?class "outline")]
+                        [:set-p-opts [:attr-class attr-class]])
+        "variant-key" (let [[?variant] args
+                            variant-key (or ?variant "outline")]
+                        [:set-p-opts [:variant-key variant-key]])
         "disable"     [:set-p-opts [:disabled? true]]
         "enable"      [:set-p-opts [:disabled? false]]
 

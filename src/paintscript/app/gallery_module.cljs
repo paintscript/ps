@@ -1,4 +1,4 @@
-(ns paintscript.app.gallery
+(ns paintscript.app.gallery-module
   (:require [cljs.pprint :refer [pprint]]
             [clojure.string :as str]
             [cljs.reader :refer [read-string]]
@@ -7,8 +7,9 @@
             [reagent.core :as r]
 
             [paintscript.util :as u]
-            [paintscript.app.canvas :as canvas]
-            [paintscript.render-svg :as render-svg]))
+            [paintscript.canvas :as canvas]
+            ; [paintscript.app.canvas-module :as canvas-module]
+            ))
 
 (defn- pprint' [edn] (with-out-str *out* (pprint edn)))
 
@@ -102,4 +103,4 @@
                {:on-click #(app-dispatch! [:set-canvas [c component]])}
                [:div.gallery-item-title (or (:title painting)
                                             painting-id)]
-               [render-svg/canvas-paint c' (merge c' component)]])]])]])))
+               [canvas/canvas-paint c' (merge c' component)]])]])]])))

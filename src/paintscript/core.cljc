@@ -1,10 +1,9 @@
 (ns paintscript.core
   (:require [paintscript.render :as render]
-            [paintscript.render-svg :as render-svg]
-            #?(:cljs [paintscript.render-svg :as render-svg])))
+            [paintscript.paint :as paint]
+            #?(:cljs [paintscript.canvas :as canvas])))
 
-(def path (partial render/path render-svg/svg-renderer))
-
-(def path-builder #?(:cljs render-svg/path-builder))
-(def paint        #?(:cljs render-svg/paint))
-(def plot-coords  #?(:cljs render-svg/plot-coords))
+(def path         (partial render/path paint/svg-renderer))
+(def path-builder paint/path-builder)
+(def paint        paint/paint)
+(def plot-coords  #?(:cljs canvas/plot-coords))
