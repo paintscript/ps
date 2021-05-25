@@ -10,7 +10,7 @@
   (into {} (map (fn [[k v]] [k (f v)])) coll))
 
 (defn merge-maps [& args]
-  (if (every? map? args) (apply merge args) (last args)))
+  (if (every? (some-fn map? nil?) args) (apply merge args) (last args)))
 
 (defn deep-merge [& args]
   (apply merge-with merge-maps args))

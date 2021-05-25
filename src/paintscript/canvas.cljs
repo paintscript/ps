@@ -15,24 +15,25 @@
                                        path-builder]]))
 
 (defn coord
-  [{:as opts :keys [scaled report! report-hover! coord-size controls? hov]
-    [src-k-sel pi-sel eli-sel xyi-sel :as sel] :sel}
+  [{:as opts :keys [scaled report-down! report-over! coord-size controls? hov-rec sel-rec]}
    els
-   {:as el  :keys [el-k]}
+   {:as el  :keys [p-el-k]}
    {:as pnt :keys [xy xy-abs i-main]}
    [src-k pi eli _ :as ii-pnt]]
   (r/with-let [!hover? (r/atom false)]
     (when
       (vector? xy) ;; skip v/V, h/H
-      (let [[x y]     (->> (if (el-path/relative? el-k)
+      (let [[x y]     (->> (if (el-path/relative? p-el-k)
                              xy-abs
                              xy)
                            (mapv #(* % scaled)))
             cp?       (some? i-main)
-            hover?    (= ii-pnt hov)
-            sel-pv?   (and (= pi-sel  pi)
-                           (= eli-sel eli))
-            sel-pnt?  (= ii-pnt sel)]
+
+            sel-pv?   (and (= (:x-el-k sel-rec)  pi)
+                           (= (:p-el-i sel-rec) eli))
+            pth-rec*  (nav/pth-vec->rec ii-pnt)
+            hover?    (= hov-rec pth-rec*)
+            sel-pnt?  (= sel-rec pth-rec*)]
 
         (when (or (not cp?) sel-pv?)
           [:g
@@ -40,7 +41,7 @@
              (let [[x2 y2] (-> els
                                (nth i-main)
                                last
-                               (cond-> (el-path/relative? el-k)
+                               (cond-> (el-path/relative? p-el-k)
                                        (#(-> % els/xy-abs-meta (or %))))
                                (->> (mapv #(* % scaled))))]
                [:g
@@ -49,12 +50,12 @@
 
            [:g {:class         (str (if i-main "control" "target")
                                     (when hover? " hover")
-                                    (when (= sel ii-pnt) " selected"))
+                                    (when sel-pnt? " selected"))
                 :style         {:cursor      "pointer"
                                 :text-select "none"}
-                :on-mouse-down #(report!       ii-pnt i-main (-> % .-shiftKey))
-                :on-mouse-over #(report-hover! ii-pnt true)
-                :on-mouse-out  #(report-hover! ii-pnt false)}
+                :on-mouse-down #(report-down! pth-rec* i-main (-> % .-shiftKey))
+                :on-mouse-over #(report-over! pth-rec* true)
+                :on-mouse-out  #(report-over! pth-rec* false)}
 
             (if cp?
               [:g.cp
@@ -125,7 +126,7 @@
 (def ^:private c-fns {:plot-coords plot-coords})
 
 (defn- canvas-paint-variant
-  [[hov sel dispatch! report! report-hov! derive-dnd-fns :as c-app]
+  [[hov-rec sel-rec dispatch! report-down! report-over! derive-dnd-fns :as c-app]
    config variant-active
    {:as cmpt
     {:as   canvas
@@ -138,14 +139,8 @@
                dnd-fns  (derive-dnd-fns !svg-dom scale)]
     (let [config* (u/deep-merge config
                                 (:config cmpt))
-
-          [src-k-sel
-           pi-sel
-           eli-sel
-           xyi-sel] sel
-
-          cmpt* (u/deep-merge config*
-                              cmpt)]
+          cmpt*   (u/deep-merge config*
+                                cmpt)]
       (try
         ^{:key (hash variant-active)}
         [:svg (u/deep-merge {:width  w
@@ -182,18 +177,24 @@
 
           ;; --- selected segment
 
-          (when (and sel (or (and (= :defs src-k-sel)
-                                  (get sel 2))
-                             (> eli-sel nav/eli0)))
-            (let [els'    (-> (nav/cmpt> cmpt :src-k src-k-sel :pi pi-sel)
-                              ;; to render an individual el it needs to be full & abs:
-                              (els/update-p-els els/normalize-els)
-                              (->> (take (inc eli-sel))
-                                   (drop (if (= :defs src-k-sel) 0 nav/eli0)))
-                              vec)
-                  els-seg (els/get-path-segment src-k-sel els' eli-sel)]
+          (when (and sel-rec
+                     (or (and (= :defs (:src-k sel-rec))
+                              (:p-el-i sel-rec))
+                         (> (:p-el-i sel-rec) nav/p-el-i0)))
+            (let [p-els'    (-> (nav/cmpt> cmpt
+                                           :src-k (:src-k sel-rec)
+                                           :s-eli (:x-el-k sel-rec))
+
+                                ;; to render an individual el it needs to be full & abs:
+                                (els/update-p-els els/normalize-els)
+
+                                (els/extract-p-els (:src-k  sel-rec)
+                                                   (:p-el-i sel-rec))
+                                vec)
+                  p-els-seg (els/get-path-segment (:src-k  sel-rec) p-els'
+                                                  (:p-el-i sel-rec))]
               [:g.sel
-               [path-builder nil {} pi-sel els-seg]]))]
+               [path-builder c-fns nil {} (:x-el-k sel-rec) p-els-seg]]))]
 
          ;; --- coord circles
 
@@ -208,7 +209,7 @@
               (let [els'        (->> els
                                      (els/resolve-els-refs (:defs cmpt))
                                      (els/attach-xy-abs-meta))
-                    el-pnts-seq (render/path-pnts {:debug? true
+                    el-pnts-seq (render/path-pnts {:debug?  true
                                                    :coords? true}
                                                   p-opts
                                                   els')]
@@ -216,11 +217,11 @@
                 [:g.coords-plot
                  (plot-coords {:scaled        scale
                                :coord-size    10
-                               :report!       report!
-                               :report-hover! report-hov!
-                               :sel           sel
-                               :hov           hov
-                               :controls?     (= pi-sel pi)}
+                               :report-down!  report-down!
+                               :report-over!  report-over!
+                               :sel-rec       sel-rec
+                               :hov-rec       hov-rec
+                               :controls?     (= (:x-el-k sel-rec) pi)}
                               pi els' el-pnts-seq)]))])]
         (catch :default err
           (println :paint-exec-error)
@@ -240,10 +241,10 @@
 
          out-tups (->> (:script cmpt)
                        (map-indexed
-                        (fn [si [obj-k obj-opts & els]]
+                        (fn [s-el-i [obj-k obj-opts & els]]
                           (case obj-k
                             :ref nil ;; TODO: add :ref support
-                            [si obj-opts els])))
+                            [s-el-i obj-opts els])))
                        (remove nil?))]
 
      [:div.paint

@@ -19,11 +19,11 @@
           ;         :d (apply d =>)}]
           ]
 
-         #{:scale-els}
+         #{:scale-p-els}
          [:div
           [:svg {:width 100 :height 100}
            [core/path-builder opts' path]]
 
           [:svg {:width 100 :height 100}
-           [core/path-builder opts' (core/scale-els path center factor)]]]
+           [core/path-builder opts' (core/scale-p-els path center factor)]]]
          nil))]))

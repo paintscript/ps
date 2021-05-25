@@ -136,7 +136,7 @@
         "def"         (let [[pk] args]
                         [:def pk])
         "script"      (let [sel-path (map read-string args)]
-                        [:sel (cons :script sel-path)])
+                        [:sel-rec (cons :script sel-path)])
         "svg"         [:svg-path (str/join " " args)]
         "snap"        [:toggle-snap]
         ("i"
@@ -147,118 +147,121 @@
         ;; else:
         (println (str "command not found: " cmd-line))))))
 
-(defn- handle-op [cmpt ui [op-k & [arg :as args] :as op]]
-  (let [[src-k-sel
-         pi-sel
-         eli-sel
-         xyi-sel :as sel] (:sel ui)]
-    (case op-k
-      :set-sel-d   (let [{:keys [cmpt0]} (:snap ui)
-                         cmpt (or cmpt0  ;; dnd
-                                  cmpt)] ;; kb
-                     {:cmpt
-                      (reduce (fn [acc' {:as sel-item :keys [ii-xy main?]}]
-                                (-> acc'
-                                    (assoc-in ii-xy
-                                              (mapv + (get-in cmpt ii-xy) arg))))
-                              cmpt
-                              (:sel-set ui))})
+(defn- handle-op [cmpt {:as ui :keys [sel-rec]} [op-k & [arg :as args] :as op]]
+  (case op-k
+    :set-sel-d   (let [{:keys [cmpt0]} (:snap ui)
+                       cmpt (or cmpt0  ;; dnd
+                                cmpt)] ;; kb
+                   {:cmpt
+                    (reduce (fn [acc' {:as sel-item :keys [ii-xy main?]}]
+                              (-> acc'
+                                  (assoc-in ii-xy
+                                            (mapv + (get-in cmpt ii-xy) arg))))
+                            cmpt
+                            (:sel-set ui))})
 
-      :pth-append  {:cmpt (-> cmpt (update :script ops/append-pth pi-sel))
-                    :ui   (-> ui (merge {:sel nil :snap nil}))}
+    :pth-append  {:cmpt (-> cmpt (update :script ops/append-pth (:x-el-k sel-rec)))
+                  :ui   (-> ui (merge {:sel-rec nil :snap nil}))}
 
-      :pth-del     {:cmpt (-> cmpt (update :script ops/del-pth pi-sel))
-                    :ui   (-> ui (merge {:sel nil :snap nil}))}
+    :pth-del     {:cmpt (-> cmpt (update :script ops/del-pth (:x-el-k sel-rec)))
+                  :ui   (-> ui (merge {:sel-rec nil :snap nil}))}
 
-      :el-append   (let [el             arg
-                         [src-k px eli] (or sel
-                                            (ops/tail-iii cmpt))
-                         eli'           (or (some-> eli inc) 0)
-                         sel'           [src-k px eli']
-                         init?          (not (seq (:script cmpt)))]
-                     {:cmpt (cond
-                                init? (-> cmpt (update :script conj [:path {} el]))
-                                el    (-> cmpt (update-in [src-k px] ops/append-el eli el))
-                                :else (-> cmpt (update-in [src-k px] ops/append-el eli)))
-                      :ui   (-> ui (assoc :sel sel'))})
+    :el-append   (let [el         arg
+                       {:as sel-rec
+                        :keys
+                        [src-k
+                         x-el-k
+                         p-el-i]} (or sel-rec
+                                      (-> cmpt
+                                          ops/tail-iii
+                                          nav/pth-vec->rec))
+                       sel-rec'   (-> sel-rec
+                                      (update :p-el-i #(or (some-> % inc)
+                                                           0)))
+                       init?      (not (seq (:script cmpt)))]
+                   {:cmpt (cond
+                            init? (-> cmpt (update :script conj [:path {} el]))
+                            el    (-> cmpt (update-in [src-k x-el-k] ops/append-el p-el-i el))
+                            :else (-> cmpt (update-in [src-k x-el-k] ops/append-el p-el-i)))
+                    :ui   (-> ui (assoc :sel-rec sel-rec'))})
 
-      :el-del      (let [eli' (max (dec eli-sel) 0)]
-                     {:cmpt (-> cmpt (update-in [src-k-sel pi-sel] ops/del-el eli-sel))
-                      :ui   (-> ui   (merge {:sel [src-k-sel pi-sel eli']}))})
+    :el-del      (let [eli' (max (dec (:p-el-i sel-rec)) 0)]
+                   {:cmpt (-> cmpt (update-in [(:src-k sel-rec) (:x-el-k sel-rec)] ops/del-el (:p-el-i sel-rec)))
+                    :ui   (-> ui   (merge {:sel-rec [(:src-k sel-rec) (:x-el-k sel-rec) eli']}))})
 
-      :el-tf       (let [to arg]
-                     {:cmpt (-> cmpt (update-in [src-k-sel pi-sel]
-                                                    ops/transform-el eli-sel to))
-                      :ui   (-> ui   (update :sel #(take 3 %)))})
+    :el-tf       (let [to arg]
+                   {:cmpt (-> cmpt (update-in [(:src-k sel-rec) (:x-el-k sel-rec)]
+                                              ops/transform-el (:p-el-i sel-rec) to))
+                    :ui   (-> ui   (update :sel-rec #(take 3 %)))})
 
-      :xy-append   {:cmpt (-> cmpt (update-in [:script pi-sel]
-                                                  ops/append-pnt eli-sel))
-                    :ui   (-> ui   (merge {:sel nil :snap nil}))}
+    :xy-append   {:cmpt (-> cmpt (update-in [:script (:x-el-k sel-rec)]
+                                            ops/append-pnt (:p-el-i sel-rec)))
+                  :ui   (-> ui   (merge {:sel-rec nil :snap nil}))}
 
-      :xy-del      {:cmpt (-> cmpt (update-in [:script pi-sel]
-                                                  ops/del-pnt eli-sel
-                                                  (- xyi-sel nav/xyi0)))
-                    :ui   (-> ui   (merge {:sel nil :snap nil}))}
+    :xy-del      {:cmpt (-> cmpt (update-in [:script (:x-el-k sel-rec)]
+                                            ops/del-pnt (:p-el-i sel-rec)
+                                            (- (:xy-i sel-rec) nav/xy-i0)))
+                  :ui   (-> ui   (merge {:sel-rec nil :snap nil}))}
 
-      :rel->abs    {:cmpt (-> cmpt (ops/absolute  sel))}
-      :short->full {:cmpt (-> cmpt (ops/full      sel))}
-      :normalize   {:cmpt (-> cmpt (ops/normalize sel))}
-      :scale       (let [[ctr k] args]
-                     {:cmpt (-> cmpt (ops/scale sel ctr k))})
-      :mirror      (let [[axis pos] args]
-                     {:cmpt (-> cmpt (ops/mirror (or axis 0) (or pos 100) sel))})
+    :rel->abs    {:cmpt (-> cmpt (ops/absolute  sel-rec))}
+    :short->full {:cmpt (-> cmpt (ops/full      sel-rec))}
+    :normalize   {:cmpt (-> cmpt (ops/normalize sel-rec))}
+    :scale       (let [[ctr k] args]
+                   {:cmpt (-> cmpt (ops/scale sel-rec ctr k))})
+    :mirror      (let [[axis pos] args]
+                   {:cmpt (-> cmpt (ops/mirror (or axis 0) (or pos 100) sel-rec))})
 
-      :reverse     {:cmpt (-> cmpt (ops/reverse-path sel))}
+    :reverse     {:cmpt (-> cmpt (ops/reverse-path sel-rec))}
 
-      :round       (let [n arg]
-                     {:cmpt
-                      (-> cmpt
-                          ((fn [s]
-                             (w/prewalk
-                              (case n
-                                "1" #(-> % (cond-> (number? %) u/round1))
-                                "2" #(-> % (cond-> (number? %) u/round2))
-                                #(-> % (cond-> (number? %) u/round)))
-                              s))))})
+    :round       (let [n arg]
+                   {:cmpt
+                    (-> cmpt
+                        ((fn [s]
+                           (w/prewalk
+                            (case n
+                              "1" #(-> % (cond-> (number? %) u/round1))
+                              "2" #(-> % (cond-> (number? %) u/round2))
+                              #(-> % (cond-> (number? %) u/round)))
+                            s))))})
 
-      :translate   {:cmpt (-> cmpt (ops/translate sel arg))}
+    :translate   {:cmpt (-> cmpt (ops/translate sel-rec arg))}
 
-      :rotate      (let [[alpha center] args]
-                     {:cmpt (-> cmpt (ops/rotate sel center alpha))})
+    :rotate      (let [[alpha center] args]
+                   {:cmpt (-> cmpt (ops/rotate sel-rec center alpha))})
 
-      :clear       {:cmpt (-> cmpt (merge cmpt-clear))
-                    :ui   (-> ui (merge {:sel nil :snap nil}))}
+    :clear       {:cmpt (-> cmpt (merge cmpt-clear))
+                  :ui   (-> ui (merge {:sel-rec nil :snap nil}))}
 
-      :def         (let [[pk] args
-                         {:keys [defs]} cmpt]
-                     (if-let [els (get defs pk)]
-                       ;; --- select
-                       (let [eli (-> els count (- 1) (max 0))]
-                         {:ui (-> ui (merge {:sel [:defs pk eli]}))})
+    :def         (let [[pk] args
+                       {:keys [defs]} cmpt]
+                   (if-let [els (get defs pk)]
+                     ;; --- select
+                     (let [eli (-> els count (- 1) (max 0))]
+                       {:ui (-> ui (merge {:sel-rec [:defs pk eli]}))})
 
-                       ;; --- create
-                       {:cmpt (-> cmpt (#(-> %
-                                                 (assoc-in [:defs pk] [])
-                                                 (update :script conj [:path {} [:ref pk]]))))
-                        :ui   (-> ui (merge {:sel [:defs pk nil]}))}))
+                     ;; --- create
+                     {:cmpt (-> cmpt (#(-> %
+                                           (assoc-in [:defs pk] [])
+                                           (update :script conj [:path {} [:ref pk]]))))
+                      :ui   (-> ui (merge {:sel-rec [:defs pk nil]}))}))
 
-      :svg-path    (let [[svg-path] args]
-                     (println :svg-path svg-path)
-                     (let [p-new (conv/path-d->path svg-path)]
-                       (pprint p-new)
-                       {:cmpt (-> cmpt
-                                    (update :script conj p-new))}))
+    :svg-path    (let [[svg-path] args]
+                   (println :svg-path svg-path)
+                   (let [p-new (conv/path-d->path svg-path)]
+                     (pprint p-new)
+                     {:cmpt (-> cmpt
+                                (update :script conj p-new))}))
 
-      :sel         {:ui (-> ui
-                            (merge {:sel arg})
-                            (cond-> (nil? arg)
-                                    (assoc :snap nil)))}
+    :sel-rec     {:ui (-> ui
+                          (merge {:sel-rec arg})
+                          (cond-> (nil? arg)
+                                  (assoc :snap nil)))}
 
-      :set-p-opts  (let [[k v] arg]
-                     {:cmpt (-> cmpt (ops/update-p-opts sel assoc k v))})
+    :set-p-opts  (let [[k v] arg]
+                   {:cmpt (-> cmpt (ops/update-p-opts sel-rec assoc k v))})
 
-      :toggle-snap   {:ui (-> ui (update :snap-to-grid? not))}
-      :toggle-insert {:ui (-> ui (update :insert-mode? not))})))
+    :toggle-snap   {:ui (-> ui (update :snap-to-grid? not))}
+    :toggle-insert {:ui (-> ui (update :insert-mode? not))}))
 
 (defn- get-wh [cmpt]
   (let [{:keys [dims scale]} (:canvas cmpt)]
@@ -320,7 +323,7 @@
      [!cmpt !ui dispatch!]
      (fn _derive-dnd-fns [!svg-dom scale]
        (let [!snap    (r/cursor !ui [:snap])
-             !sel     (r/cursor !ui [:sel])
+             !sel-rec (r/cursor !ui [:sel-rec])
              !sel-set (r/cursor !ui [:sel-set])
              xy-svg!  (fn []
                         (let [rect (-> @!svg-dom (.getBoundingClientRect))]
@@ -328,30 +331,34 @@
                            (-> rect .-top)]))]
          {;; NOTE: invoked after canvas/report!
           :on-mouse-down #(let [{:keys
-                                 [sel
+                                 [sel-rec
                                   sel-set
                                   insert-mode?]} @!ui
                                 xy               (xy-mouse %)
                                 {:keys
                                  [main?
-                                  shift?]}       (meta sel)]
+                                  shift?]}       (meta sel-rec)
+                                ]
                             (cond
-                              (= 4 (count sel))
+                              (nav/xy-pth? sel-rec)
                               ;; --- sel
                               (do
-                                (let [sel-set'
-                                      (into #{{:ii-xy sel
+                                (let [sel-vec (-> sel-rec
+                                                  nav/pth-rec->vec)
+                                      sel-set'
+                                      (into #{{:ii-xy sel-vec
                                                :main? main?}}
                                             (map (fn [eli-cpi]
-                                                   {:ii-xy (concat (take 2 sel) eli-cpi)}))
+                                                   {:ii-xy (concat (take 2 sel-vec) eli-cpi)}))
                                             (when main?
-                                              (pth->cp-ii (get-in @!cmpt (take 2 sel))
-                                                          (nth sel 2))))]
+                                              (pth->cp-ii (get-in @!cmpt (take 2 sel-vec))
+                                                          (nth sel-vec 2))))]
                                   (if shift?
                                     (swap!  !sel-set set/union sel-set')
                                     (reset! !sel-set sel-set')))
                                 (swap! !snap merge
-                                       {:cmpt0 @!cmpt :m0 xy}))
+                                       {:cmpt0 @!cmpt
+                                        :m0    xy}))
 
                               insert-mode?
                               ;; --- insert
@@ -361,10 +368,10 @@
                                                  (mapv - xy* xy-svg)
                                                  (mapv / xy* [scale scale])
                                                  (mapv u/round xy*))
-                                    el-k   (if (seq (:script @!cmpt))
+                                    p-el-k   (if (seq (:script @!cmpt))
                                              :L
                                              :M)]
-                                (dispatch! [:el-append [el-k xy']]))))
+                                (dispatch! [:el-append [p-el-k xy']]))))
           :on-mouse-move (fn [ev]
                            (let [{:keys [snap-to-grid?]
                                   {:as snapshot :keys [cmpt0 m0]} :snap} @!ui]
@@ -376,18 +383,21 @@
                                            (mapv u/round d')
                                            d')]
                                  (dispatch! [:set-sel-d d'])))))
-          :on-mouse-up   #(let [{:keys [sel sel-prev cmpt0]} @!snap
+          :on-mouse-up   #(let [{:keys [sel-rec
+                                        sel-prev cmpt0]} @!snap
                                 cmpt @!cmpt]
-                            (reset! !snap {:sel-prev sel})
-                            (when (and sel sel-prev cmpt0
-                                       (= sel sel-prev)
+                            (reset! !snap {:sel-prev sel-rec})
+                            (when (and sel-rec
+                                       sel-prev cmpt0
+                                       (= sel-rec
+                                          sel-prev)
                                        (= cmpt0 cmpt))
-                              (reset! !sel  nil)
-                              (reset! !snap nil)))}))))
+                              (reset! !sel-rec nil)
+                              (reset! !snap    nil)))}))))
 
 (defn keybind-fns [!cmpt !ui dispatch!]
-  (let [upd! #(swap! !cmpt assoc-in (:sel @!ui) %)
-        get! #(get-in @!cmpt (:sel @!ui))]
+  (let [upd! #(swap! !cmpt assoc-in (:sel-rec @!ui) %)
+        get! #(get-in @!cmpt (:sel-rec @!ui))]
     {"left"      #(dispatch! [:set-sel-d [-1 0]])
      "right"     #(dispatch! [:set-sel-d [1 0]])
      "up"        #(dispatch! [:set-sel-d [0 -1]])

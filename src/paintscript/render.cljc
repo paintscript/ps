@@ -2,7 +2,7 @@
   (:require [paintscript.els :as els]))
 
 (defprotocol Renderer
-  (els->out [_ els])
+  (p-els->out [_ els])
   (group    [_ els]
             [_ opts els])
   (tf       [_ opts el])
@@ -21,7 +21,7 @@
   ([r cmpt opts els]
    (let [els'    (els/apply-path-opts cmpt opts els)
          el-recs (map els/el-vec-->el-rec els')
-         out-seq (els->out r el-recs)]
+         out-seq (p-els->out r el-recs)]
      (if (:debug? cmpt)
        [out-seq (els/el-pnts el-recs)]
        out-seq))))

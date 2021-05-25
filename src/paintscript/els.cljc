@@ -8,17 +8,17 @@
 
 (defn normalize-els [els & {:keys [op] :or {op :all}}]
   {:pre [(when op (-> op #{:all :rel->abs :short->full}))]}
-  (loop [[[el-k :as el] & els-tail] els
+  (loop [[[p-el-k :as el] & els-tail] els
          tgt-prev nil
          cp-prev  nil
          acc      []]
-    (if-not el-k
+    (if-not p-el-k
       acc
       (let [[el' tgt' cp']
             (reduce (fn [[el _tgt-prev _cp-prev] f-step]
                       (f-step el tgt-prev cp-prev))
                     [el tgt-prev cp-prev]
-                    (el/normalization-steps el-k op))
+                    (el/normalization-steps p-el-k op))
             el'' (with-meta el' (meta el))]
         (recur els-tail tgt' cp' (conj acc el''))))))
 
@@ -58,10 +58,10 @@
 
 (defn mirror-els [axis pos els]
   (->> els
-       (mapv (fn [[el-k & xys :as el]]
-               (case el-k
+       (mapv (fn [[p-el-k & xys :as el]]
+               (case p-el-k
                  :arc (let [[opts & xys] xys]
-                        (concat [el-k (-> opts
+                        (concat [p-el-k (-> opts
                                           (update :mode
                                                   #(case % :convex :concave :convex)))]
                                 (mirror-xys axis pos xys)))
@@ -71,7 +71,7 @@
                           f2' (-> f2 el/flip-bin)]
                       [:A r [rot f1 f2'] (mirror-xy axis pos xy)])
                  (vec
-                  (cons el-k
+                  (cons p-el-k
                         (mirror-xys axis pos xys))))))))
 
 (defn add-mirrored
@@ -103,45 +103,60 @@
 
 (defn map-xys [f els]
   (->> els
-       (mapv (fn [[el-k & xys :as el]]
-               (let [el' (case el-k
+       (mapv (fn [[p-el-k & xys :as el]]
+               (let [el' (case p-el-k
                            :A      (-> el (update 3 f))
                            :circle (-> el (update-in [1 :center] f))
                            (vec
-                            (cons el-k
+                            (cons p-el-k
                                   (map f xys))))]
                  (-> el' (with-meta (meta el))))))))
 
-(defn update-p-els [p f & args]
-  (vec
-   (concat (take 2 p)
-           (apply f (drop 2 p) args))))
+(defn update-p-els
+  [s-el f & args]
+  {:pre [(-> s-el (get 0) (= :path))
+         (-> s-el (get 1) map?)]}
+  (let [[init
+         tail] (split-at 2 s-el)]
+    (vec
+     (concat init
+             (apply f tail args)))))
+
+(defn extract-p-els
+  [s-el src-k-sel p-eli-sel]
+  {:pre [(-> s-el (get 0) (= :path))
+         (-> s-el (get 1) map?)]}
+  (->> s-el
+       (take (inc p-eli-sel))
+       (drop (case src-k-sel
+               :defs 0
+               nav/p-el-i0))))
 
 (defn update-px-all [cmpt f & args]
   (-> cmpt
       (update :defs   (partial u/map-vals #(apply f % args)))
       (update :script (partial mapv       #(apply update-p-els % f args)))))
 
-(defn update-px [cmpt [src-k px :as sel] f & args]
-  (if-not sel
+(defn update-px [cmpt {:as sel-rec :keys [src-k x-el-k]} f & args]
+  (if-not sel-rec
     (apply update-px-all cmpt f args)
     (case src-k
-      :defs   (apply update-in cmpt [src-k px] f args)
-      :script (apply update-in cmpt [src-k px] update-p-els f args))))
+      :defs   (apply update-in cmpt [src-k x-el-k] f args)
+      :script (apply update-in cmpt [src-k x-el-k] update-p-els f args))))
 
 ;; --- scale
 
-(defn scale-els [els center factor]
+(defn scale-p-els [els center factor]
   (map-xys #(u/tl-point-towards % center factor) els))
 
 ;; --- translate
 
-(defn translate-els [els xyd]
+(defn translate-p-els [els xyd]
   (map-xys (partial u/v+ xyd) els))
 
 ;; --- rotate
 
-(defn rotate-els [els ctr alpha]
+(defn rotate-p-els [els ctr alpha]
   (map-xys #(u/tl-point-around ctr % alpha) els))
 
 ;; --- meta
@@ -150,19 +165,19 @@
 (defn xy-abs-meta [xy] (-> xy meta :xy-abs))
 
 (defn attach-xy-abs-meta [els]
-  (map (fn [[el-k   & xys :as el]
-            [_el-k' & xys' :as el-norm]]
-         (let [el' (case el-k
-                     :c (vec (cons el-k
+  (map (fn [[p-el-k   & xys :as el]
+            [_p-el-k' & xys' :as el-norm]]
+         (let [el' (case p-el-k
+                     :c (vec (cons p-el-k
                                    (map with-xy-abs-meta xys xys')))
                      :s (let [[c2  tgt]  xys
                               [c2' tgt'] xys']
-                          [el-k
+                          [p-el-k
                            (with-xy-abs-meta c2 c2')
                            (with-xy-abs-meta tgt tgt')])
                      :t (let [[tgt]  xys
                               [tgt'] xys']
-                          [el-k
+                          [p-el-k
                            (with-xy-abs-meta tgt tgt')])
                      el)]
            (-> el'
@@ -171,10 +186,10 @@
        (-> els (normalize-els :op :rel->abs))))
 
 (defn- attach-ii-el-meta
-  [src-k x-k eli0 els]
+  [src-k x-k p-el-i0 els]
   (->> els
        (map-indexed (fn [eli el]
-                      (with-meta el {:ii-el [src-k x-k (+ eli0 eli)]})))
+                      (with-meta el {:ii-el [src-k x-k (+ p-el-i0 eli)]})))
        vec))
 
 (defn attach-ii-el-meta* [script-pp]
@@ -186,21 +201,21 @@
                         (vec
                          (concat (take 2 obj)
                                  (->> (drop 2 obj)
-                                      (attach-ii-el-meta :script pi nav/eli0)))))))
+                                      (attach-ii-el-meta :script pi nav/p-el-i0)))))))
        vec))
 
-(defrecord El      [el-k opts ii-el i-arg0 args])
+(defrecord El      [p-el-k opts ii-el i-arg0 args])
 (defrecord MainPnt [xy xy-abs ii-pnt])
 (defrecord CtrlPnt [xy xy-abs ii-pnt i-main])
 
 (defn args-->pnts
-  [{:as el :keys [el-k i-arg0 args]}
+  [{:as el :keys [p-el-k i-arg0 args]}
    eli
    {:as el-meta :keys [ii-el]}]
   (let [cp-cnt (dec (count args))]
     (map-indexed (fn [i-xy xy]
                    (let [ii-pnt (concat ii-el [(+ i-arg0 i-xy)])]
-                     (if (and (el/has-cp? el-k)
+                     (if (and (el/has-cp? p-el-k)
                               (< i-xy cp-cnt))
                        (let [i-main (if (and (= 2 cp-cnt)
                                              (= 0 i-xy))
@@ -243,10 +258,10 @@
 
 (defn el-vec-->el-rec
   ([elv] (el-vec-->el-rec elv nil))
-  ([[el-k & [arg1 :as args] :as el-vec] ii-el]
+  ([[p-el-k & [arg1 :as args] :as el-vec] ii-el]
    (with-meta (if (map? arg1)
-                (->El el-k arg1 ii-el 2 (rest args))
-                (->El el-k nil  ii-el 1 args))
+                (->El p-el-k arg1 ii-el 2 (rest args))
+                (->El p-el-k nil  ii-el 1 args))
      (meta el-vec))))
 
 ;; --- path opts
@@ -304,9 +319,9 @@
    els]
   (-> els
       (->> (resolve-els-refs defs))
-      (cond-> scale     (scale-els scale-ctr scale-factor)
-              translate (translate-els translate)
-              rotate    (rotate-els rot-ctr rot-deg)
+      (cond-> scale     (scale-p-els scale-ctr scale-factor)
+              translate (translate-p-els translate)
+              rotate    (rotate-p-els rot-ctr rot-deg)
               close?    (concat [[:z]])
               (and repeat
                    (not debug?)) (apply-repeat cmpt opts)

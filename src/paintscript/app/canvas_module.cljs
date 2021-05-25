@@ -17,11 +17,11 @@
 
 (defn- canvas-sidebar
   [!config !cmpt !ui !shell !s-log !tab
-   config cmpt cmpt' sel
+   config cmpt cmpt' sel-rec
    dispatch!]
-  (let [tab @!tab
-        [src-k-sel pi-sel eli-sel xyi-sel] sel
-        status? (and sel (= :script tab))]
+  (let [tab     @!tab
+        status? (and sel-rec
+                     (= :script tab))]
     [:div.sidebar.script {:class (when status? "with-status")}
      [:div.controls
       (for [tab-k [:script :config :log]]
@@ -74,14 +74,17 @@
                            (-> e (.preventDefault)))))}]]
      [:div.status
       (when status?
-        (let [[_ opts :as p] (nav/cmpt> cmpt' :src-k src-k-sel :pi  pi-sel)
-              [k & xys]      (nav/p>      p       :eli   eli-sel)]
+        (let [[_ opts :as s-el] (nav/cmpt> cmpt' :src-k (:src-k sel-rec) :s-eli (:x-el-k sel-rec))
+              [k & xys]         (nav/s-el> s-el  :p-eli (:p-el-i sel-rec))]
           [:div.selection-stack
            [:div.selection-level.iii
-            [:span (pr-str sel)]
+            [:span (-> sel-rec nav/pth-rec->vec pr-str)]
             [:div.controls.crud
-             [zc/button :label "blur" :on-click #(dispatch! [:sel nil])]
-             [zc/button :label "up" :on-click #(dispatch! [:sel (drop-last sel)])]]]
+             [zc/button :label "blur" :on-click #(dispatch! [:sel-rec nil])]
+             [zc/button :label "up" :on-click #(dispatch! [:sel-rec (-> sel-rec
+                                                                        nav/pth-rec->vec
+                                                                        drop-last
+                                                                        nav/pth-vec->rec)])]]]
 
            [:div.selection-level.path
             [:span (pr-str opts)]
@@ -96,14 +99,14 @@
              [zc/button :label "del" :on-click #(dispatch! [:el-del])]]]
 
            [:div.selection-level.point
-            [:span (pr-str (nav/xys> xys :xyi xyi-sel))]
+            [:span (pr-str (nav/xys> xys :xyi (:xy-i sel-rec)))]
             (when (contains? #{:L :arc} k)
               [:div.controls.crud
                [zc/button :label "add" :on-click #(dispatch! [:xy-append])]
                [zc/button :label "del" :on-click #(dispatch! [:xy-del])]])]]))]]))
 
 (defn canvas [cfg-init cmpt0]
-  (r/with-let [ui-init      {:sel           nil
+  (r/with-let [ui-init      {:sel-rec       nil
                              :sel-set       nil
                              :snap          nil
                              :snap-to-grid? true
@@ -113,26 +116,30 @@
                !config      (r/atom   cfg-init)
                !cmpt        (r/atom   cmpt0)
                !s-log       (r/atom   nil)
-               !hov         (r/atom   nil)
+               !hov-rec     (r/atom   nil)
                !tab         (r/atom   :script)
                !shell       (r/atom   "")
 
-               !sel         (r/cursor !ui     [:sel])
+               !sel-rec     (r/cursor !ui     [:sel-rec])
                !sel-set     (r/cursor !ui     [:sel-set])
                !scale       (r/cursor !config [:canvas :scale])
 
-               report!      (fn [iii i-main shift?]
-                              (reset! !sel (-> iii
-                                               (with-meta {:main?  (not i-main)
-                                                           :shift? shift?}))))
+
                dispatch!    (partial ctl/dispatch! !config !cmpt !s-log !ui)
                dnd-fns      (ctl/drag-and-drop-fns !cmpt !ui dispatch!)
                kb-fns       (ctl/keybind-fns       !cmpt !ui dispatch!)
-               report-hov!  (fn [iii val]
-                              (swap! !hov #(cond
-                                             val iii
-                                             (= iii %) nil
-                                             :else %)))
+
+               report-down! (fn [pth-rec i-main shift?]
+                              (reset! !sel-rec
+                                      (-> pth-rec
+                                          (with-meta {:main?  (not i-main)
+                                                      :shift? shift?}))))
+               report-over! (fn [pth-rec val]
+                              (swap! !hov-rec
+                                     #(cond
+                                        val           pth-rec
+                                        (= pth-rec %) nil
+                                        :else         %)))
 
                ; (reset! !s-log (s-log/init @!cmpt @!ui))
 
@@ -148,20 +155,18 @@
 
     (let [config  @!config
           cmpt    @!cmpt
-          {:keys
-           [sel]} @!ui
+          sel-rec @!sel-rec
+          hov-rec @!hov-rec
           cmpt'   (-> (merge-with merge
                                   (-> config (dissoc :script))
                                   cmpt)
-                      (update :script els/attach-ii-el-meta*))]
+                      (update :script els/attach-ii-el-meta*))
+          c-app   [hov-rec sel-rec dispatch! report-down! report-over! dnd-fns]]
 
       [:div.canvas
        [:div.sidebar.script-phantom]
        [canvas-sidebar
         !config !cmpt !ui !shell !s-log !tab
-        config cmpt cmpt' sel dispatch!]
+        config cmpt cmpt' sel-rec dispatch!]
 
-       [canvas-paint'
-        [@!hov sel dispatch! report! report-hov! dnd-fns]
-        config cmpt']
-       ])))
+       [canvas-paint' c-app config cmpt']])))

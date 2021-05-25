@@ -1,6 +1,7 @@
 (ns paintscript.ops
   (:require [paintscript.util :as u]
-            [paintscript.els :as els]))
+            [paintscript.els :as els]
+            [paintscript.nav :as nav]))
 
 ;; --- info
 
@@ -98,9 +99,9 @@
 
 (defn transform-el
   [els eli to]
-  (let [[el-k :as el] (get els eli)
+  (let [[p-el-k :as el] (get els eli)
         [el-1-k :as el-1] (get els (dec eli))
-        el' (case el-k
+        el' (case p-el-k
               :L (let [tgt (last el)]
                    (case to
                      :S [:S tgt tgt]
@@ -134,16 +135,16 @@
 (defn del-pth [script pi] (-> script (u/vec-remove pi)))
 
 (defn translate
-  ([cmpt ii n] (-> cmpt (els/update-px ii  els/translate-els n)))
-  ([cmpt    n] (-> cmpt (els/update-px-all els/translate-els n))))
+  ([cmpt ii n] (-> cmpt (els/update-px ii  els/translate-p-els n)))
+  ([cmpt    n] (-> cmpt (els/update-px-all els/translate-p-els n))))
 
 (defn rotate
-  ([cmpt ii c a] (-> cmpt (els/update-px ii  els/rotate-els c a)))
-  ([cmpt    c a] (-> cmpt (els/update-px-all els/rotate-els c a))))
+  ([cmpt ii c a] (-> cmpt (els/update-px ii  els/rotate-p-els c a)))
+  ([cmpt    c a] (-> cmpt (els/update-px-all els/rotate-p-els c a))))
 
 (defn scale
-  ([cmpt ii c n] (-> cmpt (els/update-px ii  els/scale-els c n)))
-  ([cmpt    c n] (-> cmpt (els/update-px-all els/scale-els c n))))
+  ([cmpt ii c n] (-> cmpt (els/update-px ii  els/scale-p-els c n)))
+  ([cmpt    c n] (-> cmpt (els/update-px-all els/scale-p-els c n))))
 
 (defn absolute
   ([cmpt ii] (-> cmpt (els/update-px ii  els/normalize-els :op :rel->abs)))
@@ -166,5 +167,5 @@
   ([cmpt]    (-> cmpt (els/update-px-all els/reverse-els))))
 
 (defn update-p-opts [cmpt ii f & args]
-  (let [p-opts-i (concat (take 2 ii) [1])]
+  (let [p-opts-i (concat (take 2 (-> ii nav/pth-rec->vec)) [1])]
     (apply update-in cmpt p-opts-i f args)))

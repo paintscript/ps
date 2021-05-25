@@ -16,7 +16,7 @@
                  :els/normalize-els  (#'els/normalize-els path)
                  :els/reverse-el-xys (#'els/reverse-el-xys {:drop-last? drop?} path)
                  ; :mirror-xys     (#'els/mirror-xys width xys)
-                 ; :scale-els      (#'els/scale-els path center factor)
+                 ; :scale-p-els      (#'els/scale-p-els path center factor)
                  )))))}})
 
 (def els-xspace

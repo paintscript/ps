@@ -29,10 +29,10 @@
 
 (def has-cp?   #{      :c :q,          :s     :c1
                        :C :Q,          :S     :C1})
-(def relative? #{:m :l :c :q,    :v :h :s :t, :c1, :a})
-(def absolute? #{:M :L :C :Q :z, :V :H :S :T, :C1, :A :arc})
-(def full?     #{:m :l :c :q
-                 :M :L :C :Q :z})
+(def relative? #{:m :l :c :q :z, :v :h :s :t, :c1, :a})
+(def absolute? #{:M :L :C :Q :Z, :V :H :S :T, :C1, :A :arc})
+(def full?     #{:m :l :c :q :z
+                 :M :L :C :Q :Z})
 (def short?    #{                :v :h :s :t, :c1
                                  :V :H :S :T, :C1,    :arc})
 
@@ -55,6 +55,8 @@
 ;; --- rel->abs
 
 (defmulti ^:private rel->abs dispatch-on-k)
+
+(defmethod rel->abs :z [_ _ _] [:Z])
 
 (defmethod rel->abs :c [[_k & pnts :as elv] tgt-prev _cp-prev]
   (let [[c1 c2 tgt :as pnts'] (map #(u/v+ % tgt-prev) pnts)]
@@ -171,12 +173,12 @@
 
 (defn normalization-steps
   ;; NOTE: short->full is only implemented on abs els, necessitating :rel->abs
-  [el-k op]
+  [p-el-k op]
   (or (some-> (concat
-               (when (and (#{:all :rel->abs :short->full} op) (relative? el-k)) [rel->abs])
-               (when (and (#{:all :short->full} op) (short? el-k)) [short->full]))
+               (when (and (#{:all :rel->abs :short->full} op) (relative? p-el-k)) [rel->abs])
+               (when (and (#{:all :short->full} op) (short? p-el-k)) [short->full]))
               seq)
-      (when (has-cp? el-k) [curve->tgt-cp])
+      (when (has-cp? p-el-k) [curve->tgt-cp])
       [el->tgt']))
 
 
@@ -210,13 +212,16 @@
 (defmethod el->reversed :z [_ tgt-prev]
   [[:z] tgt-prev])
 
+(defmethod el->reversed :Z [_ tgt-prev]
+  [[:Z] tgt-prev])
+
 
 ;; -----------------------------------------------------------------------------
 ;; serialize / 'paint'
 
-(defn- el->out
-  [{:as el :keys [el-k opts args]}]
-  (case el-k
+(defn- p-el->out
+  [{:as el :keys [p-el-k opts args]}]
+  (case p-el-k
     :M    (cons "M" args)
     :m    (cons "m" args)
     :L    (cons "L" args)
@@ -228,6 +233,7 @@
     :h    (cons "h" args)
 
     :z    (list "z")
+    :Z    (list "Z")
     :A    (let [[r  p  tgt] args] (list "A" r  p   tgt))
     :a    (let [[r  p  tgt] args] (list "a" r  p   tgt))
     :Q    (let [[c     tgt] args] (list "Q" c      tgt))
@@ -247,4 +253,4 @@
     :arc    (arcs args opts)
     :arc*   (arcs args (assoc opts :ctd? true))))
 
-(defn els->out [els] (->> els (map el->out) flatten))
+(defn p-els->out [els] (->> els (map p-el->out) flatten))

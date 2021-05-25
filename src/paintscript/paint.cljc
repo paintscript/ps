@@ -11,7 +11,7 @@
 
 (def svg-renderer
   (reify render/Renderer
-    (els->out [_ els]      (el-path/els->out els))
+    (p-els->out [_ els]      (el-path/p-els->out els))
     (group    [_ els]      (vec (cons :g els)))
     (group    [_ opts els] (vec (concat [:g opts] els)))
     (tf       [_ opts el]  (shk/tf opts el))
@@ -20,6 +20,7 @@
     (paint*   [_ ps-out _ _] ps-out)))
 
 (defn path-builder
+  ([opts els]       (path-builder nil   nil opts 0 els))
   ([c-fns opts els] (path-builder c-fns nil opts 0 els))
   ([c-fns
     {:as cmpt :keys [debug?]}
@@ -109,23 +110,13 @@
                    [nil 0])
            first)])
 
-(defn- apply-style-def
-  "notes:
-   - transform properties in a style-def are handled as obj-opts
-   - everything else as attrs"
+(defn- derive-attrs
   [cmpt {:as obj-opts
          :keys [attr-class]}]
-  (let [attrs-def (or (when attr-class
-                        (get (:attr-classes cmpt) attr-class))
-                      (get (:attr-classes cmpt) "outline"))
-        attrs'    (u/deep-merge (:attrs cmpt)
-                                (-> attrs-def
-                                    (dissoc :scale :translate :rotate))
-                                (:attrs obj-opts))
-        tf-opts   (select-keys attrs-def
-                               [:scale :translate :rotate])]
-    [attrs'
-     tf-opts]))
+  (u/deep-merge (:attrs cmpt) ;; includes inherited via configs
+                (get (:attr-classes cmpt)
+                     (:attr-class   obj-opts))
+                (:attrs obj-opts)))
 
 (defn- add-tf-params [params0 params1]
   (-> params0
@@ -158,10 +149,9 @@
 
 (defn- derive-obj-hiccup
   [c-fns
-   {:as cmpt :keys [defs attrs script data?]}
+   {:as cmpt :keys [defs script data?]}
    obj-i [obj-k obj-opts & els :as obj]]
-  (let [[attrs'
-         tf-opts]  (apply-style-def cmpt obj-opts)
+  (let [attrs      (derive-attrs cmpt obj-opts)
         obj-opts'  (-> obj-opts
                        (dissoc :attr-class
                                :variant-key
@@ -170,13 +160,11 @@
         obj-opts'  (case obj-k
                      (:path
                       :layout) (-> obj-opts'
-                                   (->> (merge tf-opts))
-                                   (assoc  :attrs attrs')
+                                   (assoc  :attrs attrs)
                                    (dissoc :disabled?))
                      :ref      obj-opts'
                      (-> obj-opts'
-                         ;; NOTE: tf-opts not supported yet
-                         (->> (merge attrs'))))]
+                         (->> (merge attrs))))]
     (case obj-k
       :path   (path-builder   c-fns cmpt obj-opts' obj-i els)
       :layout (layout-builder c-fns cmpt obj-opts' els)
