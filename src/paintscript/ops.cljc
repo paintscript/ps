@@ -85,12 +85,15 @@
       :S (let [tgt (offset-pnt (last pnts) [10 10])]
            [:S tgt tgt]))))
 
-(defn append-el
-  ([els eli] (append-el els eli (infer-succ-el els eli)))
-  ([els eli el]
-   (if eli
-     (-> els (u/vec-append eli el))
-     [el])))
+(defn append-p-el
+  ([p-els p-el-i] (append-p-el p-els p-el-i (infer-succ-el p-els p-el-i)))
+  ([p-els p-el-i p-el]
+   (cond
+     p-el-i      (-> p-els (u/vec-append p-el-i p-el))
+     (seq p-els) (append-p-el p-els (-> p-els count dec) p-el)
+
+     ;; NOTE: only works for :defs entry (?)
+     :else       [p-el])))
 
 (defn del-el
   [els eli]

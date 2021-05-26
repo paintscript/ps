@@ -150,7 +150,7 @@
                               :on-click (sel-rec-dispatcher pth-rec*)}
                          (pr-str arg)]))]]))]
              (when sel?
-               [:span.p-out
+               [:span.p-out {:on-click (fn [^js ev] (.stopPropagation ev))}
                 (->> s-el-args
                      (render/path paint/svg-renderer cmpt s-el-opts )
                      (apply shk/d))])])]))]))

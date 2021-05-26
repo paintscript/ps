@@ -27,12 +27,26 @@
             (list :defs :components cmpt-id))
           cmpt-pth))
 
+(def kk-levels [:src-k :x-el-k :p-el-i :xy-i])
+(def kk-all    [:cmpt-pth :src-k :x-el-k :p-el-i :xy-i])
+(def kk-rev    (reverse kk-all))
+
 (defn pth-rec->vec
-  [{:as pth-rec :keys [cmpt-pth src-k x-el-k p-el-i xy-i]}]
-  {:pre [(instance? Pth pth-rec)]}
-  (concat (-> cmpt-pth
-              cmpt-pth->data-pth)
-          (remove nil? [src-k x-el-k p-el-i xy-i])))
+  ([pth-rec] (pth-rec->vec pth-rec nil))
+  ([{:as pth-rec :keys [cmpt-pth src-k x-el-k p-el-i xy-i]} trunc-k]
+   {:pre [(instance? Pth pth-rec)]}
+   (concat (-> cmpt-pth
+               cmpt-pth->data-pth)
+
+           ;; truncate on nil or trunc-k
+           (reduce (fn [pthv k]
+                     (let [v (get pth-rec k)]
+                       (-> pthv
+                           (cond-> v (conj v)
+                                   (or (not v)
+                                       (= trunc-k k)) reduced))))
+                   []
+                   kk-levels))))
 
 (defn pth-up
   [{:as pth-rec :keys [cmpt-pth src-k x-el-k p-el-i xy-i]}]
@@ -40,7 +54,24 @@
             (when (get pth-rec k)
               (reduced (-> pth-rec (assoc k nil)))))
           nil
-          [:xy-i :p-el-i :x-el-k :src-k :cmpt-pth]))
+          kk-rev))
+
+(defn truncate-pth [pth-rec k-last]
+  (loop [[k & kk] kk-all
+         trunc?   false
+         pth-rec  pth-rec]
+    (cond
+      (not k)      pth-rec
+      (= k-last k) (recur kk true pth-rec)
+      :else        (let [pth-rec (-> pth-rec
+                                     (cond-> trunc? (assoc k nil)))]
+                     (recur kk trunc? pth-rec)))))
+
+(defn update-in-pth [cmpt-root pth-rec f & args]
+  (apply update-in cmpt-root (pth-rec->vec pth-rec) f args))
+
+(defn update-in-pth* [cmpt-root pth-rec trunc-k f & args]
+  (apply update-in cmpt-root (pth-rec->vec pth-rec trunc-k) f args))
 
 (defn get-cmpt-sel [cmpt {:as sel-rec :keys [cmpt-pth]}]
   (-> cmpt

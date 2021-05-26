@@ -123,32 +123,33 @@
                   :ui   (-> ui   (merge {:sel-rec nil :snap nil}))}
 
     :el-append   (let [el         arg
-                       {:as sel-rec
-                        :keys
-                        [src-k
-                         x-el-k
-                         p-el-i]} (or sel-rec
-                                      (-> cmpt
-                                          ops/tail-iii
-                                          nav/pth-vec->rec))
+                       {:keys
+                        [p-el-i]} sel-rec
                        sel-rec'   (-> sel-rec
                                       (update :p-el-i #(or (some-> % inc)
                                                            0)))
                        init?      (not (seq (:script cmpt)))]
                    {:cmpt (cond
                             init? (-> cmpt (update :script conj [:path {} el]))
-                            el    (-> cmpt (update-in [src-k x-el-k] ops/append-el p-el-i el))
-                            :else (-> cmpt (update-in [src-k x-el-k] ops/append-el p-el-i)))
+                            el    (-> cmpt (nav/update-in-pth* sel-rec :x-el-k ops/append-p-el p-el-i el))
+                            :else (-> cmpt (nav/update-in-pth* sel-rec :x-el-k ops/append-p-el p-el-i)))
                     :ui   (-> ui (assoc :sel-rec sel-rec'))})
 
-    :el-del      (let [eli' (max (dec (:p-el-i sel-rec)) 0)]
-                   {:cmpt (-> cmpt (update-in [(:src-k sel-rec) (:x-el-k sel-rec)] ops/del-el (:p-el-i sel-rec)))
-                    :ui   (-> ui   (merge {:sel-rec [(:src-k sel-rec) (:x-el-k sel-rec) eli']}))})
+    :del-sel     (let [[k1 k2]   (drop-while #(not (get sel-rec %)) nav/kk-rev)
+                       i-del     (get sel-rec k1)
+                       pth-vec   (nav/pth-rec->vec sel-rec)
+                       sel-rec'  (-> sel-rec (assoc k1 nil))
+                       coll-pth  (-> sel-rec' nav/pth-rec->vec)
+                       sel-rec'' (-> sel-rec' (update k2 dec))]
+
+                   ;; TODO: when coll is empty delete k2 as well
+                   {:cmpt (-> cmpt (update-in coll-pth ops/del-el i-del))
+                    :ui   (-> ui   (merge {:sel-rec (-> sel-rec )}))})
 
     :el-tf       (let [to arg]
                    {:cmpt (-> cmpt (update-in [(:src-k sel-rec) (:x-el-k sel-rec)]
                                               ops/transform-el (:p-el-i sel-rec) to))
-                    :ui   (-> ui   (update :sel-rec #(take 3 %)))})
+                    :ui   (-> ui   (update :sel-rec nav/truncate-pth :p-el-i))})
 
     :xy-append   {:cmpt (-> cmpt (update-in [:script (:x-el-k sel-rec)]
                                             ops/append-pnt (:p-el-i sel-rec)))
@@ -357,13 +358,11 @@
                               (reset! !snap    nil)))}))))
 
 (defn keybind-fns [!cmpt !ui dispatch!]
-  (let [upd! #(swap! !cmpt assoc-in (:sel-rec @!ui) %)
-        get! #(get-in @!cmpt (:sel-rec @!ui))]
-    {"left"      #(dispatch! [:set-sel-d [-1 0]])
-     "right"     #(dispatch! [:set-sel-d [1 0]])
-     "up"        #(dispatch! [:set-sel-d [0 -1]])
-     "down"      #(dispatch! [:set-sel-d [0 1]])
-     "backspace" #(when-let [[x y] (get!)] (dispatch! [:xy-del]))
-     "c"         #(dispatch! [:el-tf :C])
-     "q"         #(dispatch! [:el-tf :Q])
-     "s"         #(dispatch! [:el-tf :S])}))
+  {"left"      #(dispatch! [:set-sel-d [-1 0]])
+   "right"     #(dispatch! [:set-sel-d [1 0]])
+   "up"        #(dispatch! [:set-sel-d [0 -1]])
+   "down"      #(dispatch! [:set-sel-d [0 1]])
+   "backspace" #(when (:sel-rec @!ui) (dispatch! [:del-sel]))
+   "c"         #(dispatch! [:el-tf :C])
+   "q"         #(dispatch! [:el-tf :Q])
+   "s"         #(dispatch! [:el-tf :S])})

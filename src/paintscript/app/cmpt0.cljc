@@ -10,8 +10,7 @@
    {"blue" {:fill "blue"}}
    :defs
    {:components
-    {"reps"  {:canvas {:dims [100 100]
-                       :zero :center},
+    {"reps"  {:canvas {:dims [100 100]},
               :script
               [[:path
                 {:doc "blue circles"
@@ -25,7 +24,7 @@
                 [:L [39 15] [61 15]]]]}
 
      "group" {:canvas {:dims [30 30]
-                       }
+                       :zero :center}
               :attrs {:style {:stroke-width 2
                               :vector-effect "non-scaling-stroke"}}
               :script

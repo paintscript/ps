@@ -18,7 +18,7 @@
                                        (apply ops/append-pnt els (concat ii [pnt]))
                                        (apply ops/append-pnt els ii))
                    :ops/del-pnt      (apply ops/del-pnt    els ii)
-                   :ops/append-el    (apply ops/append-el  els ii)
+                   :ops/append-p-el    (apply ops/append-p-el  els ii)
                    :ops/del-el       (apply ops/del-el     els ii)
                    :ops/append-pth   (apply ops/append-pth script ii)
                    :ops/del-pth      (apply ops/del-pth    script ii)
@@ -55,7 +55,7 @@
             :=>  [[:L [0 0] [10 10]]]))
 
    ;; el
-   (xx {:= {:op :ops/append-el}}
+   (xx {:= {:op :ops/append-p-el}}
 
        (x-> :els [[:L [0 0] [5 5]]]
             :ii  [0]

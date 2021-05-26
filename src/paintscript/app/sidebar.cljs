@@ -88,8 +88,7 @@
 
      [:div.status
       (when status?
-        (let [
-              cmpt-sub          (-> cmpt'
+        (let [cmpt-sub          (-> cmpt'
                                     (cond-> (:cmpt-pth sel-rec)
                                             (nav/get-cmpt-sel sel-rec)))
 

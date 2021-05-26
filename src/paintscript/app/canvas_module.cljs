@@ -61,12 +61,12 @@
           cmpt    @!cmpt
           hov-rec @!hov-rec
           c-app   [hov-rec sel-rec dispatch! report-down! report-over! dnd-fns]]
-
       [:div.canvas
        [:div.sidebar.script-phantom]
        [canvas-sidebar
         !config !cmpt !ui !shell !s-log !tab
         config cmpt cmpt sel-rec dispatch!]
+
 
        (let [cmpt  (-> cmpt
                        (nav/get-cmpt-sel sel-rec)
