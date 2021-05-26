@@ -9,6 +9,8 @@ html, body {
 div.app {
   * { box-sizing: border-box; }
 
+  --app-border:          hsl(0deg 0% 90%);
+  --app-border-dark:     hsl(0deg 0% 80%);
   --black:               hsl(0deg 0% 20%);
   --blue-dark:           hsl(240deg 100% 80%);
   --blue-light:          hsl(240deg 100% 90%);
@@ -67,22 +69,87 @@ div.script.sidebar {
     font-family: var(--code-font);
   }
 
-  > ol.log {
-    height: var(--script-height);
-    overflow: scroll;
-    margin: 0;
-    padding: 0;
+  ol {
+    margin:     0;
+    padding:    0;
     list-style: none;
+
     li {
-      line-height: var(--controls-height);
-      padding: 0 var(--pd);
-      &:hover {
+      min-height: var(--controls-height);
+      padding: var(--pd);
+
+      &:hover:not(.active) {
         cursor: pointer;
-        background-color: hsl(60,90%,95%);
+        background-color: hsl(60deg 90% 95%);
       }
+
       &.active {
-        background-color: hsl(240,90%,95%);
+        background-color: hsl(240deg 90% 95%);
+        ol, li {
+          border-color: var(--app-border-dark) !important;
+        }
       }
+
+      & + li {
+        border-top: 1px solid var(--app-border);
+        // border-width: 1px;
+        // border-style: solid;
+      }
+    }
+  }
+
+  > ol.log,
+  > ol.s-els {
+    height:     var(--script-height);
+    overflow:   scroll;
+  }
+
+  > ol.s-els {
+    span.s-el-k,
+    span.p-el-k {
+      font-weight: bold;
+    }
+    span.s-el-opts {
+      font-style: italic;
+    }
+
+    span.s-el-args {
+      font-family: monospace;
+    }
+    span + span { margin-left: var(--pd); }
+
+    ol.p-els {
+      margin: var(--pd) 0;
+      border: 1px solid var(--app-border);
+      border-style: solid;
+      > li {
+        display: flex;
+        align-items: center;
+
+        span.p-el-k {
+          margin-right: var(--pd-half);
+        }
+
+        ol.p-el-args {
+          display: flex;
+          // align-items: center;
+          border: none;
+          > li {
+            display: flex;
+            align-items: center;
+            border: none;
+            padding: var(--pd-half);
+            min-height: 0; // undo min-height of generic ol
+            & + li {
+              // margin-left: var(--pd-half);
+            }
+          }
+        }
+      }
+    }
+
+    span.p-out {
+      font-family: monospace;
     }
   }
 
@@ -90,14 +157,15 @@ div.script.sidebar {
     height: var(--script-height-short);
   }
 
-  &.with-status > ol.log {
+  &.with-status > ol.log,
+  &.with-status > ol.s-els {
     height: var(--script-height-short);
   }
 
   > div.shell {
     padding: 0;
     height: var(--panel-height);
-    border-top: 1px solid hsl(0,0%,90%);
+    border-top: 1px solid var(--app-border);
     box-sizing: content-box;
     textarea {
       &:focus {

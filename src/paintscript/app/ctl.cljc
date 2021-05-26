@@ -257,6 +257,8 @@
                           (cond-> (nil? arg)
                                   (assoc :snap nil)))}
 
+    :sel-vec     (handle-op cmpt ui [:sel-rec (nav/pth-vec->rec arg)])
+
     :set-p-opts  (let [[k v] arg]
                    {:cmpt (-> cmpt (ops/update-p-opts sel-rec assoc k v))})
 

@@ -204,9 +204,18 @@
                                       (attach-ii-el-meta :script pi nav/p-el-i0)))))))
        vec))
 
+;; TODO: rename to el-k, also use for s-el
 (defrecord El      [p-el-k opts ii-el i-arg0 args])
 (defrecord MainPnt [xy xy-abs ii-pnt])
 (defrecord CtrlPnt [xy xy-abs ii-pnt i-main])
+
+(defn el-vec-->el-rec
+  ([elv] (el-vec-->el-rec elv nil))
+  ([[p-el-k & [arg1 :as args] :as el-vec] ii-el]
+   (with-meta (if (map? arg1)
+                (->El p-el-k arg1 ii-el 2 (rest args))
+                (->El p-el-k nil  ii-el 1 args))
+     (meta el-vec))))
 
 (defn args-->pnts
   [{:as el :keys [p-el-k i-arg0 args]}
@@ -255,14 +264,6 @@
                 (not= :M (first el)))
        (list [:M (last el-prev)]))
      (list el))))
-
-(defn el-vec-->el-rec
-  ([elv] (el-vec-->el-rec elv nil))
-  ([[p-el-k & [arg1 :as args] :as el-vec] ii-el]
-   (with-meta (if (map? arg1)
-                (->El p-el-k arg1 ii-el 2 (rest args))
-                (->El p-el-k nil  ii-el 1 args))
-     (meta el-vec))))
 
 ;; --- path opts
 
