@@ -87,17 +87,20 @@
 
      [:div.status
       (when status?
-        (let [[_ opts :as s-el] (nav/cmpt> cmpt' :src-k (:src-k sel-rec) :s-eli (:x-el-k sel-rec))
+        (let [
+              cmpt-sub          (-> cmpt'
+                                    (cond-> (:cmpt-pth sel-rec)
+                                            (nav/get-cmpt-sel sel-rec)))
+
+              [_ opts :as s-el] (nav/cmpt> cmpt-sub :src-k (:src-k sel-rec) :s-eli (:x-el-k sel-rec))
               [k & xys]         (nav/s-el> s-el  :p-eli (:p-el-i sel-rec))]
           [:div.selection-stack
            [:div.selection-level.iii
-            [:span (-> sel-rec nav/pth-rec->vec pr-str)]
+            [:span (-> sel-rec vals pr-str)]
             [:div.controls.crud
              [zc/button :label "blur" :on-click #(dispatch! [:sel-rec nil])]
              [zc/button :label "up" :on-click #(dispatch! [:sel-rec (-> sel-rec
-                                                                        nav/pth-rec->vec
-                                                                        drop-last
-                                                                        nav/pth-vec->rec)])]]]
+                                                                        nav/pth-up)])]]]
 
            [:div.selection-level.path
             [:span (pr-str opts)]

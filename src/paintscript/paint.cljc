@@ -20,13 +20,13 @@
     (paint*     [_ ps-out _ _] ps-out)))
 
 (defn path-builder
-  ([opts els]       (path-builder nil   nil opts 0 els))
-  ([c-fns opts els] (path-builder c-fns nil opts 0 els))
+  ([opts p-els]       (path-builder nil   nil opts 0 p-els))
+  ([c-fns opts p-els] (path-builder c-fns nil opts 0 p-els))
   ([c-fns
     {:as cmpt :keys [debug?]}
     {:as p-opts :keys [d attrs]}
     pi
-    els]
+    p-els]
    (cond
      d      (let [d' (-> d (cond-> (el-path/ref? d)
                                    (->> (els/resolve-d-ref (:defs cmpt)))))
@@ -39,10 +39,10 @@
                      :sc (some-> scale-factor vector)} pth]
                 pth))
 
-     debug? (let [pnts-seq (render/path-pnts cmpt p-opts els)]
-              ((:plot-coords c-fns) p-opts pi els pnts-seq))
+     debug? (let [pnts-seq (render/path-pnts cmpt p-opts p-els)]
+              ((:plot-coords c-fns) p-opts pi p-els pnts-seq))
 
-     :else  (let [out-seq (render/path svg-renderer cmpt p-opts els)]
+     :else  (let [out-seq (render/path svg-renderer cmpt p-opts p-els)]
               [:path (merge attrs {:d (apply shk/d out-seq)})]))))
 
 (defn- scale->tl
@@ -74,10 +74,10 @@
 (defn- layout-builder
   "compose a sequence of components into one, offset each by the width of prior ones"
   [c-fns {:as cmpt-ctx :keys [defs]}
-   obj-opts' els]
+   s-el-opts' els]
+  {:pre [(every? el-path/ref? els)]}
   [:g (->> els
            (reduce (fn [[out offset] el]
-                     (assert (el-path/ref? el))
                      (let [{:as cmpt-ref
                             {:keys [dims]} :canvas}  (els/resolve-cmpt-ref defs el)
 
@@ -111,12 +111,12 @@
            first)])
 
 (defn- derive-attrs
-  [cmpt {:as obj-opts
+  [cmpt {:as s-el-opts
          :keys [attr-class]}]
   (u/deep-merge (:attrs cmpt) ;; includes inherited via configs
                 (get (:attr-classes cmpt)
-                     (:attr-class   obj-opts))
-                (:attrs obj-opts)))
+                     (:attr-class   s-el-opts))
+                (:attrs s-el-opts)))
 
 (defn- add-tf-params [params0 params1]
   (-> params0
@@ -147,32 +147,33 @@
                        param-chain)]
     (vec (cons :g cc))))
 
-(defn- derive-obj-hiccup
+(defn- derive-s-el-hiccup
   [c-fns
    {:as cmpt :keys [defs script data?]}
-   obj-i [obj-k obj-opts & els :as obj]]
-  (let [attrs      (derive-attrs cmpt obj-opts)
-        obj-opts'  (-> obj-opts
+   s-el-i [s-el-k
+           s-el-opts & x-els :as s-el]]
+  (let [attrs      (derive-attrs cmpt s-el-opts)
+        s-el-opts' (-> s-el-opts
                        (dissoc :attr-class
                                :variant-key
                                :disabled?))
 
-        obj-opts'  (case obj-k
+        s-el-opts' (case s-el-k
                      (:path
-                      :layout) (-> obj-opts'
+                      :layout) (-> s-el-opts'
                                    (assoc  :attrs attrs)
                                    (dissoc :disabled?))
-                     :ref      obj-opts'
-                     (-> obj-opts'
+                     :ref      s-el-opts'
+                     (-> s-el-opts'
                          (->> (merge attrs))))]
-    (case obj-k
-      :path   (path-builder   c-fns cmpt obj-opts' obj-i els)
-      :layout (layout-builder c-fns cmpt obj-opts' els)
-      :ref    (let [cmpt-ref    (els/resolve-cmpt-ref (:defs cmpt) obj)
+    (case s-el-k
+      :path   (path-builder   c-fns cmpt s-el-opts' s-el-i x-els)
+      :layout (layout-builder c-fns cmpt s-el-opts' x-els)
+      :ref    (let [cmpt-ref    (els/resolve-cmpt-ref (:defs cmpt) s-el)
                     cmpt*       (u/deep-merge cmpt
                                               cmpt-ref)
                     cmpt-hiccup (paint c-fns cmpt*)
-                    opts        (els/get-opts obj)]
+                    opts        (els/get-opts s-el)]
                 (if-let [{:keys [tfs+]} (:repeat opts)]
                   (cond
                     ;; NOTE: uses svg-hiccup-kit's (different) tf params
@@ -182,21 +183,22 @@
 
       (:rect
        :circle
-       :ellipse) (-> obj (assoc 1 obj-opts')))))
+       :ellipse) (-> s-el (assoc 1 s-el-opts')))))
 
 (defn paint
   ([cmpt] (paint nil cmpt))
   ([c-fns cmpt]
    [:g
-    (for [[obj-i
-           [obj-k
-            obj-opts
-            :as obj]] (->> (:script cmpt)
-                           (map-indexed vector))
-          :when       (and (not (:disabled? obj-opts))
-                           (or (not (:variant-active cmpt))
-                               (not (:variant-key    obj-opts))
-                               (= (:variant-active cmpt)
-                                  (:variant-key    obj-opts))))]
-      ^{:key obj-i}
-      [derive-obj-hiccup c-fns cmpt obj-i obj])]))
+    (for [[s-el-i
+           [s-el-k
+            s-el-opts
+            :as s-el]] (->> (:script cmpt)
+                            (map-indexed vector))
+
+          :when (and (not (:disabled? s-el-opts))
+                     (or (not (:variant-active cmpt))
+                         (not (:variant-key    s-el-opts))
+                         (= (:variant-active cmpt)
+                            (:variant-key    s-el-opts))))]
+      ^{:key s-el-i}
+      [derive-s-el-hiccup c-fns cmpt s-el-i s-el])]))

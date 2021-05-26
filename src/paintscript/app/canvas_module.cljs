@@ -69,9 +69,12 @@
         config cmpt cmpt sel-rec dispatch!]
 
        (let [cmpt  (-> cmpt
-                       (nav/get-cmpt-sel sel-rec))
+                       (nav/get-cmpt-sel sel-rec)
+
+                       ;; NOTE: merges upstream defs needed to resolve refs
+                       (nav/cmpt-merged  cmpt sel-rec))
              cmpt' (-> (merge-with merge
                                    (-> config (dissoc :script))
                                    cmpt)
-                       (update :script els/attach-ii-el-meta*))]
+                       (update :script els/attach-pth-rec-meta* sel-rec))]
          [canvas-paint' c-app config cmpt'])])))

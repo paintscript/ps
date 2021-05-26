@@ -118,6 +118,35 @@ div.script.sidebar {
     }
     span + span { margin-left: var(--pd); }
 
+    li.cmpt-sel,
+    li.cmpt-pth {
+      display: flex;
+      align-items: center;
+    }
+
+    li.cmpt-pth {
+      ol.cmpt-pth {
+        display: flex;
+        li {
+          display: flex;
+          align-items: center;
+          border: none;
+          min-height: 0; // undo min-height of generic ol
+          padding: 0;
+          &.current {
+            font-weight: bold;
+          }
+          &:not(.current) span.cmpt-id {
+            color: blue;
+            &:hover { text-decoration: underline; }
+          }
+          & + li {
+            &:before { content: '⟩'; margin: 0 var(--pd); }
+          }
+        }
+      }
+    }
+
     ol.p-els {
       margin: var(--pd) 0;
       border: 1px solid var(--app-border);

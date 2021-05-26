@@ -1,7 +1,8 @@
 (ns paintscript.ops-xspace
   (:require [clojure.test :refer [deftest testing is]]
             [paintscript.ops :as ops]
-            [xspace.core :as x :refer [x-> xx x:=]]))
+            [xspace.core :as x :refer [x-> xx x:=]]
+            [paintscript.nav :as nav]))
 
 (def ops-xspace-cfg
   {:fns
@@ -10,19 +11,20 @@
     (fn [ctx c args]
       (let [{:keys [op cmpt script els pnt ii i to tl =>]}
             (merge (-> ctx :args) args)]
-        (is (= =>
-               (case op
-                 :ops/append-pnt   (if pnt
-                                     (apply ops/append-pnt els (concat ii [pnt]))
-                                     (apply ops/append-pnt els ii))
-                 :ops/del-pnt      (apply ops/del-pnt    els ii)
-                 :ops/append-el    (apply ops/append-el  els ii)
-                 :ops/del-el       (apply ops/del-el     els ii)
-                 :ops/append-pth   (apply ops/append-pth script ii)
-                 :ops/del-pth      (apply ops/del-pth    script ii)
-                 :ops/tl-pth       (ops/translate cmpt ii tl)
-                 :ops/rel->abs     (ops/absolute cmpt)
-                 :ops/transform-el (ops/transform-el els i to))))))}})
+        (let []
+          (is (= =>
+                 (case op
+                   :ops/append-pnt   (if pnt
+                                       (apply ops/append-pnt els (concat ii [pnt]))
+                                       (apply ops/append-pnt els ii))
+                   :ops/del-pnt      (apply ops/del-pnt    els ii)
+                   :ops/append-el    (apply ops/append-el  els ii)
+                   :ops/del-el       (apply ops/del-el     els ii)
+                   :ops/append-pth   (apply ops/append-pth script ii)
+                   :ops/del-pth      (apply ops/del-pth    script ii)
+                   :ops/tl-pth       (ops/translate cmpt (nav/pth-vec->rec ii) tl)
+                   :ops/rel->abs     (ops/absolute cmpt)
+                   :ops/transform-el (ops/transform-el els i to)))))))}})
 
 (def ops-xspace
   [;; pnt

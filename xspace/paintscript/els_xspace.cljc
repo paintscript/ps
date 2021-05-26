@@ -1,8 +1,7 @@
  (ns paintscript.els-xspace
   (:require [clojure.test :refer [deftest testing is]]
             [xspace.core :as x :refer [x-> xx x:=]]
-            [paintscript.els :as els]
-            [paintscript.render-svg :as render-svg]))
+            [paintscript.els :as els]))
 
 (def els-xspace-cfg
   {:fns
@@ -13,14 +12,14 @@
             (merge (-> ctx :args) args)]
         (is (= =>
                (case op
-                 :els/normalize-els  (#'els/normalize-els path)
-                 :els/reverse-el-xys (#'els/reverse-el-xys {:drop-last? drop?} path)
+                 :els/normalize-p-els  (#'els/normalize-p-els path)
+                 :els/reverse-p-el-xys (#'els/reverse-p-el-xys {:drop-last? drop?} path)
                  ; :mirror-xys     (#'els/mirror-xys width xys)
                  ; :scale-p-els      (#'els/scale-p-els path center factor)
                  )))))}})
 
 (def els-xspace
-  [(xx {:= {:op :els/normalize-els}}
+  [(xx {:= {:op :els/normalize-p-els}}
 
        (x-> "C1"
             :path '([:C1 [10 10] [20 20]])
@@ -32,7 +31,7 @@
             :=>   '([:C [0 0] [10 15] [20 25]]
                     [:C [30 35] [25 25] [35 35]])))
 
-   (xx {:= {:op :els/reverse-el-xys}}
+   (xx {:= {:op :els/reverse-p-el-xys}}
 
        (xx {:= {:path '([:M 1] [:L 2])}}
 

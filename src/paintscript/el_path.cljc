@@ -56,7 +56,7 @@
 
 (defmulti ^:private rel->abs dispatch-on-k)
 
-(defmethod rel->abs :z [_ _ _] [:Z])
+(defmethod rel->abs :z [_ _ _] [[:Z]])
 
 (defmethod rel->abs :c [[_k & pnts :as elv] tgt-prev _cp-prev]
   (let [[c1 c2 tgt :as pnts'] (map #(u/v+ % tgt-prev) pnts)]

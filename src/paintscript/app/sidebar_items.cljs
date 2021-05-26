@@ -10,7 +10,8 @@
             [paintscript.util :as u]))
 
 (defn- pth-rec-status [sel-rec pth-rec]
-  (when sel-rec
+  (when (or (:cmpt-pth sel-rec)
+            (:src-k    sel-rec))
     (let [sel? (reduce (fn [_ k]
                          (if (or (= (get sel-rec k)
                                     (get pth-rec k))
@@ -36,8 +37,33 @@
                                (.stopPropagation ev)
                                (dispatch! [:sel-rec sel-rec])))]
     [:ol.s-els
+     (when cmpt-pth
+       (let [cmpt-id-active (last cmpt-pth)]
+         [:li.cmpt-pth
+          [:ol.cmpt-pth
+           (loop [cmpt-pth-acc nil
+                  [cmpt-id
+                   & cmpt-pth-tail] (cons :root cmpt-pth)
+                  li-seq (list)]
+             (if-not cmpt-id
+               (reverse li-seq)
+               (let [cmpt-pth-acc' (-> cmpt-pth-acc (cond-> (not= :root cmpt-id)
+                                                            (conj cmpt-id)))
+                     active?       (= cmpt-id-active
+                                      cmpt-id)]
+                 (recur cmpt-pth-acc'
+                        cmpt-pth-tail
+                        (-> li-seq
+                            (conj
+                             ^{:key cmpt-id}
+                             [:li (if active?
+                                    {:class "current"}
+                                    {:on-click #(dispatch!
+                                                 [:sel-rec
+                                                  (nav/pth-rec :cmpt-pth cmpt-pth-acc')])})
+                              [:span.cmpt-id cmpt-id]]))))))]]))
      (when-let [cmpts (get-in cmpt [:defs :components])]
-       [:li
+       [:li.cmpt-sel
         [zc-std/select
          :model     (or (-> sel-rec :cmpt-pth last)
                         "root")
@@ -60,10 +86,14 @@
                :on-click (sel-rec-dispatcher pth-rec*)}
           [:span.s-el-k (name s-el-k)]
           [:span.s-el-opts (pr-str s-el-opts)]
-          (when (= :path s-el-k)
-            [:span.s-el-args (pr-str s-el-args)])
+          [:span.s-el-args
+           (case s-el-k
+             :path (pr-str s-el-args)
+             :ref  (first s-el-args)
+             nil)]
           (when (and sel?
-                     (= :path s-el-k))
+                     (= :path s-el-k)
+                     (first s-el-args))
             [:div
              [:ol.p-els
               (for [[p-el-i

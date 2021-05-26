@@ -9,9 +9,10 @@
             [paintscript.util :as u]
             [paintscript.el-path :as el]
             [paintscript.ops :as ops]
-            #?(:cljs [paintscript.app.ops-svg :as ops-svg])
+
             [paintscript.nav :as nav]
             [paintscript.conv :as conv]
+            #?(:cljs [paintscript.app.ops-svg :as ops-svg])
             [paintscript.app.s-log :as s-log]))
 
 (def cmpt-clear {:defs {} :script []})
@@ -147,24 +148,26 @@
         ;; else:
         (println (str "command not found: " cmd-line))))))
 
-(defn- handle-op [cmpt {:as ui :keys [sel-rec]} [op-k & [arg :as args] :as op]]
+(defn- handle-op
+  [cmpt {:as ui :keys [sel-rec]} [op-k & [arg :as args] :as op]]
   (case op-k
     :set-sel-d   (let [{:keys [cmpt0]} (:snap ui)
                        cmpt (or cmpt0  ;; dnd
                                 cmpt)] ;; kb
                    {:cmpt
-                    (reduce (fn [acc' {:as sel-item :keys [ii-xy main?]}]
-                              (-> acc'
-                                  (assoc-in ii-xy
-                                            (mapv + (get-in cmpt ii-xy) arg))))
+                    (reduce (fn [acc' {:as sel-item :keys [pth-rec main?]}]
+                              (let [pth-vec (nav/pth-rec->vec pth-rec)]
+                                (-> acc'
+                                    (assoc-in pth-vec
+                                              (mapv + (get-in cmpt pth-vec) arg)))))
                             cmpt
                             (:sel-set ui))})
 
     :pth-append  {:cmpt (-> cmpt (update :script ops/append-pth (:x-el-k sel-rec)))
-                  :ui   (-> ui (merge {:sel-rec nil :snap nil}))}
+                  :ui   (-> ui   (merge {:sel-rec nil :snap nil}))}
 
     :pth-del     {:cmpt (-> cmpt (update :script ops/del-pth (:x-el-k sel-rec)))
-                  :ui   (-> ui (merge {:sel-rec nil :snap nil}))}
+                  :ui   (-> ui   (merge {:sel-rec nil :snap nil}))}
 
     :el-append   (let [el         arg
                        {:as sel-rec
@@ -348,10 +351,11 @@
                                 (let [sel-vec (-> sel-rec
                                                   nav/pth-rec->vec)
                                       sel-set'
-                                      (into #{{:ii-xy sel-vec
-                                               :main? main?}}
+                                      (into #{{:pth-rec sel-rec
+                                               :main?   main?}}
                                             (map (fn [eli-cpi]
-                                                   {:ii-xy (concat (take 2 sel-vec) eli-cpi)}))
+                                                   {:pth-rec (-> sel-rec
+                                                                 (assoc :xy-i eli-cpi))}))
                                             (when main?
                                               (pth->cp-ii (get-in @!cmpt (take 2 sel-vec))
                                                           (nth sel-vec 2))))]
@@ -374,6 +378,7 @@
                                              :L
                                              :M)]
                                 (dispatch! [:el-append [p-el-k xy']]))))
+
           :on-mouse-move (fn [ev]
                            (let [{:keys [snap-to-grid?]
                                   {:as snapshot :keys [cmpt0 m0]} :snap} @!ui]
@@ -385,6 +390,7 @@
                                            (mapv u/round d')
                                            d')]
                                  (dispatch! [:set-sel-d d'])))))
+
           :on-mouse-up   #(let [{:keys [sel-rec
                                         sel-prev cmpt0]} @!snap
                                 cmpt @!cmpt]

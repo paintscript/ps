@@ -19,7 +19,7 @@
    els
    {:as el  :keys [p-el-k]}
    {:as pnt :keys [xy xy-abs i-main]}
-   [src-k pi eli _ :as ii-pnt]]
+   pth-rec]
   (r/with-let [!hover? (r/atom false)]
     (when
       (vector? xy) ;; skip v/V, h/H
@@ -29,9 +29,12 @@
                            (mapv #(* % scaled)))
             cp?       (some? i-main)
 
-            sel-pv?   (and (= (:x-el-k sel-rec)  pi)
-                           (= (:p-el-i sel-rec) eli))
-            pth-rec*  (nav/pth-vec->rec ii-pnt)
+            sel-pv?   (and (= (:x-el-k sel-rec)
+                              (:x-el-k pth-rec))
+                           (= (:p-el-i sel-rec)
+                              (:p-el-i pth-rec)))
+            pth-rec*  pth-rec
+            ; pth-rec*  (nav/pth-vec->rec ii-pnt)
             hover?    (= hov-rec pth-rec*)
             sel-pnt?  (= sel-rec pth-rec*)]
 
@@ -82,12 +85,12 @@
 
 (defn plot-coords [opts pi els pnts-seq]
   (for [[el pnts] pnts-seq
-        {:as pnt :keys [xy ii-pnt i-main]} (->> pnts
-                                                ;; NOTE: render CPs last
-                                                (sort-by :i-main))
-        :let [_ (assert ii-pnt)]]
-    ^{:key (hash ii-pnt)}
-    [coord opts els el pnt ii-pnt]))
+        {:as pnt :keys [xy pth-rec i-main]} (->> pnts
+                                                 ;; NOTE: render CPs last
+                                                 (sort-by :i-main))
+        :let [_ (assert pth-rec)]]
+    ^{:key (hash pth-rec)}
+    [coord opts els el pnt pth-rec]))
 
 (defn- derive-background-image-attrs
   [{:as config :keys [canvas]}
@@ -186,7 +189,7 @@
                                            :s-eli (:x-el-k sel-rec))
 
                                 ;; to render an individual el it needs to be full & abs:
-                                (els/update-p-els els/normalize-els)
+                                (els/update-p-els els/normalize-p-els)
 
                                 (els/extract-p-els (:src-k  sel-rec)
                                                    (:p-el-i sel-rec))
@@ -200,20 +203,20 @@
 
          (when coords?
            [:g.coords
-            (for [[pi {:as p-opts :keys [variant-key]} els] out-tups
-                  :when (and (not (:disabled? p-opts))
+            (for [[s-el-i {:as s-el-opts :keys [variant-key]} p-els] out-tups
+                  :when (and (not (:disabled? s-el-opts))
                              (or (not (:variant-active cmpt))
                                  (not variant-key)
                                  (= (:variant-active cmpt) variant-key)
                                  (= (:variant-active cmpt) variant-key)))]
-              (let [els'        (->> els
-                                     (els/resolve-els-refs (:defs cmpt))
-                                     (els/attach-xy-abs-meta))
-                    el-pnts-seq (render/path-pnts {:debug?  true
-                                                   :coords? true}
-                                                  p-opts
-                                                  els')]
-                ^{:key pi}
+              (let [p-els'        (->> p-els
+                                       (els/resolve-els-refs (:defs cmpt))
+                                       (els/attach-xy-abs-meta))
+                    p-el-pnts-seq (render/path-pnts {:debug?  true
+                                                     :coords? true}
+                                                    s-el-opts
+                                                    p-els')]
+                ^{:key s-el-i}
                 [:g.coords-plot
                  (plot-coords {:scaled        scale
                                :coord-size    10
@@ -221,8 +224,10 @@
                                :report-over!  report-over!
                                :sel-rec       sel-rec
                                :hov-rec       hov-rec
-                               :controls?     (= (:x-el-k sel-rec) pi)}
-                              pi els' el-pnts-seq)]))])]
+                               :controls?     (= (:x-el-k sel-rec) s-el-i)}
+                              s-el-i
+                              p-els'
+                              p-el-pnts-seq)]))])]
         (catch :default err
           (println :paint-exec-error)
           (js/console.log err)
@@ -241,10 +246,11 @@
 
          out-tups (->> (:script cmpt)
                        (map-indexed
-                        (fn [s-el-i [obj-k obj-opts & els]]
-                          (case obj-k
+                        (fn [s-el-i [s-el-k
+                                     s-el-opts & p-els]]
+                          (case s-el-k
                             :ref nil ;; TODO: add :ref support
-                            [s-el-i obj-opts els])))
+                            [s-el-i s-el-opts p-els])))
                        (remove nil?))]
 
      [:div.paint

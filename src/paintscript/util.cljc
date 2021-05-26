@@ -4,6 +4,17 @@
 
             #?(:cljs [keybind.core :as kb])))
 
+(defn pprint*
+  ([edn] (with-out-str *out* (pprint edn)))
+  ([title edn]
+   (println (str title
+                 "\n   "
+                 (str/replace (-> edn
+                                  (cond-> (not (string? edn))
+                                          pprint*))
+                              "\n" "\n   ")))
+   edn))
+
 ;; --- colls
 
 (defn conjv [coll el] (-> (or coll []) (conj el)))
@@ -16,6 +27,25 @@
 
 (defn deep-merge [& args]
   (apply merge-with merge-maps args))
+
+(defn cascading-merges [tree pth-seq kk]
+  (last
+   (reduce (fn [[tree acc] pth]
+             (let [tree' (get-in tree pth)]
+               [tree'
+                (reduce (fn [acc k]
+                          (-> acc
+                              (update k deep-merge (get tree' k))))
+                        acc
+                        kk)]))
+           [tree {}]
+           (cons nil pth-seq))))
+
+; (cascading-merges {:a {:x {"x1" 1} :y {"y1" 2}
+;                        :b {:x {"x2" 2} :y {"y2" 2}}}}
+;                   (list [:a]
+;                         [:b])
+;                   [:x :y])
 
 ;; --- vecs
 
@@ -155,16 +185,7 @@
     (point-at-angle ctr radius (+ alpha0
                                   alphad))))
 
-(defn pprint*
-  ([edn] (with-out-str *out* (pprint edn)))
-  ([title edn]
-   (println (str title
-                 "\n   "
-                 (str/replace (-> edn
-                                  (cond-> (not (string? edn))
-                                          pprint*))
-                              "\n" "\n   ")))
-   edn))
+
 
 ; #?(:cljs
 ;    (defn init-key-bindings! [kbnds]
