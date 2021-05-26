@@ -5,35 +5,59 @@
             [paintscript.nav :as nav]
             [paintscript.els :as els]
             [paintscript.paint :as paint]
-            [paintscript.render :as render]))
+            [paintscript.render :as render]
+            [z-com.standard :as zc-std]
+            [paintscript.util :as u]))
 
-(defn- pth-vec-status [sel-vec pth-vec]
-  (when sel-vec
-    (let [sel? (->> (map vector sel-vec pth-vec)
-                    (every? (fn [[a b]] (or (= a b)
-                                            (some nil? [a b])))))
+(defn- pth-rec-status [sel-rec pth-rec]
+  (when sel-rec
+    (let [sel? (reduce (fn [_ k]
+                         (if (or (= (get sel-rec k)
+                                    (get pth-rec k))
+                                 (some #(nil? (get % k)) [sel-rec
+                                                          pth-rec]))
+                           true
+                           (reduced false)))
+                       false
+                       [:cmpt-pth :src-k :x-el-k :p-el-i :xy-i])
           foc? (when sel?
-                 (= sel-vec pth-vec))]
+                 (= sel-rec pth-rec))]
       [sel? foc?])))
 
+
 (defn sidebar-items
-  [dispatch! cmpt sel-rec]
-  (let [sel-vec (some-> sel-rec nav/pth-rec->vec)
-        sel-vec-dispatcher (fn [sel-vec]
+  [dispatch! cmpt {:as sel-rec :keys [cmpt-pth]}]
+  (let [sel-rec (or sel-rec
+                    (nav/pth-rec))
+        cmpt    (-> cmpt
+                    (nav/get-cmpt-sel sel-rec))
+        sel-rec-dispatcher (fn [sel-rec]
                              (fn [ev]
                                (.stopPropagation ev)
-                               (dispatch! [:sel-vec sel-vec])))]
+                               (dispatch! [:sel-rec sel-rec])))]
     [:ol.s-els
+     (when-let [cmpts (get-in cmpt [:defs :components])]
+       [:li
+        [zc-std/select
+         :model     (or (-> sel-rec :cmpt-pth last)
+                        "root")
+         :options   (cons "root"
+                          (keys cmpts))
+         :on-change #(dispatch! [:sel-rec (nav/pth-rec :cmpt-pth
+                                                       (-> (:cmpt-pth sel-rec)
+                                                           (u/conjv %)))])]])
      (for [[s-el-i
             [s-el-k
              s-el-opts
              & s-el-args]] (map-indexed vector (:script cmpt))]
-       (let [pth-vec*  [:script s-el-i]
+       (let [pth-rec*  (nav/pth-rec :cmpt-pth (:cmpt-pth sel-rec)
+                                    :src-k    :script
+                                    :x-el-k   s-el-i)
              [sel?
-              foc?]    (pth-vec-status sel-vec pth-vec*)]
+              foc?]    (pth-rec-status sel-rec pth-rec*)]
          ^{:key s-el-i}
          [:li {:class (when foc? "active")
-               :on-click (sel-vec-dispatcher pth-vec*)}
+               :on-click (sel-rec-dispatcher pth-rec*)}
           [:span.s-el-k (name s-el-k)]
           [:span.s-el-opts (pr-str s-el-opts)]
           (when (= :path s-el-k)
@@ -51,25 +75,25 @@
 
                       p-el-i'   (+ nav/p-el-i0
                                    p-el-i)
-                      pth-vec*  (-> pth-vec* (conj p-el-i'))
+                      pth-rec*  (-> pth-rec* (assoc :p-el-i p-el-i'))
 
                       [sel?
-                       foc?]    (pth-vec-status sel-vec pth-vec*)]
+                       foc?]    (pth-rec-status sel-rec pth-rec*)]
                   ^{:key p-el-i}
                   [:li {:class (when foc? "active")
-                        :on-click (sel-vec-dispatcher pth-vec*)}
+                        :on-click (sel-rec-dispatcher pth-rec*)}
                    [:span.p-el-k (name p-el-k)]
                    [:ol.p-el-args
                     (for [[arg-i
                            arg] (map-indexed vector args)]
                       (let [xy-i      (+ i-arg0
                                          arg-i)
-                            pth-vec*  (-> pth-vec* (conj xy-i))
+                            pth-rec*  (-> pth-rec* (assoc :xy-i xy-i))
                             [sel?
-                             foc?]    (pth-vec-status sel-vec pth-vec*)]
+                             foc?]    (pth-rec-status sel-rec pth-rec*)]
                         ^{:key arg-i}
                         [:li {:class (when foc? "active")
-                              :on-click (sel-vec-dispatcher pth-vec*)}
+                              :on-click (sel-rec-dispatcher pth-rec*)}
                          (pr-str arg)]))]]))]
              [:span.p-out
               (->> s-el-args

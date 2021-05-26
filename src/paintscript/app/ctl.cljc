@@ -50,9 +50,9 @@
      {:attr-class "outline",
       :repeat
       {:rotate {:degree 60, :center [50 50]}, :times 5, :mode :fuse}}
-     [:M [57 37]]
-     [:L [50 20]]
-     [:L [43 37]]]
+     [:M [46 29]]
+     [:L [90 19]]
+     [:L [23 34]]]
 
     [:path
      {:attrs {:style {:stroke "red"}}}

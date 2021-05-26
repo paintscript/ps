@@ -6,6 +6,8 @@
 
 ;; --- colls
 
+(defn conjv [coll el] (-> (or coll []) (conj el)))
+
 (defn map-vals [f coll]
   (into {} (map (fn [[k v]] [k (f v)])) coll))
 

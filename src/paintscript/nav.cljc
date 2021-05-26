@@ -7,11 +7,10 @@
                 xy-i])
 
 (defn pth-rec [& {:as args :keys [cmpt-pth src-k x-el-k p-el-i xy-i]}]
-  {:pre [(nil? cmpt-pth)
-         (case src-k
+  {:pre [(case src-k
            :script (-> x-el-k integer?)
            :defs   (-> x-el-k string?)
-           false)
+           true)
          (-> p-el-i ((some-fn nil? integer?)))
          (-> xy-i   ((some-fn nil? integer?)))]}
   (map->Pth args))
@@ -25,6 +24,17 @@
 (defn pth-rec->vec [{:as pth-rec :keys [src-k x-el-k p-el-i xy-i]}]
   {:pre [(instance? Pth pth-rec)]}
   (remove nil? [src-k x-el-k p-el-i xy-i]))
+
+(defn- cmpt-pth->data-pth [cmpt-pth]
+  (mapcat (fn [cmpt-id]
+            (list :defs :components cmpt-id))
+          cmpt-pth))
+
+(defn get-cmpt-sel [cmpt {:as sel-rec :keys [cmpt-pth]}]
+  (-> cmpt
+      (cond-> cmpt-pth
+              (get-in (-> cmpt-pth
+                          cmpt-pth->data-pth)))))
 
 (defn xy-pth? [pth-rec]
   (:xy-i pth-rec))

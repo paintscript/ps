@@ -186,22 +186,29 @@
        (-> els (normalize-els :op :rel->abs))))
 
 (defn- attach-ii-el-meta
-  [src-k x-k p-el-i0 els]
-  (->> els
-       (map-indexed (fn [eli el]
-                      (with-meta el {:ii-el [src-k x-k (+ p-el-i0 eli)]})))
+  [src-k x-el-k p-el-i0 p-els]
+  (->> p-els
+       (map-indexed (fn [i p-el]
+                      (let [p-el-i (+ p-el-i0 i)]
+                        (-> p-el
+                            (with-meta {:pth-rec (nav/pth-rec :src-k  src-k
+                                                              :x-el-k x-el-k
+                                                              :p-el-i p-el-i)
+                                        :ii-el [src-k x-el-k p-el-i]})))))
        vec))
 
-(defn attach-ii-el-meta* [script-pp]
-  (->> script-pp
-       (map-indexed (fn [pi [obj-k :as obj]]
-                      (case obj-k
-                        ;; TODO: add meta support for :ref & geo objects
-                        :ref obj
-                        (vec
-                         (concat (take 2 obj)
-                                 (->> (drop 2 obj)
-                                      (attach-ii-el-meta :script pi nav/p-el-i0)))))))
+(defn attach-ii-el-meta*
+  ""
+  [script]
+  (->> script
+       (map-indexed
+        (fn [s-el-i
+             [s-el-k :as s-el]]
+          (case s-el-k
+            :path (-> s-el
+                      (update-p-els (fn [p-els]
+                                      (attach-ii-el-meta :script s-el-i nav/p-el-i0 p-els))))
+            s-el)))
        vec))
 
 ;; TODO: rename to el-k, also use for s-el

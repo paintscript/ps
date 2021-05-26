@@ -139,6 +139,7 @@ div.script.sidebar {
             align-items: center;
             border: none;
             padding: var(--pd-half);
+            border-radius: 2px;
             min-height: 0; // undo min-height of generic ol
             & + li {
               // margin-left: var(--pd-half);

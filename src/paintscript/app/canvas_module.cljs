@@ -5,7 +5,8 @@
             [paintscript.els :as els]
             [paintscript.app.ctl :as ctl]
             [paintscript.canvas :as canvas]
-            [paintscript.app.sidebar :refer [canvas-sidebar]]))
+            [paintscript.app.sidebar :refer [canvas-sidebar]]
+            [paintscript.nav :as nav]))
 
 (defn canvas [cfg-init cmpt0]
   (r/with-let [ui-init      {:sel-rec       nil
@@ -56,19 +57,21 @@
                                   (dispatch! [:undo]))})]
 
     (let [config  @!config
-          cmpt    @!cmpt
           sel-rec @!sel-rec
+          cmpt    @!cmpt
           hov-rec @!hov-rec
-          cmpt'   (-> (merge-with merge
-                                  (-> config (dissoc :script))
-                                  cmpt)
-                      (update :script els/attach-ii-el-meta*))
           c-app   [hov-rec sel-rec dispatch! report-down! report-over! dnd-fns]]
 
       [:div.canvas
        [:div.sidebar.script-phantom]
        [canvas-sidebar
         !config !cmpt !ui !shell !s-log !tab
-        config cmpt cmpt' sel-rec dispatch!]
+        config cmpt cmpt sel-rec dispatch!]
 
-       [canvas-paint' c-app config cmpt']])))
+       (let [cmpt  (-> cmpt
+                       (nav/get-cmpt-sel sel-rec))
+             cmpt' (-> (merge-with merge
+                                   (-> config (dissoc :script))
+                                   cmpt)
+                       (update :script els/attach-ii-el-meta*))]
+         [canvas-paint' c-app config cmpt'])])))
