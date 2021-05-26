@@ -9,21 +9,30 @@
             [z-com.standard :as zc-std]
             [paintscript.util :as u]))
 
-(defn- pth-rec-status [sel-rec pth-rec]
-  (when (or (:cmpt-pth sel-rec)
-            (:src-k    sel-rec))
-    (let [sel? (reduce (fn [_ k]
-                         (if (or (= (get sel-rec k)
-                                    (get pth-rec k))
-                                 (some #(nil? (get % k)) [sel-rec
-                                                          pth-rec]))
-                           true
-                           (reduced false)))
-                       false
-                       [:cmpt-pth :src-k :x-el-k :p-el-i :xy-i])
-          foc? (when sel?
-                 (= sel-rec pth-rec))]
-      [sel? foc?])))
+(defn- pth-rec-status
+  "notes:
+   - a path counts as focused when the selection is idential to the path
+   - a path counts as selected if the prefix up to the last non-nil elemen matches
+     that of the selection (this includes more specific selections that have
+     additional non-nil fields after this prefix)
+   "
+  [sel-rec pth-rec]
+  (when (:src-k sel-rec)
+    (cond
+      (= sel-rec pth-rec) [true true]
+      (not= (:cmpt-pth sel-rec)
+            (:cmpt-pth pth-rec)) nil
+      :else
+      (let [sel? (reduce (fn [_ k]
+                           (let [s (get sel-rec k)
+                                 p (get pth-rec k)]
+                             (cond
+                               (and p
+                                    (not= s p)) (reduced false)
+                               :else            true)))
+                         false
+                         [:src-k :x-el-k :p-el-i :xy-i])]
+        [sel? false]))))
 
 
 (defn sidebar-items
@@ -32,11 +41,16 @@
                     (nav/pth-rec))
         cmpt    (-> cmpt
                     (nav/get-cmpt-sel sel-rec))
-        sel-rec-dispatcher (fn [sel-rec]
+        sel-rec-dispatcher (fn [sel-rec*]
                              (fn [ev]
                                (.stopPropagation ev)
-                               (dispatch! [:sel-rec sel-rec])))]
+                               (dispatch! [:sel-rec (when (not= sel-rec
+                                                                sel-rec*)
+                                                      sel-rec*)])))]
     [:ol.s-els
+
+     ;; --- cmpt-pth
+
      (when cmpt-pth
        (let [cmpt-id-active (last cmpt-pth)]
          [:li.cmpt-pth
@@ -62,6 +76,9 @@
                                                  [:sel-rec
                                                   (nav/pth-rec :cmpt-pth cmpt-pth-acc')])})
                               [:span.cmpt-id cmpt-id]]))))))]]))
+
+     ;; --- cmpt-selector
+
      (when-let [cmpts (get-in cmpt [:defs :components])]
        [:li.cmpt-sel
         [zc-std/select
@@ -72,6 +89,9 @@
          :on-change #(dispatch! [:sel-rec (nav/pth-rec :cmpt-pth
                                                        (-> (:cmpt-pth sel-rec)
                                                            (u/conjv %)))])]])
+
+     ;; --- script items
+
      (for [[s-el-i
             [s-el-k
              s-el-opts
@@ -85,7 +105,11 @@
          [:li {:class (when foc? "active")
                :on-click (sel-rec-dispatcher pth-rec*)}
           [:span.s-el-k (name s-el-k)]
-          [:span.s-el-opts (pr-str s-el-opts)]
+          (when-let [doc (:doc s-el-opts)]
+            [:span.s-el-doc doc])
+          [:span.s-el-opts (-> s-el-opts
+                               (dissoc :doc)
+                               pr-str)]
           [:span.s-el-args
            (case s-el-k
              :path (pr-str s-el-args)
@@ -125,7 +149,8 @@
                         [:li {:class (when foc? "active")
                               :on-click (sel-rec-dispatcher pth-rec*)}
                          (pr-str arg)]))]]))]
-             [:span.p-out
-              (->> s-el-args
-                   (render/path paint/svg-renderer cmpt s-el-opts )
-                   (apply shk/d))]])]))]))
+             (when sel?
+               [:span.p-out
+                (->> s-el-args
+                     (render/path paint/svg-renderer cmpt s-el-opts )
+                     (apply shk/d))])])]))]))

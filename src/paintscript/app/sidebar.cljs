@@ -18,7 +18,8 @@
    config cmpt cmpt' sel-rec
    dispatch!]
   (let [tab     @!tab
-        status? (and sel-rec
+        status? (and false ;; TODO: status-stack obsolete?
+                     sel-rec
                      (-> tab #{:tab/script
                                :tab/items}))]
     [:div.sidebar.script {:class (when status? "with-status")}

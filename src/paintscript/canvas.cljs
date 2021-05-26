@@ -133,21 +133,25 @@
    config variant-active
    {:as cmpt
     {:as   canvas
-     :keys [scale dims coords?]
+     :keys [scale dims coords? zero]
      :or   {dims [100 100]
+            zero :init
             coords? true}} :canvas}
    out-tups]
   (r/with-let [!svg-dom (atom nil)
                [w h]    (->> dims (mapv #(* % scale)))
                dnd-fns  (derive-dnd-fns !svg-dom scale)]
-    (let [config* (u/deep-merge config
-                                (:config cmpt))
-          cmpt*   (u/deep-merge config*
-                                cmpt)]
+    (let [config*  (u/deep-merge config
+                                 (:config cmpt))
+          cmpt*    (u/deep-merge config*
+                                 cmpt)
+          view-box (case zero
+                     :init nil
+                     :center (str (/ w -2) " " (/ h -2) " " w " " h))]
       (try
         ^{:key (hash variant-active)}
-        [:svg (u/deep-merge {:width  w
-                             :height h
+        [:svg (u/deep-merge {:width  w :height h
+                             :view-box view-box
                              :ref    #(when (and % (not @!svg-dom))
                                         (reset! !svg-dom %))}
                             (get-in config* [:canvas :attrs])

@@ -12,6 +12,7 @@ div.app {
   --app-border:          hsl(0deg 0% 90%);
   --app-border-dark:     hsl(0deg 0% 80%);
   --black:               hsl(0deg 0% 20%);
+  --grey:                hsl(0deg 0% 60%);
   --blue-dark:           hsl(240deg 100% 80%);
   --blue-light:          hsl(240deg 100% 90%);
   --pd:                  10px;
@@ -108,6 +109,14 @@ div.script.sidebar {
     span.s-el-k,
     span.p-el-k {
       font-weight: bold;
+    }
+    span.s-el-doc {
+      // font-weight: bold;
+      color: white;
+      padding: 1px 4px;
+      border-radius: 4px;
+      font-size: 0.9em;
+      background-color: var(--grey);
     }
     span.s-el-opts {
       font-style: italic;

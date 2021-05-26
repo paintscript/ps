@@ -57,7 +57,8 @@
                                                      (cmpt-pth->data-pth [cmpt-id]))))
                                          [:config
                                           :canvas
-                                          :defs])))))
+                                          :defs
+                                          :attr-classes])))))
 
 (defn xy-pth? [pth-rec]
   (:xy-i pth-rec))

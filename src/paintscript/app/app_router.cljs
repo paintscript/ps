@@ -7,7 +7,8 @@
 
             [paintscript.app.canvas-module :refer [canvas]]
             [paintscript.app.gallery-module :refer [galleries]]
-            [paintscript.app.ctl :as ctrl]))
+            [paintscript.app.ctl :as ctrl]
+            [paintscript.app.cmpt0 :refer [cmpt0]]))
 
 (defn read-edn! [data-k]
   (some-> js/window.localStorage
@@ -51,7 +52,7 @@
                !galleries           (r/atom (read-edn! :galleries))
                !galleries-committed (r/atom @!galleries)
 
-               !cmpt0        (r/atom ctrl/cmpt0)
+               !cmpt0        (r/atom cmpt0)
                app-dispatch! (fn [[op-k arg :as op]]
                                (case op-k
                                  :set-canvas
