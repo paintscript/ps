@@ -2,6 +2,7 @@
   (:require [paintscript.util :as u]))
 
 (defrecord Pth [cmpt-pth
+                ref-pth
                 src-k
                 x-el-k
                 p-el-i
@@ -16,7 +17,9 @@
          (-> xy-i   ((some-fn nil? integer?)))]}
   (map->Pth args))
 
-(defn pth-vec->rec [[src-k x-el-k p-el-i xy-i]]
+(defn pth-vec->rec
+  ;; NOTE: only used for xspace
+  [[src-k x-el-k p-el-i xy-i]]
   (pth-rec :src-k  src-k
            :x-el-k x-el-k
            :p-el-i p-el-i

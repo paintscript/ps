@@ -28,9 +28,9 @@
                !scale       (r/cursor !config [:canvas :scale])
 
 
-               dispatch!    (partial ctl/dispatch! !config !cmpt !s-log !ui)
-               dnd-fns      (ctl/drag-and-drop-fns !cmpt !ui dispatch!)
-               kb-fns       (ctl/keybind-fns       !cmpt !ui dispatch!)
+               dispatch!      (partial ctl/dispatch! !config !cmpt !s-log !ui)
+               derive-dnd-fns (ctl/drag-and-drop-fns !cmpt !ui dispatch!)
+               kb-fns         (ctl/keybind-fns       !cmpt !ui dispatch!)
 
                report-down! (fn [pth-rec i-main shift?]
                               (reset! !sel-rec
@@ -60,21 +60,28 @@
           sel-rec @!sel-rec
           cmpt    @!cmpt
           hov-rec @!hov-rec
-          c-app   [hov-rec sel-rec dispatch! report-down! report-over! dnd-fns]]
+
+          c-app   {:dispatch!      dispatch!
+                   :report-down!   report-down!
+                   :report-over!   report-over!
+                   :derive-dnd-fns derive-dnd-fns}
+
+          s-app   {:hov-rec hov-rec
+                   :sel-rec sel-rec}]
       [:div.canvas
        [:div.sidebar.script-phantom]
+
        [canvas-sidebar
-        !config !cmpt !ui !shell !s-log !tab
+        !ui !shell !s-log !tab
         config cmpt cmpt sel-rec dispatch!]
 
+       (let [cmpt-sub  (-> cmpt
+                           (nav/get-cmpt-sel sel-rec)
 
-       (let [cmpt  (-> cmpt
-                       (nav/get-cmpt-sel sel-rec)
-
-                       ;; NOTE: merges upstream defs needed to resolve refs
-                       (nav/cmpt-merged  cmpt sel-rec))
-             cmpt' (-> (merge-with merge
-                                   (-> config (dissoc :script))
-                                   cmpt)
-                       (update :script els/attach-pth-rec-meta* sel-rec))]
-         [canvas-paint' c-app config cmpt'])])))
+                           ;; NOTE: merges upstream defs (needed to resolve refs)
+                           (nav/cmpt-merged  cmpt sel-rec))
+             cmpt-sub' (-> (merge-with merge
+                                       (-> config (dissoc :script))
+                                       cmpt-sub)
+                           (update :script els/attach-pth-rec-meta* sel-rec))]
+         [canvas-paint' c-app s-app config cmpt-sub'])])))

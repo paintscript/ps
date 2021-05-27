@@ -112,8 +112,20 @@
                                pr-str)]
           [:span.s-el-args
            (case s-el-k
-             :path (pr-str s-el-args)
-             :ref  (first s-el-args)
+             :path [:span.data (pr-str s-el-args)]
+             :ref  (let [cmpt-id (first s-el-args)]
+                     [:span.ref {:on-click
+                                 (fn [^js ev]
+                                   (.stopPropagation ev)
+                                   (dispatch!
+                                    [:sel-rec
+                                     (nav/pth-rec
+                                      :ref-pth  (-> (:ref-pth  sel-rec)
+                                                    (u/conjv (-> s-el-opts
+                                                                 (assoc :cmpt-id cmpt-id))))
+                                      :cmpt-pth (-> (:cmpt-pth sel-rec)
+                                                    (u/conjv cmpt-id)))]))}
+                      cmpt-id])
              nil)]
           (when (and sel?
                      (= :path s-el-k)

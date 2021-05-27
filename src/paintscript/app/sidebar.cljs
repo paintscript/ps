@@ -14,7 +14,7 @@
             [paintscript.app.sidebar-items :refer [sidebar-items]]))
 
 (defn- canvas-sidebar
-  [!config !cmpt !ui !shell !s-log !tab
+  [!ui !shell !s-log !tab
    config cmpt cmpt' sel-rec
    dispatch!]
   (let [tab     @!tab
@@ -47,13 +47,13 @@
                     {:value     (str/trim (u/pprint* cmpt))
                      :on-focus  #(key/disable!)
                      :on-blur   #(key/enable!)
-                     :on-change #(reset! !cmpt (-> % .-target .-value read-string))}]
+                     :on-change #(dispatch! [:op/set-cmpt-str (-> % .-target .-value)])}]
 
        :tab/config [:textarea
                     {:value     (str/trim (u/pprint* config))
                      :on-focus  #(key/disable!)
                      :on-blur   #(key/enable!)
-                     :on-change #(reset! !config (-> % .-target .-value read-string))}]
+                     :on-change #(dispatch! [:op/set-config-str (-> % .-target .-value)])}]
 
        :tab/log    (let [[i-active i-s-items] (s-log/items !s-log)]
                      [:ol.log
@@ -61,9 +61,9 @@
                         ^{:key n}
                         [:li.log-item
                          {:class         (when (= i-active i) "active")
-                          :on-click      #(s-log/op !s-log !cmpt !ui :activate i)
-                          :on-mouse-over #(s-log/op !s-log !cmpt !ui :preview  i)
-                          :on-mouse-out  #(s-log/op !s-log !cmpt !ui :activate i-active)}
+                          :on-click      #(dispatch! [:op.s-log/activate i])
+                          :on-mouse-over #(dispatch! [:op.s-log/preview i])
+                          :on-mouse-out  #(dispatch! [:op.s-log/activate i-active])}
                          n ". " (pr-str op)])]))
 
      ;; --- shell

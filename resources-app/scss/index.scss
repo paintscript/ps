@@ -1,6 +1,14 @@
 @import "../../../z-com/components/menu/resources/scss/menu";
 @import "gallery";
 
+@mixin link {
+  color: blue;
+  &:hover {
+    cursor: pointer;
+    text-decoration: underline;
+  }
+}
+
 html, body {
   margin: 0; padding: 0;
   font-family: sans-serif;
@@ -123,7 +131,13 @@ div.script.sidebar {
     }
 
     span.s-el-args {
-      font-family: monospace;
+      span.data {
+        font-family: monospace;
+      }
+
+      span.ref {
+        @include link;
+      }
     }
     span + span { margin-left: var(--pd); }
 
@@ -146,8 +160,7 @@ div.script.sidebar {
             font-weight: bold;
           }
           &:not(.current) span.cmpt-id {
-            color: blue;
-            &:hover { text-decoration: underline; }
+            @include link;
           }
           & + li {
             &:before { content: '⟩'; margin: 0 var(--pd); }

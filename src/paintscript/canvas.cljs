@@ -129,50 +129,58 @@
 (def ^:private c-fns {:plot-coords plot-coords})
 
 (defn- canvas-paint-variant
-  [[hov-rec sel-rec dispatch! report-down! report-over! derive-dnd-fns :as c-app]
+  "notes:
+   - in non-interactive contexts (e.g. gallery) `c-app` can be omitted"
+  [{:as c-app :keys [dispatch! report-down! report-over! derive-dnd-fns]}
+   {:as s-app :keys [hov-rec sel-rec]}
    config variant-active
    {:as cmpt
     {:as   canvas
      :keys [scale dims coords? zero]
-     :or   {dims [100 100]
-            zero :init
+     :or   {dims    [100 100]
+            zero    :init
             coords? true}} :canvas}
    out-tups]
   (r/with-let [!svg-dom (atom nil)
                [w h]    (->> dims (mapv #(* % scale)))
-               dnd-fns  (derive-dnd-fns !svg-dom scale)]
-    (let [config*  (u/deep-merge config
-                                 (:config cmpt))
-          cmpt*    (u/deep-merge config*
-                                 cmpt)
-          view-box (case zero
-                     :init nil
-                     :center (str (/ w -2) " " (/ h -2) " " w " " h))]
+               dnd-fns  (when c-app
+                          (derive-dnd-fns !svg-dom scale))]
+    (let [cmpt*     (u/deep-merge config cmpt)
+          view-box  (case zero
+                      :init   nil
+                      :center (str (/ w -2) " " (/ h -2) " " w " " h))
+          svg-attrs (u/deep-merge {:width  w :height h
+                                   :view-box view-box
+                                   :ref    #(when (and % (not @!svg-dom))
+                                              (reset! !svg-dom %))}
+                                  (get-in config [:canvas :attrs])
+                                  dnd-fns)]
       (try
         ^{:key (hash variant-active)}
-        [:svg (u/deep-merge {:width  w :height h
-                             :view-box view-box
-                             :ref    #(when (and % (not @!svg-dom))
-                                        (reset! !svg-dom %))}
-                            (get-in config* [:canvas :attrs])
-                            dnd-fns)
-         (when-let [bg (get-in config* [:canvas :background])]
+        [:svg svg-attrs
+
+         ;; --- background image
+         (when-let [bg (get-in config [:canvas :background])]
            [:image (derive-background-image-attrs cmpt* bg [w h])])
+
+         ;; --- background hatching
          [:defs
           [:pattern#diagonalHatch
            {:pattern-units "userSpaceOnUse"
             :width  5
             :height 5}
-           [:path {:d "M 0 5 L 5 0"
-                   :style {:stroke "var(--blue-light)" :stroke-width 1
-                           :stroke-linecap "square"}}]]]
-
+           [:path {:style {:stroke         "var(--blue-light)"
+                           :stroke-width   1
+                           :stroke-linecap "square"}
+                   :d "M 0 5 L 5 0"}]]]
          (when (:hatching canvas)
            [:rect {:width w :height h :fill "url(#diagonalHatch)"}])
 
-         [tf* {:sc [scale scale]}
 
-          ;; --- output
+         [tf* {:sc [scale
+                    scale]}
+
+          ;; --- main
 
           (when-let [script-pre (:script/pre config)]
             [:g.main.pre
@@ -213,6 +221,7 @@
                                  (not variant-key)
                                  (= (:variant-active cmpt) variant-key)
                                  (= (:variant-active cmpt) variant-key)))]
+
               (let [p-els'        (->> p-els
                                        (els/resolve-els-refs (:defs cmpt))
                                        (els/attach-xy-abs-meta))
@@ -222,13 +231,14 @@
                                                     p-els')]
                 ^{:key s-el-i}
                 [:g.coords-plot
-                 (plot-coords {:scaled        scale
-                               :coord-size    10
-                               :report-down!  report-down!
-                               :report-over!  report-over!
-                               :sel-rec       sel-rec
-                               :hov-rec       hov-rec
-                               :controls?     (= (:x-el-k sel-rec) s-el-i)}
+                 (plot-coords {:scaled       scale
+                               :coord-size   10
+                               :report-down! report-down!
+                               :report-over! report-over!
+                               :sel-rec      sel-rec
+                               :hov-rec      hov-rec
+                               :controls?    (= (:x-el-k sel-rec)
+                                                s-el-i)}
                               s-el-i
                               p-els'
                               p-el-pnts-seq)]))])]
@@ -238,11 +248,12 @@
           (dispatch! [:undo]))))))
 
 (defn canvas-paint
-  ([config cmpt] (canvas-paint nil config cmpt))
-  ([c-app config cmpt]
+  ([config-external cmpt] (canvas-paint nil nil config-external cmpt))
+  ([c-app s-app
+    config-external cmpt]
    (let [;; NOTE: can't be cached b/c floats hash to integer
-         config' (u/deep-merge config
-                               (:config cmpt))
+         config (u/deep-merge config-external
+                              (:config cmpt))
 
          {:keys [variant-active]
           {:as   canvas
@@ -261,8 +272,8 @@
       (for [canvas-inst (or instances
                             [nil])]
         (let [cmpt' (-> cmpt
-                        (cond-> (map? canvas-inst)
+                        (cond-> canvas-inst
                                 (u/deep-merge canvas-inst)))]
           ^{:key (str (hash canvas-inst)
                       (get-in cmpt' [:canvas :scale]))}
-          [canvas-paint-variant c-app config' variant-active cmpt' out-tups]))])))
+          [canvas-paint-variant c-app s-app config variant-active cmpt' out-tups]))])))

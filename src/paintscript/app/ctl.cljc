@@ -5,6 +5,7 @@
             [clojure.string :as str]
             [clojure.set :as set]
             [clojure.walk :as w]
+            [clojure.edn :as edn]
             [svg-hiccup-kit.core :refer [d d2]]
             [paintscript.util :as u]
             [paintscript.el-path :as el]
@@ -33,10 +34,10 @@
             el       (vec (cons cmd-k num-vecs))]
         [:el-append el])
       (case cmd-str
-        "undo"        [:undo]
-        "log-clear"   [:log-clear]
-        "log-clear<"  [:log-clear<]
-        "log-clear>"  [:log-clear>]
+        "undo"        [:op.s-log/undo]
+        "log-clear"   [:op.s-log/clear]
+        "log-clear<"  [:op.s-log/clear<]
+        "log-clear>"  [:op.s-log/clear>]
 
         ;; --- mutate
         ("abs"
@@ -86,7 +87,7 @@
         "enable"      [:set-p-opts [:disabled? false]]
 
         ;; --- nav
-        "clear"       [:clear]
+        "clear"       [:op.s-log/clear]
         "def"         (let [[pk] args]
                         [:def pk])
         "script"      (let [sel-path (map read-string args)]
@@ -102,8 +103,18 @@
         (println (str "command not found: " cmd-line))))))
 
 (defn- handle-op
-  [cmpt {:as ui :keys [sel-rec]} [op-k & [arg :as args] :as op]]
+  [s-log cmpt {:as ui :keys [sel-rec]}
+   [op-k & [arg :as args] :as op]]
   (case op-k
+    :op/set-cmpt-str   {:cmpt   (edn/read-string arg)}
+    :op/set-config-str {:config (edn/read-string arg)}
+
+    (:op.s-log/activate
+     :op.s-log/preview
+     :op.s-log/clear
+     :op.s-log/clear<
+     :op.s-log/clear>) (s-log/handle-op s-log cmpt ui op)
+
     :set-sel-d   (let [{:keys [cmpt0]} (:snap ui)
                        cmpt (or cmpt0  ;; dnd
                                 cmpt)] ;; kb
@@ -214,8 +225,6 @@
                           (cond-> (nil? arg)
                                   (assoc :snap nil)))}
 
-    :sel-vec     (handle-op cmpt ui [:sel-rec (nav/pth-vec->rec arg)])
-
     :set-p-opts  (let [[k v] arg]
                    {:cmpt (-> cmpt (ops/update-p-opts sel-rec assoc k v))})
 
@@ -232,11 +241,6 @@
     :cmd (when-let [op-vec (parse-cmd-line arg)]
            (dispatch! !config !cmpt !s-log !ui op-vec))
 
-    :undo       (s-log/op !s-log !cmpt !ui :undo)
-    :log-clear  (s-log/op !s-log !cmpt !ui :clear)
-    :log-clear< (s-log/op !s-log !cmpt !ui :clear<)
-    :log-clear> (s-log/op !s-log !cmpt !ui :clear>)
-
     (:dl-png
      :dl-svg)   #?(:cljs ((case op-k :dl-png
                             ops-svg/to-png!
@@ -250,25 +254,31 @@
                          :clj nil)
 
     ;; else:
-    (let [cmpt @!cmpt
-          ui   @!ui]
+    (let [cmpt   @!cmpt
+          ui     @!ui
+          config @!config
+          s-log  @!s-log]
       (try
-        (let [{cmpt' :cmpt
-               ui'   :ui} (handle-op cmpt ui op)]
+        (let [{cmpt'   :cmpt
+               ui'     :ui
+               config' :config} (handle-op s-log cmpt ui op)]
           (do
-            (when cmpt' (reset! !cmpt cmpt'))
+            (when cmpt'   (reset! !cmpt cmpt'))
             (when ui'     (reset! !ui ui'))
-            (s-log/add !s-log {:op   op
-                               :cmpt (or cmpt' cmpt)
-                               :ui   (-> (or ui'     ui)
-                                         (cond-> (= :set-sel-d op-k)
-                                                 (assoc :snap nil)))})))
+            (when config' (reset! !config config'))
+            (s-log/add !s-log {:op     op
+                               :config config
+                               :cmpt   (or cmpt' cmpt)
+                               :ui     (-> (or ui'     ui)
+                                           (cond-> (= :set-sel-d op-k)
+                                                   (assoc :snap nil)))})))
         (catch #?(:cljs :default :clj Exception) e
           (do
-            (println :handle-op-exception e)
+            (println "op failed: " (pr-str op))
             #?(:cljs (js/console.log e))
-            (reset! !cmpt cmpt)
-            (reset! !ui ui)))))))
+            (reset! !cmpt   cmpt)
+            (reset! !config config)
+            (reset! !ui     ui)))))))
 
 (defn- pth->cp-ii [pth eli]
   (let [eli' (inc eli)]
