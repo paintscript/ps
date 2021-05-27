@@ -5,8 +5,10 @@
   (p-els->out [_ els])
   (group    [_ els]
             [_ opts els])
-  (tf       [_ opts el])
-  (tf*      [_ opts els])
+  (tf       [_ tf-params el]
+            [_ config tf-params el])
+  (tf*      [_ tf-params els]
+            [_ config tf-params els])
   (paint    [_ ps])
   (paint*   [_ ps-out container-size el-size]))
 
@@ -22,6 +24,6 @@
    (let [p-els'    (els/apply-path-opts cmpt p-opts p-els)
          p-el-recs (map els/el-vec-->el-rec p-els')
          out-seq   (p-els->out r p-el-recs)]
-     (if (:debug? cmpt)
+     (if (:interactive? cmpt)
        [out-seq (els/p-el->pnts p-el-recs)]
        out-seq))))

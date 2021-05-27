@@ -70,6 +70,9 @@
                                      (cond-> trunc? (assoc k nil)))]
                      (recur kk trunc? pth-rec)))))
 
+(defn get-in-pth [cmpt-root pth-rec trunc-k]
+  (get-in cmpt-root (pth-rec->vec pth-rec trunc-k)))
+
 (defn update-in-pth [cmpt-root pth-rec f & args]
   (apply update-in cmpt-root (pth-rec->vec pth-rec) f args))
 

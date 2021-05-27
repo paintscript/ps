@@ -8,7 +8,7 @@
          reagent/reagent {:mvn/version "1.0.0"}
          keybind/keybind {:mvn/version "2.2.0"}
 
-         svg-hiccup-kit/svg-hiccup-kit {:mvn/version "0.2.9"}
+         svg-hiccup-kit/svg-hiccup-kit {:mvn/version "0.2.10"}
          z-com/z-com {:mvn/version "0.8.30"}
          urlkit/urlkit {:mvn/version "0.3.7"}
          urlkit-util/urlkit-util {:mvn/version "0.3.3"}}

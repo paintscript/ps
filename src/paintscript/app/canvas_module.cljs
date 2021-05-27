@@ -33,10 +33,13 @@
                kb-fns         (ctl/keybind-fns       !cmpt !ui dispatch!)
 
                report-down! (fn [pth-rec i-main shift?]
-                              (reset! !sel-rec
-                                      (-> pth-rec
-                                          (with-meta {:main?  (not i-main)
-                                                      :shift? shift?}))))
+                              (let [sel-rec (-> pth-rec
+                                                (with-meta {:main?  (not i-main)
+                                                            :shift? shift?}))]
+                                ; NOTE: toggle doesn't work w/ select followed
+                                ;; by select+drag
+                                ; (swap! !sel-rec #(when (not= % sel-rec) sel-rec))
+                                (reset! !sel-rec sel-rec)))
                report-over! (fn [pth-rec val]
                               (swap! !hov-rec
                                      #(cond

@@ -315,7 +315,7 @@
                        (concat [[:z]])))))))
 
 (defn apply-path-opts
-  [{:as cmpt :keys [defs debug? coords?]}
+  [{:as cmpt :keys [defs interactive? coords?]}
    {:as opts
     :keys [close? width mirror repeat]
 
@@ -342,7 +342,7 @@
               rotate    (rotate-p-els rot-ctr rot-deg)
               close?    (concat [[:z]])
               (and repeat
-                   (not debug?)) (apply-repeat cmpt opts)
+                   (not interactive?)) (apply-repeat cmpt opts)
 
               (and mirror
                    (not coords?))

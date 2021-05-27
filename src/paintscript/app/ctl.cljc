@@ -120,10 +120,11 @@
                                 cmpt)] ;; kb
                    {:cmpt
                     (reduce (fn [acc' {:as sel-item :keys [pth-rec main?]}]
-                              (let [pth-vec (nav/pth-rec->vec pth-rec)]
+                              (let [pth-vec (nav/pth-rec->vec pth-rec)
+                                    v-curr  (get-in cmpt pth-vec)
+                                    v-next  (mapv + v-curr arg)]
                                 (-> acc'
-                                    (assoc-in pth-vec
-                                              (mapv + (get-in cmpt pth-vec) arg)))))
+                                    (assoc-in pth-vec v-next))))
                             cmpt
                             (:sel-set ui))})
 
@@ -280,11 +281,11 @@
             (reset! !config config)
             (reset! !ui     ui)))))))
 
-(defn- pth->cp-ii [pth eli]
-  (let [eli' (inc eli)]
+(defn- pth->cp-ii [p-el xy-i]
+  (let [xy-i' (inc xy-i)]
     (concat
-     (when-let [cp-i (some-> (get pth eli)  (el/el->cp-i :term))] [[eli  cp-i]])
-     (when-let [cp-i (some-> (get pth eli') (el/el->cp-i :init))] [[eli' cp-i]]))))
+     (when-let [cp-i (some-> (get p-el xy-i)  (el/el->cp-i :term))] [[xy-i  cp-i]])
+     (when-let [cp-i (some-> (get p-el xy-i') (el/el->cp-i :init))] [[xy-i' cp-i]]))))
 
 #?(:cljs
    (defn drag-and-drop-fns
@@ -298,7 +299,7 @@
                         (let [rect (-> @!svg-dom (.getBoundingClientRect))]
                           [(-> rect .-left)
                            (-> rect .-top)]))]
-         {;; NOTE: invoked after canvas/report!
+         {;; NOTE: invoked after canvas/report-down!
           :on-mouse-down #(let [{:keys
                                  [sel-rec
                                   sel-set
@@ -306,23 +307,24 @@
                                 xy               (xy-mouse %)
                                 {:keys
                                  [main?
-                                  shift?]}       (meta sel-rec)
-                                ]
+                                  shift?]}       (meta sel-rec)]
                             (cond
+                              (nil? sel-rec) nil
+
                               (nav/xy-pth? sel-rec)
                               ;; --- sel
                               (do
-                                (let [sel-vec (-> sel-rec
-                                                  nav/pth-rec->vec)
-                                      sel-set'
+                                (let [sel-set'
                                       (into #{{:pth-rec sel-rec
                                                :main?   main?}}
-                                            (map (fn [eli-cpi]
+                                            (map (fn [cp-i]
+                                                   (assert (number? cp-i))
                                                    {:pth-rec (-> sel-rec
-                                                                 (assoc :xy-i eli-cpi))}))
+                                                                 (assoc :xy-i cp-i))}))
                                             (when main?
-                                              (pth->cp-ii (get-in @!cmpt (take 2 sel-vec))
-                                                          (nth sel-vec 2))))]
+                                              ;; --- also move CPs
+                                              (pth->cp-ii (nav/get-in-pth @!cmpt sel-rec :p-el-i)
+                                                          (:xy-i sel-rec))))]
                                   (if shift?
                                     (swap!  !sel-set set/union sel-set')
                                     (reset! !sel-set sel-set')))

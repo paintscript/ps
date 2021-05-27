@@ -1,7 +1,8 @@
 (ns paintscript.canvas
   (:require [clojure.string :as str]
 
-            [svg-hiccup-kit.core :as shk :refer [d d2 tf tf*]]
+            [svg-hiccup-kit.core :as sk :refer [d d2 tf tf*]]
+            [svg-hiccup-kit.pattern :as sk-pat]
             [reagent.core :as r]
 
             [paintscript.util :as u]
@@ -11,10 +12,13 @@
 
             [paintscript.render :as render]
 
-            [paintscript.paint :refer [paint
-                                       path-builder]]))
+            [paintscript.paint :as paint]))
 
 (defn coord
+  "notes:
+   - subject to the same tf-params as the main render
+     - this is desirable for translations and scaling of translations
+     - but the scaling needs to be reversed for the sizing of the controls"
   [{:as opts :keys [scaled report-down! report-over! coord-size controls? hov-rec sel-rec]}
    els
    {:as el  :keys [p-el-k]}
@@ -23,64 +27,61 @@
   (r/with-let [!hover? (r/atom false)]
     (when
       (vector? xy) ;; skip v/V, h/H
-      (let [[x y]     (->> (if (el-path/relative? p-el-k)
-                             xy-abs
-                             xy)
-                           (mapv #(* % scaled)))
+      (let [
+            [x y :as xy*] (or xy-abs
+                              xy)
+
             cp?       (some? i-main)
 
-            sel-pv?   (and (= (:x-el-k sel-rec)
-                              (:x-el-k pth-rec))
-                           (= (:p-el-i sel-rec)
-                              (:p-el-i pth-rec)))
-            pth-rec*  pth-rec
-            ; pth-rec*  (nav/pth-vec->rec ii-pnt)
-            hover?    (= hov-rec pth-rec*)
-            sel-pnt?  (= sel-rec pth-rec*)]
+            sel-pv?   (and (= (:x-el-k sel-rec) (:x-el-k pth-rec))
+                           (= (:p-el-i sel-rec) (:p-el-i pth-rec)))
+            hover?    (= hov-rec pth-rec)
+            sel-pnt?  (= sel-rec pth-rec)
+            tf-params (list [:tl [x y]]
+                            [:sc (/ 1 scaled)])]
 
         (when (or (not cp?) sel-pv?)
           [:g
            (when cp?
-             (let [[x2 y2] (-> els
+             (let [[x1 y1] xy*
+                   [x2 y2] (-> els
                                (nth i-main)
                                last
                                (cond-> (el-path/relative? p-el-k)
-                                       (#(-> % els/xy-abs-meta (or %))))
-                               (->> (mapv #(* % scaled))))]
+                                       (#(-> % els/xy-abs-meta (or %)))))
+                   line-params {:x1 x1 :x2 x2
+                                :y1 y1 :y2 y2}]
                [:g
-                [:line.ctrl-target.under {:x1 x :y1 y :x2 x2 :y2 y2}]
-                [:line.ctrl-target.over  {:x1 x :y1 y :x2 x2 :y2 y2}]]))
+                [:line.ctrl-target.under line-params]
+                [:line.ctrl-target.over  line-params]]))
 
            [:g {:class         (str (if i-main "control" "target")
                                     (when hover? " hover")
                                     (when sel-pnt? " selected"))
                 :style         {:cursor      "pointer"
                                 :text-select "none"}
-                :on-mouse-down #(report-down! pth-rec* i-main (-> % .-shiftKey))
-                :on-mouse-over #(report-over! pth-rec* true)
-                :on-mouse-out  #(report-over! pth-rec* false)}
+                :on-mouse-down #(report-down! pth-rec i-main (-> % .-shiftKey))
+                :on-mouse-over #(report-over! pth-rec true)
+                :on-mouse-out  #(report-over! pth-rec false)}
 
-            (if cp?
-              [:g.cp
-               [:rect {:x      (-> x (- (/ coord-size 2)))
-                       :y      (-> y (- (/ coord-size 2)))
-                       :width  coord-size
-                       :height coord-size}]]
-
-              (if (or sel-pnt? hover?)
-                [:g
-                 [:circle {:cx x :cy y :r (* coord-size 1.8)}]
-                 (when-not (or sel-pnt? cp?)
-                   [:text {:x                 x
-                           :y                 y
-                           :fill              "white"
-                           :font-size         coord-size
-                           :text-anchor       "middle"
-                           :dominant-baseline "middle"
-                           :style             {:user-select "none"}}
-                    (str/join " " xy)])]
-
-                [:circle {:cx x :cy y :r coord-size}]))]])))))
+            [tf tf-params
+             (cond
+               cp?   [:g.cp
+                      [:rect {:x      (- (/ coord-size 2))
+                              :y      (- (/ coord-size 2))
+                              :width  coord-size
+                              :height coord-size}]]
+               :else (let [big? (or sel-pnt? hover?)]
+                       [:g
+                        [:circle {:r (-> coord-size (cond-> big? (* 1.8)))}]
+                        (when (and big?
+                                   (not (or sel-pnt? cp?)))
+                          [:text {:fill              "white"
+                                  :font-size         coord-size
+                                  :text-anchor       "middle"
+                                  :dominant-baseline "middle"
+                                  :style             {:user-select "none"}}
+                           (str/join " " xy)])]))]]])))))
 
 
 (defn plot-coords [opts pi els pnts-seq]
@@ -154,7 +155,16 @@
                                    :ref    #(when (and % (not @!svg-dom))
                                               (reset! !svg-dom %))}
                                   (get-in config [:canvas :attrs])
-                                  dnd-fns)]
+                                  dnd-fns)
+          tf-params0 {:sc [scale
+                           scale]}
+
+          tf-params  (if-let [rr (:ref-pth sel-rec)]
+                       (concat tf-params0
+                               (->> rr
+                                    (mapcat paint/normalize-tf-params)))
+                       tf-params0)]
+
       (try
         ^{:key (hash variant-active)}
         [:svg svg-attrs
@@ -166,9 +176,7 @@
          ;; --- background hatching
          [:defs
           [:pattern#diagonalHatch
-           {:pattern-units "userSpaceOnUse"
-            :width  5
-            :height 5}
+           {:pattern-units "userSpaceOnUse" :width 5 :height 5}
            [:path {:style {:stroke         "var(--blue-light)"
                            :stroke-width   1
                            :stroke-linecap "square"}
@@ -177,18 +185,17 @@
            [:rect {:width w :height h :fill "url(#diagonalHatch)"}])
 
 
-         [tf* {:sc [scale
-                    scale]}
+         [tf* tf-params
 
           ;; --- main
 
           (when-let [script-pre (:script/pre config)]
             [:g.main.pre
-             [paint c-fns (-> cmpt*
-                              (assoc :script script-pre))]])
+             [paint/paint c-fns (-> cmpt*
+                                    (assoc :script script-pre))]])
 
           [:g.main
-           [paint c-fns cmpt*]]
+           [paint/paint c-fns cmpt*]]
 
           ;; --- selected segment
 
@@ -209,39 +216,40 @@
                   p-els-seg (els/get-path-segment (:src-k  sel-rec) p-els'
                                                   (:p-el-i sel-rec))]
               [:g.sel
-               [path-builder c-fns nil {} (:x-el-k sel-rec) p-els-seg]]))]
+               [paint/path-builder c-fns nil {} (:x-el-k sel-rec) p-els-seg]]))
 
-         ;; --- coord circles
+          ;; --- coord circles
 
-         (when coords?
-           [:g.coords
-            (for [[s-el-i {:as s-el-opts :keys [variant-key]} p-els] out-tups
-                  :when (and (not (:disabled? s-el-opts))
-                             (or (not (:variant-active cmpt))
-                                 (not variant-key)
-                                 (= (:variant-active cmpt) variant-key)
-                                 (= (:variant-active cmpt) variant-key)))]
+          (when coords?
+            [:g.coords
+             (for [[s-el-i
+                    {:as s-el-opts :keys [variant-key]} p-els] out-tups
+                   :when (and (not (:disabled? s-el-opts))
+                              (or (not (:variant-active cmpt))
+                                  (not variant-key)
+                                  (= (:variant-active cmpt) variant-key)
+                                  (= (:variant-active cmpt) variant-key)))]
 
-              (let [p-els'        (->> p-els
-                                       (els/resolve-els-refs (:defs cmpt))
-                                       (els/attach-xy-abs-meta))
-                    p-el-pnts-seq (render/path-pnts {:debug?  true
-                                                     :coords? true}
-                                                    s-el-opts
-                                                    p-els')]
-                ^{:key s-el-i}
-                [:g.coords-plot
-                 (plot-coords {:scaled       scale
-                               :coord-size   10
-                               :report-down! report-down!
-                               :report-over! report-over!
-                               :sel-rec      sel-rec
-                               :hov-rec      hov-rec
-                               :controls?    (= (:x-el-k sel-rec)
-                                                s-el-i)}
-                              s-el-i
-                              p-els'
-                              p-el-pnts-seq)]))])]
+               (let [p-els'        (->> p-els
+                                        (els/resolve-els-refs (:defs cmpt))
+                                        (els/attach-xy-abs-meta))
+                     p-el-pnts-seq (render/path-pnts {:interactive? true
+                                                      :coords? true}
+                                                     s-el-opts
+                                                     p-els')]
+                 ^{:key s-el-i}
+                 [:g.coords-plot
+                  (plot-coords {:scaled       scale
+                                :coord-size   10
+                                :report-down! report-down!
+                                :report-over! report-over!
+                                :sel-rec      sel-rec
+                                :hov-rec      hov-rec
+                                :controls?    (= (:x-el-k sel-rec)
+                                                 s-el-i)}
+                               s-el-i
+                               p-els'
+                               p-el-pnts-seq)]))])]]
         (catch :default err
           (println :paint-exec-error)
           (js/console.log err)

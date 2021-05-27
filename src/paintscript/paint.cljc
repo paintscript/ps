@@ -1,5 +1,6 @@
 (ns paintscript.paint
-  (:require [svg-hiccup-kit.core :as shk :refer [d tf tf*]]
+  (:require [svg-hiccup-kit.core :as sk :refer [d tf tf*]]
+            [svg-hiccup-kit.pattern :as sk-pat]
 
             [paintscript.util :as u]
             [paintscript.el-path :as el-path]
@@ -14,8 +15,10 @@
     (p-els->out [_ els]      (el-path/p-els->out els))
     (group      [_ els]      (vec (cons :g els)))
     (group      [_ opts els] (vec (concat [:g opts] els)))
-    (tf         [_ opts el]  (shk/tf opts el))
-    (tf*        [_ opts els] (apply shk/tf* opts els))
+    (tf         [_   tfs el]  (sk/tf   tfs el))
+    (tf         [_ c tfs el]  (sk/tf c tfs el))
+    (tf*        [_   tfs els] (apply sk/tf*   tfs els))
+    (tf*        [_ c tfs els] (apply sk/tf* c tfs els))
     (paint      [_ ps]       (paint ps))
     (paint*     [_ ps-out _ _] ps-out)))
 
@@ -23,7 +26,7 @@
   ([opts p-els]       (path-builder nil   nil opts 0 p-els))
   ([c-fns opts p-els] (path-builder c-fns nil opts 0 p-els))
   ([c-fns
-    {:as cmpt :keys [debug?]}
+    {:as cmpt :keys [interactive?]}
     {:as p-opts :keys [d attrs]}
     pi
     p-els]
@@ -39,11 +42,11 @@
                      :sc (some-> scale-factor vector)} pth]
                 pth))
 
-     debug? (let [pnts-seq (render/path-pnts cmpt p-opts p-els)]
-              ((:plot-coords c-fns) p-opts pi p-els pnts-seq))
+     interactive? (let [pnts-seq (render/path-pnts cmpt p-opts p-els)]
+                    ((:plot-coords c-fns) p-opts pi p-els pnts-seq))
 
      :else  (let [out-seq (render/path svg-renderer cmpt p-opts p-els)]
-              [:path (merge attrs {:d (apply shk/d out-seq)})]))))
+              [:path (merge attrs {:d (apply sk/d out-seq)})]))))
 
 (defn- scale->tl
   [canvas-dims {:as scale :keys [factor center] :or {center [0 0]}}]
@@ -118,34 +121,17 @@
                      (:attr-class   s-el-opts))
                 (:attrs s-el-opts)))
 
-(defn- add-tf-params [params0 params1]
-  (-> params0
-      (merge params1)
-      (cond-> (and (:tl params0)
-                   (:tl params1)) (assoc :tl (mapv +
-                                                   (:tl params0)
-                                                   (:tl params1)))
-              (and (:rt params0)
-                   (:rt params1)) (assoc :rt (+ (:rt params0)
-                                                (:rt params1)))
-              (and (:sc params0)
-                   (:sc params1)) (assoc :sc (* (:sc params0)
-                                                (:sc params1))))))
-
-(defn tf-chain
-  [component param-chain]
-  (let [[_ cc] (reduce (fn [[params0 cc] {:as params :keys [reference]
-                                          :or {reference :prev}}]
-                         (case reference
-                           :prev (let [params* (add-tf-params params0
-                                                              params)]
-                                   [params*
-                                    (conj cc [tf params* component])])
-                           :none [params
-                                  (conj cc [tf params component])]))
-                       [nil []]
-                       param-chain)]
-    (vec (cons :g cc))))
+(defn normalize-tf-params [{:keys [translate scale rotate]}]
+  (-> {}
+      (cond-> translate (assoc :tl translate)
+              scale     (assoc :sc (-> scale
+                                       (cond-> (map? scale)
+                                               ;; TODO: incorporat :center
+                                               :factor)))
+              rotate    (assoc :rt (-> rotate
+                                       (cond-> (map? scale)
+                                               ;; TODO: incorporat :center
+                                               :degree))))))
 
 (defn- derive-s-el-hiccup
   [c-fns
@@ -177,7 +163,7 @@
                 (if-let [{:keys [tfs+]} (:repeat opts)]
                   (cond
                     ;; NOTE: uses svg-hiccup-kit's (different) tf params
-                    tfs+ (tf-chain cmpt-hiccup tfs+))
+                    tfs+ (sk-pat/tf-cascade cmpt-hiccup tfs+))
                   [tf (derive-cmpt-tf opts cmpt*)
                    cmpt-hiccup]))
 

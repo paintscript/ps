@@ -14,7 +14,7 @@
 
 (def path-xspace
   [(x:= :view-opts
-        {:debug? false :coord-size 10
+        {:interactive? false :coord-size 10
          :attrs {:stroke "red" :stroke-width 2 :fill "none"}})
 
    (xx "lines"
@@ -78,7 +78,7 @@
 
            (x-> :opts {:mirror {:mode :merged}}
                 :view-opts
-                {:debug? false :coord-size 10
+                {:interactive? false :coord-size 10
                  :attrs {:stroke "red" :stroke-width 2 :fill "none"}}
                 :=>   ["M" 10 10
                        "A" 40 20 0 0 1 50 30
@@ -86,7 +86,7 @@
 
    (xx "scale"
 
-       (x:= :view-opts {:debug? false
+       (x:= :view-opts {:interactive? false
                         :attrs {:stroke "red" :stroke-width 2 :fill "none"}})
 
        (xx {:= {:path [[:M [ 0  0]]
