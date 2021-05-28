@@ -256,7 +256,8 @@
           (dispatch! [:undo]))))))
 
 (defn canvas-paint
-  ([config-external cmpt] (canvas-paint nil nil config-external cmpt))
+  ([config-external cmpt]
+   (canvas-paint nil nil config-external cmpt))
   ([c-app s-app
     config-external cmpt]
    (let [;; NOTE: can't be cached b/c floats hash to integer

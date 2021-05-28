@@ -17,7 +17,7 @@
 
                !ui          (r/atom   ui-init)
                !config      (r/atom   cfg-init)
-               !cmpt        (r/atom   cmpt0)
+               !cmpt-root   (r/atom   cmpt0)
                !s-log       (r/atom   nil)
                !hov-rec     (r/atom   nil)
                !tab         (r/atom   :tab/items)
@@ -28,9 +28,9 @@
                !scale       (r/cursor !config [:canvas :scale])
 
 
-               dispatch!      (partial ctl/dispatch! !config !cmpt !s-log !ui)
-               derive-dnd-fns (ctl/drag-and-drop-fns !cmpt !ui dispatch!)
-               kb-fns         (ctl/keybind-fns       !cmpt !ui dispatch!)
+               dispatch!      (partial ctl/dispatch! !config !cmpt-root !s-log !ui)
+               derive-dnd-fns (ctl/drag-and-drop-fns !cmpt-root !ui dispatch!)
+               kb-fns         (ctl/keybind-fns       !cmpt-root !ui dispatch!)
 
                report-down! (fn [pth-rec i-main shift?]
                               (let [sel-rec (-> pth-rec
@@ -47,7 +47,7 @@
                                         (= pth-rec %) nil
                                         :else         %)))
 
-               ; (reset! !s-log (s-log/init @!cmpt @!ui))
+               ; (reset! !s-log (s-log/init @!cmpt-root @!ui))
 
                _ (doseq [[k f] kb-fns]
                    (key/bind! k (keyword k) f))
@@ -59,10 +59,10 @@
                                   (js/console.log e)
                                   (dispatch! [:undo]))})]
 
-    (let [config  @!config
-          sel-rec @!sel-rec
-          cmpt    @!cmpt
-          hov-rec @!hov-rec
+    (let [config    @!config
+          sel-rec   @!sel-rec
+          cmpt-root @!cmpt-root
+          hov-rec   @!hov-rec
 
           c-app   {:dispatch!      dispatch!
                    :report-down!   report-down!
@@ -76,13 +76,13 @@
 
        [canvas-sidebar
         !ui !shell !s-log !tab
-        config cmpt cmpt sel-rec dispatch!]
+        config cmpt-root cmpt-root sel-rec dispatch!]
 
-       (let [cmpt-sub  (-> cmpt
+       (let [cmpt-sub  (-> cmpt-root
                            (nav/get-cmpt-sel sel-rec)
 
                            ;; NOTE: merges upstream defs (needed to resolve refs)
-                           (nav/cmpt-merged  cmpt sel-rec))
+                           (nav/cmpt-merged cmpt-root sel-rec))
              cmpt-sub' (-> (merge-with merge
                                        (-> config (dissoc :script))
                                        cmpt-sub)

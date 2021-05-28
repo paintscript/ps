@@ -33,7 +33,7 @@
                [:circle {:r 2  :cx 0   :cy -15 :fill "red" :stroke "none"}]
                [:circle {:r 2  :cx 10.5  :cy  10.5 :fill "red" :stroke "none"}]]}}},
    :script
-   [[:layout {} [:ref "reps"]]
+   [[:ref {} "reps"]
 
     [:path
      {:attr-class "outline",

@@ -36,10 +36,10 @@
 
 
 (defn sidebar-items
-  [dispatch! cmpt {:as sel-rec :keys [cmpt-pth]}]
+  [dispatch! cmpt-root {:as sel-rec :keys [cmpt-pth]}]
   (let [sel-rec (or sel-rec
                     (nav/pth-rec))
-        cmpt    (-> cmpt
+        cmpt    (-> cmpt-root
                     (nav/get-cmpt-sel sel-rec))
         sel-rec-dispatcher (fn [sel-rec*]
                              (fn [ev]
@@ -117,14 +117,12 @@
                      [:span.ref {:on-click
                                  (fn [^js ev]
                                    (.stopPropagation ev)
-                                   (dispatch!
-                                    [:sel-rec
-                                     (nav/pth-rec
-                                      :ref-pth  (-> (:ref-pth  sel-rec)
-                                                    (u/conjv (-> s-el-opts
-                                                                 (assoc :cmpt-id cmpt-id))))
-                                      :cmpt-pth (-> (:cmpt-pth sel-rec)
-                                                    (u/conjv cmpt-id)))]))}
+                                   (let [ref-item (-> s-el-opts (assoc :cmpt-id cmpt-id))
+                                         ref-pth' (-> (:ref-pth sel-rec) (u/conjv ref-item))
+                                         cmpt-pth (nav/ref-pth->cmpt-pth cmpt-root ref-pth')]
+                                     (dispatch! [:sel-rec (nav/pth-rec
+                                                           :ref-pth  ref-pth'
+                                                           :cmpt-pth cmpt-pth)])))}
                       cmpt-id])
              nil)]
           (when (and sel?

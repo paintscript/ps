@@ -222,7 +222,7 @@
                                 (update :script conj p-new))}))
 
     :sel-rec     {:ui (-> ui
-                          (merge {:sel-rec arg})
+                          (assoc :sel-rec arg)
                           (cond-> (nil? arg)
                                   (assoc :snap nil)))}
 
@@ -281,11 +281,11 @@
             (reset! !config config)
             (reset! !ui     ui)))))))
 
-(defn- pth->cp-ii [p-el xy-i]
-  (let [xy-i' (inc xy-i)]
+(defn- pth->cp-ii [pth p-el-i]
+  (let [p-el-i' (inc p-el-i)]
     (concat
-     (when-let [cp-i (some-> (get p-el xy-i)  (el/el->cp-i :term))] [[xy-i  cp-i]])
-     (when-let [cp-i (some-> (get p-el xy-i') (el/el->cp-i :init))] [[xy-i' cp-i]]))))
+     (when-let [cp-i (some-> (get pth p-el-i)  (el/el->cp-i :term))] [[p-el-i  cp-i]])
+     (when-let [cp-i (some-> (get pth p-el-i') (el/el->cp-i :init))] [[p-el-i' cp-i]]))))
 
 #?(:cljs
    (defn drag-and-drop-fns
@@ -317,14 +317,17 @@
                                 (let [sel-set'
                                       (into #{{:pth-rec sel-rec
                                                :main?   main?}}
-                                            (map (fn [cp-i]
+                                            (map (fn [[p-el-i cp-i]]
                                                    (assert (number? cp-i))
                                                    {:pth-rec (-> sel-rec
-                                                                 (assoc :xy-i cp-i))}))
+                                                                 (assoc :p-el-i p-el-i
+                                                                        :xy-i   cp-i))}))
                                             (when main?
-                                              ;; --- also move CPs
-                                              (pth->cp-ii (nav/get-in-pth @!cmpt sel-rec :p-el-i)
-                                                          (:xy-i sel-rec))))]
+                                              (let [pth    (nav/get-in-pth @!cmpt sel-rec :x-el-k)
+                                                    p-el-i (:p-el-i sel-rec)
+                                                    cp-ii  (pth->cp-ii pth p-el-i)]
+                                                ;; --- also move CPs
+                                                (pth->cp-ii pth p-el-i))))]
                                   (if shift?
                                     (swap!  !sel-set set/union sel-set')
                                     (reset! !sel-set sel-set')))

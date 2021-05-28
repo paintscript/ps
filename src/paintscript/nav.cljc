@@ -79,8 +79,32 @@
 (defn update-in-pth* [cmpt-root pth-rec trunc-k f & args]
   (apply update-in cmpt-root (pth-rec->vec pth-rec trunc-k) f args))
 
-(defn get-cmpt-sel [cmpt {:as sel-rec :keys [cmpt-pth]}]
-  (-> cmpt
+(defn- cmpt->index [cmpt-pth cmpt]
+  (->> (keys (get-in cmpt [:defs :components]))
+       (map (fn [cmpt-id]
+              [cmpt-id (conj cmpt-pth cmpt-id)]))
+       (into {})))
+
+(defn ref-pth->cmpt-pth
+  [cmpt-root ref-pth]
+  (loop [cmpt cmpt-root
+         [{:as ref :keys [cmpt-id]}
+          & ref-pth-tail] ref-pth
+         cmpt-pth     []
+         cmpt-id->pth (cmpt->index [] cmpt-root)]
+    (if-not cmpt-id
+      cmpt-pth
+      (let [cmpt-sub-pth  (cmpt-id->pth cmpt-id)
+            cmpt-sub      (get-in cmpt (-> cmpt-sub-pth
+                                           cmpt-pth->data-pth))
+            cmpt-id->pth' (-> cmpt-id->pth (merge (cmpt->index cmpt-sub-pth cmpt-sub)))]
+        (recur cmpt-sub
+               ref-pth-tail
+               (get cmpt-id->pth' cmpt-id)
+               cmpt-id->pth')))))
+
+(defn get-cmpt-sel [cmpt-root {:as sel-rec :keys [ref-pth cmpt-pth]}]
+  (-> cmpt-root
       (cond-> cmpt-pth
               (get-in (-> cmpt-pth
                           cmpt-pth->data-pth)))))

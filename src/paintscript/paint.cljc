@@ -126,11 +126,11 @@
       (cond-> translate (assoc :tl translate)
               scale     (assoc :sc (-> scale
                                        (cond-> (map? scale)
-                                               ;; TODO: incorporat :center
+                                               ;; TODO: incorporate :center
                                                :factor)))
               rotate    (assoc :rt (-> rotate
                                        (cond-> (map? scale)
-                                               ;; TODO: incorporat :center
+                                               ;; TODO: incorporate :center
                                                :degree))))))
 
 (defn- derive-s-el-hiccup
@@ -153,19 +153,20 @@
                      (-> s-el-opts'
                          (->> (merge attrs))))]
     (case s-el-k
-      :path   (path-builder   c-fns cmpt s-el-opts' s-el-i x-els)
-      :layout (layout-builder c-fns cmpt s-el-opts' x-els)
-      :ref    (let [cmpt-ref    (els/resolve-cmpt-ref (:defs cmpt) s-el)
-                    cmpt*       (u/deep-merge cmpt
-                                              cmpt-ref)
-                    cmpt-hiccup (paint c-fns cmpt*)
-                    opts        (els/get-opts s-el)]
-                (if-let [{:keys [tfs+]} (:repeat opts)]
-                  (cond
-                    ;; NOTE: uses svg-hiccup-kit's (different) tf params
-                    tfs+ (sk-pat/tf-cascade cmpt-hiccup tfs+))
-                  [tf (derive-cmpt-tf opts cmpt*)
-                   cmpt-hiccup]))
+      :path    (path-builder    c-fns cmpt s-el-opts' s-el-i x-els)
+      :layout  (layout-builder  c-fns cmpt s-el-opts' x-els)
+      :ref     (if-let [cmpt-ref (els/resolve-cmpt-ref (:defs cmpt) s-el)]
+                 (let [cmpt*       (u/deep-merge cmpt
+                                                 cmpt-ref)
+                       cmpt-hiccup (paint c-fns cmpt*)
+                       opts        (els/get-opts s-el)]
+                   (if-let [{:keys [tfs+]} (:repeat opts)]
+                     (cond
+                       ;; NOTE: uses svg-hiccup-kit's (different) tf params
+                       tfs+ (sk-pat/tf-cascade cmpt-hiccup tfs+))
+                     [tf (derive-cmpt-tf opts cmpt*)
+                      cmpt-hiccup]))
+                 (println "error: referenced component not found" (pr-str s-el)))
 
       (:rect
        :circle
