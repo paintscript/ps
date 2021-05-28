@@ -86,38 +86,62 @@
        (into {})))
 
 (defn ref-pth->cmpt-pth
-  [cmpt-root ref-pth]
-  (loop [cmpt cmpt-root
-         [{:as ref :keys [cmpt-id]}
-          & ref-pth-tail] ref-pth
-         cmpt-pth     []
-         cmpt-id->pth (cmpt->index [] cmpt-root)]
-    (if-not cmpt-id
-      cmpt-pth
-      (let [cmpt-sub-pth  (cmpt-id->pth cmpt-id)
-            cmpt-sub      (get-in cmpt (-> cmpt-sub-pth
-                                           cmpt-pth->data-pth))
-            cmpt-id->pth' (-> cmpt-id->pth (merge (cmpt->index cmpt-sub-pth cmpt-sub)))]
-        (recur cmpt-sub
-               ref-pth-tail
-               (get cmpt-id->pth' cmpt-id)
-               cmpt-id->pth')))))
+  ([cmpt-root ref-pth] (ref-pth->cmpt-pth cmpt-root nil ref-pth))
+  ([cmpt-root cmpt-pth0 ref-pth]
+   (loop [cmpt (-> cmpt-root
+                   (cond-> cmpt-pth0
+                           (get-in (-> cmpt-pth0
+                                       cmpt-pth->data-pth))))
+          [{:as ref :keys [cmpt-id]}
+           & ref-pth-tail] ref-pth
+          cmpt-pth     (or cmpt-pth0 [])
+          cmpt-id->pth (cmpt->index [] cmpt-root)]
+     (if-not cmpt-id
+       cmpt-pth
+       (let [cmpt-sub-pth  (cmpt-id->pth cmpt-id)
+             cmpt-sub      (get-in cmpt (-> cmpt-sub-pth
+                                            cmpt-pth->data-pth))
+             cmpt-id->pth' (-> cmpt-id->pth (merge (cmpt->index cmpt-sub-pth cmpt-sub)))]
+         (recur cmpt-sub
+                ref-pth-tail
+                (get cmpt-id->pth' cmpt-id)
+                cmpt-id->pth'))))))
 
-(defn get-cmpt-sel [cmpt-root {:as sel-rec :keys [ref-pth cmpt-pth]}]
-  (-> cmpt-root
-      (cond-> cmpt-pth
-              (get-in (-> cmpt-pth
-                          cmpt-pth->data-pth)))))
+(defn get-cmpt-sel [cmpt-root {:as sel-rec :keys [cmpt-pth0
+                                                  ref-pth
+                                                  cmpt-pth]}]
+  (let [cmpt-base (-> cmpt-root
+                      (cond-> cmpt-pth0
+                              (get-in (-> cmpt-pth0
+                                          cmpt-pth->data-pth))))
+        cmpt-sel  (if-not ref-pth
+                    cmpt-base
+                    (-> cmpt-root
+                        (cond-> cmpt-pth
+                                (get-in (-> cmpt-pth
+                                            cmpt-pth->data-pth)))))]
+    [cmpt-base
+     cmpt-sel]))
 
-(defn cmpt-merged [cmpt cmpt-root {:as sel-rec :keys [cmpt-pth]}]
+(defn cmpt-merge-canvas [cmpt cmpt-root {:as sel-rec :keys [cmpt-pth]}]
   (-> cmpt
       (cond-> cmpt-pth
               (merge (u/cascading-merges cmpt-root
                                          (->> cmpt-pth
                                               (map (fn [cmpt-id]
                                                      (cmpt-pth->data-pth [cmpt-id]))))
-                                         [:config
-                                          :canvas
+                                         [:canvas])))))
+
+(defn cmpt-merge-defs [cmpt cmpt-root {:as sel-rec :keys [cmpt-pth]}]
+  (-> cmpt
+      (cond-> cmpt-pth
+              (merge (u/cascading-merges cmpt-root
+                                         (->> cmpt-pth
+                                              (map (fn [cmpt-id]
+                                                     (cmpt-pth->data-pth [cmpt-id]))))
+                                         [
+                                          ; :config
+                                          ; :canvas
                                           :defs
                                           :attr-classes])))))
 

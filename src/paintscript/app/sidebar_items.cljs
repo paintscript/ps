@@ -36,11 +36,10 @@
 
 
 (defn sidebar-items
-  [dispatch! cmpt-root {:as sel-rec :keys [cmpt-pth]}]
+  [dispatch! cmpt-root cmpt-sel {:as sel-rec :keys [cmpt-pth]}]
   (let [sel-rec (or sel-rec
                     (nav/pth-rec))
-        cmpt    (-> cmpt-root
-                    (nav/get-cmpt-sel sel-rec))
+
         sel-rec-dispatcher (fn [sel-rec*]
                              (fn [ev]
                                (.stopPropagation ev)
@@ -53,6 +52,7 @@
 
      (when cmpt-pth
        (let [cmpt-id-active (last cmpt-pth)]
+         ;; TODO: distinguish cmpt-pth0 & ref-pth
          [:li.cmpt-pth
           [:ol.cmpt-pth
            (loop [cmpt-pth-acc nil
@@ -79,23 +79,22 @@
 
      ;; --- cmpt-selector
 
-     (when-let [cmpts (get-in cmpt [:defs :components])]
+     (when-let [cmpts (get-in cmpt-sel [:defs :components])]
        [:li.cmpt-sel
         [zc-std/select
          :model     (or (-> sel-rec :cmpt-pth last)
                         "root")
          :options   (cons "root"
                           (keys cmpts))
-         :on-change #(dispatch! [:sel-rec (nav/pth-rec :cmpt-pth
-                                                       (-> (:cmpt-pth sel-rec)
-                                                           (u/conjv %)))])]])
+         :on-change #(dispatch! [:sel-cmpt-id %])]])
 
      ;; --- script items
 
      (for [[s-el-i
             [s-el-k
              s-el-opts
-             & s-el-args]] (map-indexed vector (:script cmpt))]
+             & s-el-args
+             :as s-el]] (map-indexed vector (:script cmpt-sel))]
        (let [pth-rec*  (nav/pth-rec :cmpt-pth (:cmpt-pth sel-rec)
                                     :src-k    :script
                                     :x-el-k   s-el-i)
@@ -117,12 +116,7 @@
                      [:span.ref {:on-click
                                  (fn [^js ev]
                                    (.stopPropagation ev)
-                                   (let [ref-item (-> s-el-opts (assoc :cmpt-id cmpt-id))
-                                         ref-pth' (-> (:ref-pth sel-rec) (u/conjv ref-item))
-                                         cmpt-pth (nav/ref-pth->cmpt-pth cmpt-root ref-pth')]
-                                     (dispatch! [:sel-rec (nav/pth-rec
-                                                           :ref-pth  ref-pth'
-                                                           :cmpt-pth cmpt-pth)])))}
+                                   (dispatch! [:sel-ref s-el]))}
                       cmpt-id])
              nil)]
           (when (and sel?
@@ -162,5 +156,5 @@
              (when sel?
                [:span.p-out {:on-click (fn [^js ev] (.stopPropagation ev))}
                 (->> s-el-args
-                     (render/path paint/svg-renderer cmpt s-el-opts )
+                     (render/path paint/svg-renderer cmpt-sel s-el-opts )
                      (apply shk/d))])])]))]))

@@ -121,11 +121,11 @@
                                                   (mapv #(-> % (/ 2))))]
                                   (mapv - xy offset))))))]
 
-    {:href url
-     :width w-img
+    {:href   url
+     :width  w-img
      :height h-img
-     :style {:opacity opacity
-             :transform (str "translate(" x "px," y "px)")}}))
+     :style  {:opacity   opacity
+              :transform (str "translate(" x "px," y "px)")}}))
 
 (def ^:private c-fns {:plot-coords plot-coords})
 
@@ -134,32 +134,36 @@
    - in non-interactive contexts (e.g. gallery) `c-app` can be omitted"
   [{:as c-app :keys [dispatch! report-down! report-over! derive-dnd-fns]}
    {:as s-app :keys [hov-rec sel-rec]}
-   config variant-active
-   {:as cmpt
+   variant-active
+
+   cmpt-root
+   {:as cmpt-base
     {:as   canvas
      :keys [scale dims coords? zero]
      :or   {dims    [100 100]
             zero    :init
             coords? true}} :canvas}
+   cmpt-sel
    out-tups]
   (r/with-let [!svg-dom (atom nil)
                [w h]    (->> dims (mapv #(* % scale)))
                dnd-fns  (when c-app
                           (derive-dnd-fns !svg-dom scale))]
-    (let [cmpt*     (u/deep-merge config cmpt)
-          view-box  (case zero
-                      :init   nil
-                      :center (str (/ w -2) " " (/ h -2) " " w " " h))
-          svg-attrs (u/deep-merge {:width  w :height h
-                                   :view-box view-box
+    (let [svg-attrs (u/deep-merge {:width  w :height h
+                                   ; :view-box view-box
                                    :ref    #(when (and % (not @!svg-dom))
                                               (reset! !svg-dom %))}
-                                  (get-in config [:canvas :attrs])
+                                  (get-in cmpt-base [:canvas :attrs])
                                   dnd-fns)
-          tf-params0 {:sc [scale
+          tf-params0 {
+                      :tl (case zero
+                            :init   nil
+                            :center [(/ w 2) (/ h 2)])
+                      :sc [scale
                            scale]}
 
           tf-params  (if-let [rr (:ref-pth sel-rec)]
+                       ;; NOTE: doesn't support :repeat
                        (concat tf-params0
                                (->> rr
                                     (mapcat paint/normalize-tf-params)))
@@ -170,8 +174,8 @@
         [:svg svg-attrs
 
          ;; --- background image
-         (when-let [bg (get-in config [:canvas :background])]
-           [:image (derive-background-image-attrs cmpt* bg [w h])])
+         (when-let [bg (get-in cmpt-base [:canvas :background])]
+           [:image (derive-background-image-attrs cmpt-base bg [w h])])
 
          ;; --- background hatching
          [:defs
@@ -189,13 +193,13 @@
 
           ;; --- main
 
-          (when-let [script-pre (:script/pre config)]
+          (when-let [script-pre (:script/pre cmpt-base)]
             [:g.main.pre
-             [paint/paint c-fns (-> cmpt*
+             [paint/paint c-fns (-> cmpt-sel
                                     (assoc :script script-pre))]])
 
           [:g.main
-           [paint/paint c-fns cmpt*]]
+           [paint/paint c-fns cmpt-sel]]
 
           ;; --- selected segment
 
@@ -203,7 +207,7 @@
                      (or (and (= :defs (:src-k sel-rec))
                               (:p-el-i sel-rec))
                          (> (:p-el-i sel-rec) nav/p-el-i0)))
-            (let [p-els'    (-> (nav/cmpt> cmpt
+            (let [p-els'    (-> (nav/cmpt> cmpt-sel
                                            :src-k (:src-k sel-rec)
                                            :s-eli (:x-el-k sel-rec))
 
@@ -225,13 +229,13 @@
              (for [[s-el-i
                     {:as s-el-opts :keys [variant-key]} p-els] out-tups
                    :when (and (not (:disabled? s-el-opts))
-                              (or (not (:variant-active cmpt))
+                              (or (not (:variant-active cmpt-base))
                                   (not variant-key)
-                                  (= (:variant-active cmpt) variant-key)
-                                  (= (:variant-active cmpt) variant-key)))]
+                                  (= (:variant-active cmpt-base) variant-key)
+                                  (= (:variant-active cmpt-base) variant-key)))]
 
                (let [p-els'        (->> p-els
-                                        (els/resolve-els-refs (:defs cmpt))
+                                        (els/resolve-els-refs (:defs cmpt-sel))
                                         (els/attach-xy-abs-meta))
                      p-el-pnts-seq (render/path-pnts {:interactive? true
                                                       :coords? true}
@@ -256,19 +260,20 @@
           (dispatch! [:undo]))))))
 
 (defn canvas-paint
-  ([config-external cmpt]
-   (canvas-paint nil nil config-external cmpt))
+  ([cmpt-root]
+   ;; NOTE: used via gallery
+   (canvas-paint nil nil cmpt-root cmpt-root cmpt-root))
   ([c-app s-app
-    config-external cmpt]
+    cmpt-root cmpt-base cmpt-sel]
    (let [;; NOTE: can't be cached b/c floats hash to integer
-         config (u/deep-merge config-external
-                              (:config cmpt))
+         ; config (u/deep-merge config-external
+         ;                      (:config cmpt))
 
          {:keys [variant-active]
           {:as   canvas
-           :keys [instances]} :canvas} cmpt
+           :keys [instances]} :canvas} cmpt-base
 
-         out-tups (->> (:script cmpt)
+         out-tups (->> (:script cmpt-sel)
                        (map-indexed
                         (fn [s-el-i [s-el-k
                                      s-el-opts & p-els]]
@@ -277,12 +282,14 @@
                             [s-el-i s-el-opts p-els])))
                        (remove nil?))]
 
+
      [:div.paint
-      (for [canvas-inst (or instances
-                            [nil])]
-        (let [cmpt' (-> cmpt
-                        (cond-> canvas-inst
-                                (u/deep-merge canvas-inst)))]
+      (for [canvas-inst  (or instances
+                             [nil])]
+        (let [cmpt-base' (-> cmpt-base
+                             (cond-> canvas-inst
+                                     (u/deep-merge canvas-inst)))]
           ^{:key (str (hash canvas-inst)
-                      (get-in cmpt' [:canvas :scale]))}
-          [canvas-paint-variant c-app s-app config variant-active cmpt' out-tups]))])))
+                      (hash (get cmpt-base' :canvas))
+                      (get-in cmpt-base' [:canvas :scale]))}
+          [canvas-paint-variant c-app s-app variant-active cmpt-root cmpt-base' cmpt-sel out-tups]))])))

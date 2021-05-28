@@ -155,6 +155,7 @@
     (case s-el-k
       :path    (path-builder    c-fns cmpt s-el-opts' s-el-i x-els)
       :layout  (layout-builder  c-fns cmpt s-el-opts' x-els)
+      ; :pattern (pattern-builder c-fns cmpt s-el-opts' x-els)
       :ref     (if-let [cmpt-ref (els/resolve-cmpt-ref (:defs cmpt) s-el)]
                  (let [cmpt*       (u/deep-merge cmpt
                                                  cmpt-ref)

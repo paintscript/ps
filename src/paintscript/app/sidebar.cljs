@@ -15,7 +15,7 @@
 
 (defn- canvas-sidebar
   [!ui !shell !s-log !tab
-   config cmpt cmpt' sel-rec
+   config cmpt cmpt-sel sel-rec
    dispatch!]
   (let [tab     @!tab
         status? (and false ;; TODO: status-stack obsolete?
@@ -41,7 +41,7 @@
      ;; --- main
 
      (case tab
-       :tab/items  [sidebar-items dispatch! cmpt sel-rec]
+       :tab/items  [sidebar-items dispatch! cmpt cmpt-sel sel-rec]
 
        :tab/script [:textarea
                     {:value     (str/trim (u/pprint* cmpt))
@@ -88,11 +88,7 @@
 
      [:div.status
       (when status?
-        (let [cmpt-sub          (-> cmpt'
-                                    (cond-> (:cmpt-pth sel-rec)
-                                            (nav/get-cmpt-sel sel-rec)))
-
-              [_ opts :as s-el] (nav/cmpt> cmpt-sub :src-k (:src-k sel-rec) :s-eli (:x-el-k sel-rec))
+        (let [[_ opts :as s-el] (nav/cmpt> cmpt-sel :src-k (:src-k sel-rec) :s-eli (:x-el-k sel-rec))
               [k & xys]         (nav/s-el> s-el  :p-eli (:p-el-i sel-rec))]
           [:div.selection-stack
            [:div.selection-level.iii

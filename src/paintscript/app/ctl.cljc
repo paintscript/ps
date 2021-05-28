@@ -226,6 +226,25 @@
                           (cond-> (nil? arg)
                                   (assoc :snap nil)))}
 
+    :sel-ref     (let [[_s-el-k
+                        s-el-opts
+                        cmpt-id] arg
+                       ref-item      (-> s-el-opts (assoc :cmpt-id cmpt-id))
+                       ref-pth'      (-> (:ref-pth sel-rec) (u/conjv ref-item))
+                       cmpt-pth0     (:cmpt-pth0 sel-rec)
+                       cmpt-pth      (nav/ref-pth->cmpt-pth cmpt cmpt-pth0 ref-pth')]
+                   (handle-op s-log cmpt ui
+                              [:sel-rec (nav/pth-rec
+                                         :cmpt-pth0 cmpt-pth0
+                                         :ref-pth   ref-pth'
+                                         :cmpt-pth  cmpt-pth)]))
+
+    :sel-cmpt-id (handle-op s-log cmpt ui
+                            (let [cmpt-pth' (-> (:cmpt-pth sel-rec)
+                                                (u/conjv arg))]
+                              [:sel-rec (nav/pth-rec :cmpt-pth0 cmpt-pth'
+                                                     :cmpt-pth  cmpt-pth')]))
+
     :set-p-opts  (let [[k v] arg]
                    {:cmpt (-> cmpt (ops/update-p-opts sel-rec assoc k v))})
 

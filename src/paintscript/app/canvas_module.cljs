@@ -4,6 +4,7 @@
             [keybind.core :as key]
             [paintscript.els :as els]
             [paintscript.app.ctl :as ctl]
+            [paintscript.util :as u]
             [paintscript.canvas :as canvas]
             [paintscript.app.sidebar :refer [canvas-sidebar]]
             [paintscript.nav :as nav]))
@@ -70,21 +71,29 @@
                    :derive-dnd-fns derive-dnd-fns}
 
           s-app   {:hov-rec hov-rec
-                   :sel-rec sel-rec}]
+                   :sel-rec sel-rec}
+
+          cmpt-root* (u/deep-merge config
+                                   (:config cmpt-root)
+                                   cmpt-root)
+
+          [cmpt-base
+           cmpt-sel] (nav/get-cmpt-sel cmpt-root* sel-rec)
+
+          cmpt-base* (-> cmpt-base
+                         (nav/cmpt-merge-canvas cmpt-root*
+                                                (nav/pth-rec :cmpt-pth (:cmpt-pth0 sel-rec))))
+
+          cmpt-sel*  (-> cmpt-sel
+                         ;; NOTE: merges upstream defs (needed to resolve refs
+                         ;; during render)
+                         (nav/cmpt-merge-defs cmpt-root* sel-rec)
+                         (update :script els/attach-pth-rec-meta* sel-rec))]
       [:div.canvas
        [:div.sidebar.script-phantom]
 
        [canvas-sidebar
         !ui !shell !s-log !tab
-        config cmpt-root cmpt-root sel-rec dispatch!]
+        config cmpt-root cmpt-sel sel-rec dispatch!]
 
-       (let [cmpt-sub  (-> cmpt-root
-                           (nav/get-cmpt-sel sel-rec)
-
-                           ;; NOTE: merges upstream defs (needed to resolve refs)
-                           (nav/cmpt-merged cmpt-root sel-rec))
-             cmpt-sub' (-> (merge-with merge
-                                       (-> config (dissoc :script))
-                                       cmpt-sub)
-                           (update :script els/attach-pth-rec-meta* sel-rec))]
-         [canvas-paint' c-app s-app config cmpt-sub'])])))
+       [canvas-paint' c-app s-app cmpt-root* cmpt-base* cmpt-sel*]])))
