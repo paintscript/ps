@@ -14,12 +14,11 @@
             [paintscript.app.sidebar-items :refer [sidebar-items]]))
 
 (defn- canvas-sidebar
-  [!ui !shell !s-log !tab
-   config cmpt cmpt-sel sel-rec
-   dispatch!]
+  [dispatch! !ui !shell !s-log !tab !sel-rec
+   config cmpt cmpt-sel]
   (let [tab     @!tab
         status? (and false ;; TODO: status-stack obsolete?
-                     sel-rec
+                     @!sel-rec
                      (-> tab #{:tab/script
                                :tab/items}))]
     [:div.sidebar.script {:class (when status? "with-status")}
@@ -41,7 +40,7 @@
      ;; --- main
 
      (case tab
-       :tab/items  [sidebar-items dispatch! cmpt cmpt-sel sel-rec]
+       :tab/items  [sidebar-items dispatch! !sel-rec cmpt cmpt-sel]
 
        :tab/script [:textarea
                     {:value     (str/trim (u/pprint* cmpt))
@@ -88,7 +87,8 @@
 
      [:div.status
       (when status?
-        (let [[_ opts :as s-el] (nav/cmpt> cmpt-sel :src-k (:src-k sel-rec) :s-eli (:x-el-k sel-rec))
+        (let [sel-rec           @!sel-rec
+              [_ opts :as s-el] (nav/cmpt> cmpt-sel :src-k (:src-k sel-rec) :s-eli (:x-el-k sel-rec))
               [k & xys]         (nav/s-el> s-el  :p-eli (:p-el-i sel-rec))]
           [:div.selection-stack
            [:div.selection-level.iii

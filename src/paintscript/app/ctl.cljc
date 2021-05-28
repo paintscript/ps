@@ -161,8 +161,8 @@
                     :ui   (-> ui   (merge {:sel-rec (-> sel-rec )}))})
 
     :el-tf       (let [to arg]
-                   {:cmpt (-> cmpt (update-in [(:src-k sel-rec) (:x-el-k sel-rec)]
-                                              ops/transform-el (:p-el-i sel-rec) to))
+                   {:cmpt (-> cmpt (nav/update-in-pth* sel-rec :x-el-k
+                                                       ops/transform-el (:p-el-i sel-rec) to))
                     :ui   (-> ui   (update :sel-rec nav/truncate-pth :p-el-i))})
 
     :xy-append   {:cmpt (-> cmpt (update-in [:script (:x-el-k sel-rec)]
@@ -240,6 +240,11 @@
                                          :cmpt-pth0 cmpt-pth0
                                          :ref-pth   ref-pth'
                                          :cmpt-pth  cmpt-pth)]))
+
+    :disable-ref-pth {:ui (-> ui
+                              (update :sel-rec #(-> %
+                                                    (assoc :cmpt-pth0 (:cmpt-pth %)
+                                                           :ref-pth   nil))))}
 
     :sel-cmpt-id (handle-op s-log cmpt ui
                             (let [cmpt-pth' (-> (:cmpt-pth sel-rec)
@@ -404,4 +409,5 @@
    "backspace" #(when (:sel-rec @!ui) (dispatch! [:del-sel]))
    "c"         #(dispatch! [:el-tf :C])
    "q"         #(dispatch! [:el-tf :Q])
-   "s"         #(dispatch! [:el-tf :S])})
+   "s"         #(dispatch! [:el-tf :S])
+   "l"         #(dispatch! [:el-tf :L])})

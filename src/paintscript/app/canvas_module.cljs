@@ -93,7 +93,7 @@
        [:div.sidebar.script-phantom]
 
        [canvas-sidebar
-        !ui !shell !s-log !tab
-        config cmpt-root cmpt-sel sel-rec dispatch!]
+        dispatch! !ui !shell !s-log !tab !sel-rec
+        config cmpt-root cmpt-sel]
 
        [canvas-paint' c-app s-app cmpt-root* cmpt-base* cmpt-sel*]])))

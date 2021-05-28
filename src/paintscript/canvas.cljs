@@ -150,20 +150,18 @@
                dnd-fns  (when c-app
                           (derive-dnd-fns !svg-dom scale))]
     (let [svg-attrs (u/deep-merge {:width  w :height h
-                                   ; :view-box view-box
                                    :ref    #(when (and % (not @!svg-dom))
                                               (reset! !svg-dom %))}
                                   (get-in cmpt-base [:canvas :attrs])
                                   dnd-fns)
-          tf-params0 {
-                      :tl (case zero
+          tf-params0 {:tl (case zero
                             :init   nil
                             :center [(/ w 2) (/ h 2)])
                       :sc [scale
                            scale]}
 
           tf-params  (if-let [rr (:ref-pth sel-rec)]
-                       ;; NOTE: doesn't support :repeat
+                       ;; NOTE: doesn't support :repeat yet
                        (concat tf-params0
                                (->> rr
                                     (mapcat paint/normalize-tf-params)))

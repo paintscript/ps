@@ -1,14 +1,14 @@
 (ns paintscript.nav
   (:require [paintscript.util :as u]))
 
-(defrecord Pth [cmpt-pth
-                ref-pth
+(defrecord Pth [cmpt-pth0 ref-pth
+                cmpt-pth
                 src-k
                 x-el-k
                 p-el-i
                 xy-i])
 
-(defn pth-rec [& {:as args :keys [cmpt-pth src-k x-el-k p-el-i xy-i]}]
+(defn pth-rec [& {:as args :keys [ cmpt-pth src-k x-el-k p-el-i xy-i]}]
   {:pre [(case src-k
            :script (-> x-el-k integer?)
            :defs   (-> x-el-k string?)

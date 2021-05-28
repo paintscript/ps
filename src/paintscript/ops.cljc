@@ -102,33 +102,38 @@
   (-> els
       (u/vec-remove eli)))
 
+(defn p-el-prev [pth p-el-i]
+  (let [v (get pth (dec p-el-i))]
+    (when (vector? v)
+      v)))
+
 (defn transform-el
-  [els eli to]
-  (let [[p-el-k :as el] (get els eli)
-        [el-1-k :as el-1] (get els (dec eli))
-        el' (case p-el-k
-              :L (let [tgt (last el)]
-                   (case to
-                     :S [:S tgt tgt]
-                     :Q [:Q tgt tgt]
-                     :C [:C (last el-1) tgt tgt]))
-              :C (let [[_ c1 c2 tgt] el]
-                   (case to
-                     :S [:S c2 tgt]
-                     :Q [:Q c2 tgt]
-                     :L [:L tgt]))
-              :S (let [[_ c tgt] el]
-                   (case to
-                     :L [:L tgt]
-                     :Q [:Q c tgt]
-                     :C [:C (last el-1) c tgt]))
-              :Q (let [[_ c tgt] el]
-                   (case to
-                     :L [:L tgt]
-                     :S [:S c tgt]
-                     :C [:C (last el-1) c tgt])))]
-    (-> els
-        (u/vec-replace eli el'))))
+  [pth p-el-i to]
+  (let [[p-el-k :as el] (get pth p-el-i)
+        [el-1-k :as el-1] (p-el-prev pth p-el-i)
+        p-el' (case p-el-k
+                :L (let [tgt (last el)]
+                     (case to
+                       :S [:S tgt tgt]
+                       :Q [:Q tgt tgt]
+                       :C [:C (last el-1) tgt tgt]))
+                :C (let [[_ c1 c2 tgt] el]
+                     (case to
+                       :S [:S c2 tgt]
+                       :Q [:Q c2 tgt]
+                       :L [:L tgt]))
+                :S (let [[_ c tgt] el]
+                     (case to
+                       :L [:L tgt]
+                       :Q [:Q c tgt]
+                       :C [:C (last el-1) c tgt]))
+                :Q (let [[_ c tgt] el]
+                     (case to
+                       :L [:L tgt]
+                       :S [:S c tgt]
+                       :C [:C (last el-1) c tgt])))]
+    (-> pth
+        (u/vec-replace p-el-i p-el'))))
 
 ;; --- cmpt
 
@@ -180,10 +185,11 @@
 (defn toggle-d [cmpt sel-rec]
   (let [pth-vec (-> sel-rec
                     nav/pth-rec->vec)]
-    (update-in cmpt pth-vec (fn [[_pth {:as p-opts :keys [d]} & p-els]]
-                              (cond
-                                d     (vec
-                                       (concat [:path (-> p-opts (dissoc :d))]
-                                               (conv/path-d->els d)))
-                                :else [:path (-> p-opts
-                                                 (assoc :d (paint/path-str cmpt p-opts p-els)))])))))
+    (update-in cmpt pth-vec
+               (fn [[_pth {:as p-opts :keys [d]} & p-els]]
+                 (cond
+                   d     (vec
+                          (concat [:path (-> p-opts (dissoc :d))]
+                                  (conv/path-d->els d)))
+                   :else [:path (-> p-opts
+                                    (assoc :d (paint/path-str cmpt p-opts p-els)))])))))
