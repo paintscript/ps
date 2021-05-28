@@ -73,6 +73,7 @@
                          (some-> pos  read-string)])
 
         "to"          [:el-tf (-> args first keyword)]
+        "d"           [:toggle-d]
 
         ;; --- configure
         "p-mirror"    (let [[?mode-str] args]
@@ -85,6 +86,7 @@
                         [:set-p-opts [:variant-key variant-key]])
         "disable"     [:set-p-opts [:disabled? true]]
         "enable"      [:set-p-opts [:disabled? false]]
+        "doc"         [:set-p-opts [:doc (first args)]]
 
         ;; --- nav
         "clear"       [:op.s-log/clear]
@@ -247,6 +249,9 @@
 
     :set-p-opts  (let [[k v] arg]
                    {:cmpt (-> cmpt (ops/update-p-opts sel-rec assoc k v))})
+
+    :toggle-d    (let [[k v] arg]
+                   {:cmpt (-> cmpt (ops/toggle-d sel-rec))})
 
     :toggle-snap   {:ui (-> ui (update :snap-to-grid? not))}
     :toggle-insert {:ui (-> ui (update :insert-mode? not))}))

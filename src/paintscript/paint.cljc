@@ -22,6 +22,10 @@
     (paint      [_ ps]       (paint ps))
     (paint*     [_ ps-out _ _] ps-out)))
 
+(defn path-str [cmpt p-opts p-els]
+  (->> (render/path svg-renderer cmpt p-opts p-els)
+       (apply sk/d)))
+
 (defn path-builder
   ([opts p-els]       (path-builder nil   nil opts 0 p-els))
   ([c-fns opts p-els] (path-builder c-fns nil opts 0 p-els))
@@ -31,22 +35,21 @@
     pi
     p-els]
    (cond
-     d      (let [d' (-> d (cond-> (el-path/ref? d)
-                                   (->> (els/resolve-d-ref (:defs cmpt)))))
-                  {:keys [translate]
-                   {scale-factor :factor} :scale} p-opts
+     d            (let [d' (-> d (cond-> (el-path/ref? d)
+                                         (->> (els/resolve-d-ref (:defs cmpt)))))
+                        {:keys [translate]
+                         {scale-factor :factor} :scale} p-opts
 
-                  pth [:path (merge attrs {:d d'})]]
-              (if (or translate scale-factor)
-                [tf {:tl translate
-                     :sc (some-> scale-factor vector)} pth]
-                pth))
+                        pth [:path (merge attrs {:d d'})]]
+                    (if (or translate scale-factor)
+                      [tf {:tl translate
+                           :sc (some-> scale-factor vector)} pth]
+                      pth))
 
      interactive? (let [pnts-seq (render/path-pnts cmpt p-opts p-els)]
                     ((:plot-coords c-fns) p-opts pi p-els pnts-seq))
 
-     :else  (let [out-seq (render/path svg-renderer cmpt p-opts p-els)]
-              [:path (merge attrs {:d (apply sk/d out-seq)})]))))
+     :else        [:path (merge attrs {:d (path-str cmpt p-opts p-els)})])))
 
 (defn- scale->tl
   [canvas-dims {:as scale :keys [factor center] :or {center [0 0]}}]

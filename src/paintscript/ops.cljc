@@ -1,7 +1,9 @@
 (ns paintscript.ops
   (:require [paintscript.util :as u]
             [paintscript.els :as els]
-            [paintscript.nav :as nav]))
+            [paintscript.nav :as nav]
+            [paintscript.paint :as paint]
+            [paintscript.conv :as conv]))
 
 ;; --- info
 
@@ -169,6 +171,19 @@
   ([cmpt ii] (-> cmpt (els/update-s-el-sel ii  els/reverse-p-els)))
   ([cmpt]    (-> cmpt (els/update-s-els els/reverse-p-els))))
 
-(defn update-p-opts [cmpt ii f & args]
-  (let [p-opts-i (concat (take 2 (-> ii nav/pth-rec->vec)) [1])]
-    (apply update-in cmpt p-opts-i f args)))
+(defn update-p-opts [cmpt sel-rec f & args]
+  (let [pth-vec (-> sel-rec
+                    (assoc :p-el-i 1)
+                    nav/pth-rec->vec)]
+    (apply update-in cmpt pth-vec f args)))
+
+(defn toggle-d [cmpt sel-rec]
+  (let [pth-vec (-> sel-rec
+                    nav/pth-rec->vec)]
+    (update-in cmpt pth-vec (fn [[_pth {:as p-opts :keys [d]} & p-els]]
+                              (cond
+                                d     (vec
+                                       (concat [:path (-> p-opts (dissoc :d))]
+                                               (conv/path-d->els d)))
+                                :else [:path (-> p-opts
+                                                 (assoc :d (paint/path-str cmpt p-opts p-els)))])))))
