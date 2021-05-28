@@ -142,12 +142,12 @@
       (update :defs   (partial u/map-vals #(apply f % args)))
       (update :script (partial mapv       #(apply update-p-els % f args)))))
 
-(defn update-s-el-sel [cmpt {:as sel-rec :keys [src-k x-el-k]} f & args]
+(defn update-s-el-sel [cmpt {:as sel-rec :keys [src-k]} f & args]
   (if-not sel-rec
     (apply update-s-els cmpt f args)
     (case src-k
-      :defs   (apply update-in cmpt [src-k x-el-k] f args)
-      :script (apply update-in cmpt [src-k x-el-k] update-p-els f args))))
+      :defs   (apply nav/update-in-pth* cmpt sel-rec :x-el-k f args)
+      :script (apply nav/update-in-pth* cmpt sel-rec :x-el-k update-p-els f args))))
 
 ;; --- scale
 

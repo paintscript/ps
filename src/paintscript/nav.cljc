@@ -99,8 +99,9 @@
      (if-not cmpt-id
        cmpt-pth
        (let [cmpt-sub-pth  (cmpt-id->pth cmpt-id)
-             cmpt-sub      (get-in cmpt (-> cmpt-sub-pth
-                                            cmpt-pth->data-pth))
+             cmpt-sub      (get-in cmpt-root
+                                   (-> cmpt-sub-pth
+                                       cmpt-pth->data-pth))
              cmpt-id->pth' (-> cmpt-id->pth (merge (cmpt->index cmpt-sub-pth cmpt-sub)))]
          (recur cmpt-sub
                 ref-pth-tail

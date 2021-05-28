@@ -102,7 +102,9 @@
     [(vec (cons :H pnts')) [(last pnts') 0] nil]))
 
 (defmethod rel->abs :m [[_k & pnts :as elv] tgt-prev _]
-  (let [pnts' (rel->abs--pnt-seq tgt-prev pnts)]
+  (let [pnts' (if tgt-prev
+                (rel->abs--pnt-seq tgt-prev pnts)
+                pnts)]
     [(vec (cons :M pnts')) (last pnts') nil]))
 
 ;; --- short->full

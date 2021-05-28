@@ -12,14 +12,14 @@
 
 (def svg-renderer
   (reify render/Renderer
-    (p-els->out [_ els]      (el-path/p-els->out els))
-    (group      [_ els]      (vec (cons :g els)))
-    (group      [_ opts els] (vec (concat [:g opts] els)))
+    (p-els->out [_ els]       (el-path/p-els->out els))
+    (group      [_ els]       (vec (cons :g els)))
+    (group      [_ opts els]  (vec (concat [:g opts] els)))
     (tf         [_   tfs el]  (sk/tf   tfs el))
     (tf         [_ c tfs el]  (sk/tf c tfs el))
     (tf*        [_   tfs els] (apply sk/tf*   tfs els))
     (tf*        [_ c tfs els] (apply sk/tf* c tfs els))
-    (paint      [_ ps]       (paint ps))
+    (paint      [_ ps]        (paint ps))
     (paint*     [_ ps-out _ _] ps-out)))
 
 (defn path-str [cmpt p-opts p-els]

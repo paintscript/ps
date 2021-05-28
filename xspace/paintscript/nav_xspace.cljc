@@ -17,25 +17,22 @@
 (def nav-xspace
   [(xx {:= {:op :nav/ref-pth->cmpt-pth}}
 
-       (xx {:= {:cmpt
-                {:script [[:path {} [:M [1 1]]]
-                          [:ref {:translate [0 0]} "A"]]
-                 :defs   {:components
-                          {"A" {:script [[:ref {} "B"]
-                                         [:ref {} "C"]]
-                                :defs   {:components
-                                         {"C" {:script [[:path {} [:M [10 10]]]]}}}}
-                           "B" {:script [[:path {} [:M [10 10]]]]}}}}}}
+       (xx {:= {:cmpt {:defs
+                       {:components
+                        {"A" {}
+                         "B" {:defs {:components
+                                     {"D" {}}}}
+                         "C" {}}}}}}
 
            (x-> "ref-pth ~= cmpt-pth"
 
-                :ref-pth [{:cmpt-id "A"} {:cmpt-id "C"}]
-                :=>      ["A" "C"])
+                :ref-pth [{:cmpt-id "B"} {:cmpt-id "D"}]
+                :=>      ["B" "D"])
 
            (x-> "ref-pth != cmpt-pth"
 
-                :ref-pth [{:cmpt-id "A"} {:cmpt-id "B"}]
-                :=>      ["B"])))])
+                :ref-pth [{:cmpt-id "A"} {:cmpt-id "B"} {:cmpt-id "C"}]
+                :=>      ["C"])))])
 
 (deftest nav-test
   (x/traverse-xspace nav-xspace-cfg

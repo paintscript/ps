@@ -3,14 +3,14 @@
 
 (defprotocol Renderer
   (p-els->out [_ els])
-  (group    [_ els]
-            [_ opts els])
-  (tf       [_ tf-params el]
-            [_ config tf-params el])
-  (tf*      [_ tf-params els]
-            [_ config tf-params els])
-  (paint    [_ ps])
-  (paint*   [_ ps-out container-size el-size]))
+  (group      [_ els]
+              [_ opts els])
+  (tf         [_ tf-params el]
+              [_ config tf-params el])
+  (tf*        [_ tf-params els]
+              [_ config tf-params els])
+  (paint      [_ ps])
+  (paint*     [_ ps-out container-size el-size]))
 
 (defn path-pnts [cmpt opts p-els]
   (let [p-els'    (els/apply-path-opts cmpt opts p-els)

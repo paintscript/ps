@@ -234,12 +234,12 @@
                        ref-item      (-> s-el-opts (assoc :cmpt-id cmpt-id))
                        ref-pth'      (-> (:ref-pth sel-rec) (u/conjv ref-item))
                        cmpt-pth0     (:cmpt-pth0 sel-rec)
-                       cmpt-pth      (nav/ref-pth->cmpt-pth cmpt cmpt-pth0 ref-pth')]
-                   (handle-op s-log cmpt ui
-                              [:sel-rec (nav/pth-rec
-                                         :cmpt-pth0 cmpt-pth0
-                                         :ref-pth   ref-pth'
-                                         :cmpt-pth  cmpt-pth)]))
+                       cmpt-pth      (nav/ref-pth->cmpt-pth cmpt cmpt-pth0 ref-pth')
+                       sel-rec       (nav/pth-rec
+                                      :cmpt-pth0 cmpt-pth0
+                                      :ref-pth   ref-pth'
+                                      :cmpt-pth  cmpt-pth)]
+                   (handle-op s-log cmpt ui [:sel-rec sel-rec]))
 
     :disable-ref-pth {:ui (-> ui
                               (update :sel-rec #(-> %
@@ -407,6 +407,7 @@
    "up"        #(dispatch! [:set-sel-d [0 -1]])
    "down"      #(dispatch! [:set-sel-d [0 1]])
    "backspace" #(when (:sel-rec @!ui) (dispatch! [:del-sel]))
+   "d"         #(dispatch! [:toggle-d])
    "c"         #(dispatch! [:el-tf :C])
    "q"         #(dispatch! [:el-tf :Q])
    "s"         #(dispatch! [:el-tf :S])

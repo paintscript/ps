@@ -145,36 +145,36 @@
 (defn del-pth [script pi] (-> script (u/vec-remove pi)))
 
 (defn translate
-  ([cmpt ii n] (-> cmpt (els/update-s-el-sel ii  els/translate-p-els n)))
-  ([cmpt    n] (-> cmpt (els/update-s-els els/translate-p-els n))))
+  ([cmpt sel n] (-> cmpt (els/update-s-el-sel sel els/translate-p-els n)))
+  ([cmpt     n] (-> cmpt (els/update-s-els        els/translate-p-els n))))
 
 (defn rotate
-  ([cmpt ii c a] (-> cmpt (els/update-s-el-sel ii  els/rotate-p-els c a)))
-  ([cmpt    c a] (-> cmpt (els/update-s-els els/rotate-p-els c a))))
+  ([cmpt sel c a] (-> cmpt (els/update-s-el-sel sel els/rotate-p-els c a)))
+  ([cmpt     c a] (-> cmpt (els/update-s-els        els/rotate-p-els c a))))
 
 (defn scale
-  ([cmpt ii c n] (-> cmpt (els/update-s-el-sel ii  els/scale-p-els c n)))
-  ([cmpt    c n] (-> cmpt (els/update-s-els els/scale-p-els c n))))
+  ([cmpt sel c n] (-> cmpt (els/update-s-el-sel sel els/scale-p-els c n)))
+  ([cmpt     c n] (-> cmpt (els/update-s-els        els/scale-p-els c n))))
 
 (defn absolute
-  ([cmpt ii] (-> cmpt (els/update-s-el-sel ii  els/normalize-p-els :op :rel->abs)))
-  ([cmpt]    (-> cmpt (els/update-s-els els/normalize-p-els :op :rel->abs))))
+  ([cmpt sel] (-> cmpt (els/update-s-el-sel sel els/normalize-p-els :op :rel->abs)))
+  ([cmpt]     (-> cmpt (els/update-s-els        els/normalize-p-els :op :rel->abs))))
 
 (defn full
-  ([cmpt ii] (-> cmpt (els/update-s-el-sel ii  els/normalize-p-els :op :short->full)))
-  ([cmpt]    (-> cmpt (els/update-s-els els/normalize-p-els :op :short->full))))
+  ([cmpt sel] (-> cmpt (els/update-s-el-sel sel els/normalize-p-els :op :short->full)))
+  ([cmpt]     (-> cmpt (els/update-s-els        els/normalize-p-els :op :short->full))))
 
 (defn normalize
-  ([cmpt ii] (-> cmpt (els/update-s-el-sel ii  els/normalize-p-els :op :all)))
-  ([cmpt]    (-> cmpt (els/update-s-els els/normalize-p-els :op :all))))
+  ([cmpt sel] (-> cmpt (els/update-s-el-sel sel els/normalize-p-els :op :all)))
+  ([cmpt]     (-> cmpt (els/update-s-els        els/normalize-p-els :op :all))))
 
 (defn mirror
-  ([cmpt axis pos ii] (-> cmpt (els/update-s-el-sel ii  #(els/mirror-p-els axis pos %))))
-  ([cmpt axis pos]    (-> cmpt (els/update-s-els #(els/mirror-p-els axis pos %)))))
+  ([cmpt axis pos sel] (-> cmpt (els/update-s-el-sel sel #(els/mirror-p-els axis pos %))))
+  ([cmpt axis pos]     (-> cmpt (els/update-s-els        #(els/mirror-p-els axis pos %)))))
 
 (defn reverse-path
-  ([cmpt ii] (-> cmpt (els/update-s-el-sel ii  els/reverse-p-els)))
-  ([cmpt]    (-> cmpt (els/update-s-els els/reverse-p-els))))
+  ([cmpt sel] (-> cmpt (els/update-s-el-sel sel  els/reverse-p-els)))
+  ([cmpt]     (-> cmpt (els/update-s-els els/reverse-p-els))))
 
 (defn update-p-opts [cmpt sel-rec f & args]
   (let [pth-vec (-> sel-rec
