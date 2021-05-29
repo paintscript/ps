@@ -23,13 +23,13 @@
   {:defs {}
    :script []})
 
-(def init-config
-  {:canvas       {:dims [100 100] :scale 4 :hatching true}
+(def conf0
+  {:canvas       {:dims [100 100] :full-screen? true :scale 4 :hatching true}
    :attr-classes {"outline" {:stroke "black" :fill "none" :stroke-width 1}
                   "solid"   {:stroke "none"  :fill "black"}}})
 
-(def init-config-gallery
-  (-> init-config
+(def conf0-gallery
+  (-> conf0
       (assoc-in [:canvas :coords?] false)))
 
 (def !app-state (r/atom {:page :canvas}))
@@ -43,10 +43,10 @@
                    [:hash (name page)])})
 
 (defn- app []
-  (r/with-let [!config-canvas       (r/atom init-config)
+  (r/with-let [!config-canvas       (r/atom conf0)
 
                !c-gallery           (r/atom (or (read-edn! :gallery-config)
-                                                init-config-gallery))
+                                                conf0-gallery))
                !c-gallery-committed (r/atom @!c-gallery)
 
                !galleries           (r/atom (read-edn! :galleries))
@@ -58,7 +58,7 @@
                                  :set-canvas
                                  (let [[config cmpt0] arg]
                                    (reset! !config-canvas (or config
-                                                              init-config))
+                                                              conf0))
                                    (reset! !cmpt0 cmpt0)
                                    (swap!  !app-state assoc :page :canvas))
 
@@ -76,9 +76,9 @@
          [galleries app-dispatch!
           !c-gallery !c-gallery-committed
           !galleries !galleries-committed]
-         (let [init-config @!config-canvas
-               init-cmpt0  @!cmpt0]
-           [canvas init-config init-cmpt0]))])))
+         (let [conf0 @!config-canvas
+               cmpt0 @!cmpt0]
+           [canvas conf0 cmpt0]))])))
 
 (defn- mount-root! []
   (rd/render [#'app]

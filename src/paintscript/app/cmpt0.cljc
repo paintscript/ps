@@ -60,5 +60,4 @@
     [:ref {:doc "cascading tfs"
            :repeat {:tfs+ [{:tl [50 50] :sc 1.2}
                            {:tl [10 10] :sc 1.2 :rt 15}]}}
-     "circs"]
-    ]})
+     "circs"]]})

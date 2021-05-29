@@ -14,7 +14,8 @@
             [paintscript.nav :as nav]
             [paintscript.conv :as conv]
             #?(:cljs [paintscript.app.ops-svg :as ops-svg])
-            [paintscript.app.s-log :as s-log]))
+            [paintscript.app.s-log :as s-log]
+            [paintscript.app.s-app :as s-app]))
 
 (def cmpt-clear {:defs {} :script []})
 
@@ -259,7 +260,9 @@
                    {:cmpt (-> cmpt (ops/toggle-d sel-rec))})
 
     :toggle-snap   {:ui (-> ui (update :snap-to-grid? not))}
-    :toggle-insert {:ui (-> ui (update :insert-mode? not))}))
+    :toggle-insert {:ui (-> ui (update :insert-mode? not))}
+    :set-full-scale {:ui (-> ui
+                             (assoc :full-scale arg))}))
 
 (defn- get-wh [cmpt]
   (let [{:keys [dims scale]} (:canvas cmpt)]
@@ -320,7 +323,7 @@
    (defn drag-and-drop-fns
      "attached to SVG element"
      [!cmpt !ui dispatch!]
-     (fn _derive-dnd-fns [!svg-dom scale]
+     (fn _derive-dnd-fns [!s-app !svg-dom {:as canvas :keys [scale]}]
        (let [!snap    (r/cursor !ui [:snap])
              !sel-rec (r/cursor !ui [:sel-rec])
              !sel-set (r/cursor !ui [:sel-set])
@@ -379,7 +382,8 @@
 
           :on-mouse-move (fn [ev]
                            (let [{:keys [snap-to-grid?]
-                                  {:as snapshot :keys [cmpt0 m0]} :snap} @!ui]
+                                  {:as snapshot :keys [cmpt0 m0]} :snap} @!ui
+                                 scale (s-app/derive-scale !s-app canvas)]
                              (when cmpt0
                                (let [m1  (xy-mouse ev)
                                      d   (mapv - m1 m0)
@@ -411,4 +415,14 @@
    "c"         #(dispatch! [:el-tf :C])
    "q"         #(dispatch! [:el-tf :Q])
    "s"         #(dispatch! [:el-tf :S])
-   "l"         #(dispatch! [:el-tf :L])})
+   "l"         #(dispatch! [:el-tf :L])
+   "1"         #(dispatch! [:set-full-scale 1])
+   "2"         #(dispatch! [:set-full-scale 2])
+   "3"         #(dispatch! [:set-full-scale 3])
+   "4"         #(dispatch! [:set-full-scale 4])
+   "5"         #(dispatch! [:set-full-scale 5])
+   "6"         #(dispatch! [:set-full-scale 6])
+   "7"         #(dispatch! [:set-full-scale 7])
+   "8"         #(dispatch! [:set-full-scale 8])
+   "9"         #(dispatch! [:set-full-scale 9])
+   "0"         #(dispatch! [:set-full-scale nil])})

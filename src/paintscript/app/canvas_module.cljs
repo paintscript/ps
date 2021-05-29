@@ -9,9 +9,10 @@
             [paintscript.app.sidebar :refer [canvas-sidebar]]
             [paintscript.nav :as nav]))
 
-(defn canvas [cfg-init cmpt0]
+(defn canvas [conf0 cmpt0]
   (r/with-let [!s-app       (r/atom {:ui {:!full-svg     (atom nil)
-                                          :full-svg-dims nil
+                                          :full-svg-dims [800 800]
+                                          :full-scale    nil
                                           :window-dims   nil
                                           :tab           :tab/items
                                           :hov-rec       nil
@@ -21,7 +22,7 @@
                                           :snap-to-grid? true
                                           :insert-mode?  true
                                           :shell         ""}
-                                     :conf cfg-init
+                                     :conf conf0
                                      :cmpt cmpt0
                                      :op-log nil})
 

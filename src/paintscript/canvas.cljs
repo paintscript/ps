@@ -12,7 +12,8 @@
 
             [paintscript.render :as render]
 
-            [paintscript.paint :as paint]))
+            [paintscript.paint :as paint]
+            [paintscript.app.s-app :as s-app]))
 
 (defn coord
   "notes:
@@ -94,17 +95,19 @@
     [coord opts p-els el pnt pth-rec]))
 
 (defn- derive-bg-img-attrs
-  [{:as config :keys [canvas]}
-   {:keys [align url scale translate opacity]
-    :or {scale 1 translate [0 0] align :center opacity 0.5}
+  [{:as   cmpt-base :keys [canvas]}
+   {:as   bg
+    :keys [align url scale translate opacity]
+    :or   {scale 1 translate [0 0] align :center opacity 0.5}
     wh-img :size}
+   canvas-scale
    wh-svg]
   (let [[w-img
          h-img
          :as wh-img'] (cond
                         wh-img
                         (let [scale* (* scale
-                                        (or (:scale canvas) 1))]
+                                        (or canvas-scale 1))]
                           (mapv * [scale*
                                    scale*] wh-img))
 
@@ -113,7 +116,7 @@
                                  scale] wh-svg))
 
         [x y] (->> translate
-                   (mapv #(* % (or (:scale canvas) 1))) ;; scale the translation
+                   (mapv #(* % (or canvas-scale 1))) ;; scale the translation
                    ((fn [xy]
                       (case align
                         :init   xy
@@ -148,16 +151,19 @@
   (r/with-let [!svg-dom        (if full-screen?
                                  (get-in @!s-app [:ui :!full-svg])
                                  (atom nil))
+               !full-scale     (r/cursor !s-app [:ui :full-scale])
                !svg-dims       (r/cursor !s-app [:ui :full-svg-dims])
                !ui             (r/cursor !s-app [:ui])
                !hov-rec        (r/cursor !s-app [:ui :hov-rec])
                !sel-rec        (r/cursor !s-app [:ui :sel-rec])
                [w0 h0 :as wh0] (get-in cmpt-base [:canvas :dims])
-               [w h :as wh]    (->> wh0
-                                    (mapv #(* % scale)))
+
                dnd-fns   (when c-app
-                           (derive-dnd-fns !svg-dom scale))]
-    (let [xy-shift  (if-not full-screen?
+                           (derive-dnd-fns !s-app !svg-dom canvas))]
+    (let [scale        (s-app/derive-scale !s-app canvas)
+          [w h :as wh] (->> wh0
+                            (mapv #(* % scale)))
+          xy-shift  (if-not full-screen?
                       [0 0]
                       ;; NOTE: rounding creates sharper hatching lines
                       (mapv #(-> %1 (- %2) (/ 2) Math/round) @!svg-dims wh))
@@ -193,7 +199,8 @@
 
          ;; --- background image
          (when-let [bg (get-in cmpt-base [:canvas :background])]
-           [:image (derive-bg-img-attrs cmpt-base bg [w h])])
+           [tf {:tl xy-shift}
+            [:image (derive-bg-img-attrs cmpt-base bg scale [w h])]])
 
          ;; --- background hatching
          [:defs
@@ -207,7 +214,6 @@
          (when (:hatching canvas)
            [tf {:tl xy-shift}
             [:rect {:width w :height h :fill "url(#diagonalHatch)"}]])
-
 
          [tf* tf-params
 
