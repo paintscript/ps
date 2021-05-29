@@ -80,12 +80,12 @@
 (defn- layout-builder
   "compose a sequence of components into one, offset each by the width of prior ones"
   [c-fns {:as cmpt-ctx :keys [defs]}
-   s-el-opts' els]
-  {:pre [(every? el-path/ref? els)]}
-  [:g (->> els
-           (reduce (fn [[out offset] el]
+   s-el-opts' ref-els]
+  {:pre [(every? el-path/ref? ref-els)]}
+  [:g (->> ref-els
+           (reduce (fn [[out offset] ref-el]
                      (let [{:as cmpt-ref
-                            {:keys [dims]} :canvas}  (els/resolve-cmpt-ref defs el)
+                            {:keys [dims]} :canvas}  (els/resolve-cmpt-ref defs ref-el)
 
                            cmpt* (merge cmpt-ctx
                                         cmpt-ref)
@@ -95,14 +95,14 @@
 
                             {:as scale
                              sc-ctr :center
-                             sc-fct :factor} :scale} (els/get-opts el)
+                             sc-fct :factor} :scale} (els/get-opts ref-el)
 
                            tf-params' (-> tf-params
                                           (update :translate #(->> (or % [0 0])
                                                                    (mapv + [offset 0]))))
 
                            out+
-                           ^{:key (hash [offset el])}
+                           ^{:key (hash [offset ref-el])}
                            [tf (derive-cmpt-tf tf-params' cmpt*)
                             (paint c-fns cmpt*)]
 

@@ -10,24 +10,33 @@
             [paintscript.nav :as nav]))
 
 (defn canvas [cfg-init cmpt0]
-  (r/with-let [ui-init      {:sel-rec       nil
-                             :sel-set       nil
-                             :snap          nil
-                             :snap-to-grid? true
-                             :insert-mode?  true}
+  (r/with-let [!s-app       (r/atom {:ui {:!full-svg     (atom nil)
+                                          :full-svg-dims nil
+                                          :window-dims   nil
+                                          :tab           :tab/items
+                                          :hov-rec       nil
+                                          :sel-rec       nil
+                                          :sel-set       nil
+                                          :snap          nil
+                                          :snap-to-grid? true
+                                          :insert-mode?  true
+                                          :shell         ""}
+                                     :conf cfg-init
+                                     :cmpt cmpt0
+                                     :op-log nil})
 
-               !ui          (r/atom   ui-init)
-               !config      (r/atom   cfg-init)
-               !cmpt-root   (r/atom   cmpt0)
-               !s-log       (r/atom   nil)
-               !hov-rec     (r/atom   nil)
-               !tab         (r/atom   :tab/items)
-               !shell       (r/atom   "")
+               !ui          (r/cursor !s-app [:ui])
+               !config      (r/cursor !s-app [:conf])
+               !scale       (r/cursor !s-app [:conf :canvas :scale])
+               !cmpt-root   (r/cursor !s-app [:cmpt])
+               !s-log       (r/cursor !s-app [:op-log])
 
-               !sel-rec     (r/cursor !ui     [:sel-rec])
-               !sel-set     (r/cursor !ui     [:sel-set])
-               !scale       (r/cursor !config [:canvas :scale])
-
+               !win-dims    (r/cursor !s-app [:ui :window-dims])
+               !hov-rec     (r/cursor !s-app [:ui :hov-rec])
+               !tab         (r/cursor !s-app [:ui :tab])
+               !shell       (r/cursor !s-app [:ui :shell])
+               !sel-rec     (r/cursor !s-app [:ui :sel-rec])
+               !sel-set     (r/cursor !s-app [:ui :sel-set])
 
                dispatch!      (partial ctl/dispatch! !config !cmpt-root !s-log !ui)
                derive-dnd-fns (ctl/drag-and-drop-fns !cmpt-root !ui dispatch!)
@@ -41,6 +50,7 @@
                                 ;; by select+drag
                                 ; (swap! !sel-rec #(when (not= % sel-rec) sel-rec))
                                 (reset! !sel-rec sel-rec)))
+
                report-over! (fn [pth-rec val]
                               (swap! !hov-rec
                                      #(cond
@@ -58,7 +68,16 @@
                                 (fn [e info]
                                   (println :paint-error e)
                                   (js/console.log e)
-                                  (dispatch! [:undo]))})]
+                                  (dispatch! [:undo]))})
+
+               on-resize! (fn []
+                            (when-let [^js full-svg @(get-in @!s-app [:ui :!full-svg])]
+                              (let [rect (-> full-svg (.getBoundingClientRect))]
+                                (swap! !s-app assoc-in [:ui :full-svg-dims]
+                                       [(-> rect .-width)
+                                        (-> rect .-height)]))))
+               _ (swap! !s-app assoc-in [:ui :on-resize!] on-resize!)
+               _ (.addEventListener js/window "resize" on-resize!)]
 
     (let [config    @!config
           sel-rec   @!sel-rec
@@ -96,4 +115,6 @@
         dispatch! !ui !shell !s-log !tab !sel-rec
         config cmpt-root cmpt-sel]
 
-       [canvas-paint' c-app s-app cmpt-root* cmpt-base* cmpt-sel*]])))
+       [canvas-paint' c-app !s-app cmpt-root* cmpt-base* cmpt-sel*]])
+    (finally
+      (.removeEventListener js/window "resize" on-resize!))))

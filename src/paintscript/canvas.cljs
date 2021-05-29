@@ -84,16 +84,16 @@
                            (str/join " " xy)])]))]]])))))
 
 
-(defn plot-coords [opts pi els pnts-seq]
+(defn plot-coords [opts p-els pnts-seq]
   (for [[el pnts] pnts-seq
         {:as pnt :keys [xy pth-rec i-main]} (->> pnts
                                                  ;; NOTE: render CPs last
                                                  (sort-by :i-main))
         :let [_ (assert pth-rec)]]
     ^{:key (hash pth-rec)}
-    [coord opts els el pnt pth-rec]))
+    [coord opts p-els el pnt pth-rec]))
 
-(defn- derive-background-image-attrs
+(defn- derive-bg-img-attrs
   [{:as config :keys [canvas]}
    {:keys [align url scale translate opacity]
     :or {scale 1 translate [0 0] align :center opacity 0.5}
@@ -133,30 +133,50 @@
   "notes:
    - in non-interactive contexts (e.g. gallery) `c-app` can be omitted"
   [{:as c-app :keys [dispatch! report-down! report-over! derive-dnd-fns]}
-   {:as s-app :keys [hov-rec sel-rec]}
+   !s-app
    variant-active
 
    cmpt-root
    {:as cmpt-base
     {:as   canvas
-     :keys [scale dims coords? zero]
+     :keys [full-screen? scale dims coords? zero]
      :or   {dims    [100 100]
             zero    :init
             coords? true}} :canvas}
    cmpt-sel
    out-tups]
-  (r/with-let [!svg-dom (atom nil)
-               [w h]    (->> dims (mapv #(* % scale)))
-               dnd-fns  (when c-app
-                          (derive-dnd-fns !svg-dom scale))]
-    (let [svg-attrs (u/deep-merge {:width  w :height h
-                                   :ref    #(when (and % (not @!svg-dom))
-                                              (reset! !svg-dom %))}
+  (r/with-let [!svg-dom        (if full-screen?
+                                 (get-in @!s-app [:ui :!full-svg])
+                                 (atom nil))
+               !svg-dims       (r/cursor !s-app [:ui :full-svg-dims])
+               !ui             (r/cursor !s-app [:ui])
+               !hov-rec        (r/cursor !s-app [:ui :hov-rec])
+               !sel-rec        (r/cursor !s-app [:ui :sel-rec])
+               [w0 h0 :as wh0] (get-in cmpt-base [:canvas :dims])
+               [w h :as wh]    (->> wh0
+                                    (mapv #(* % scale)))
+               dnd-fns   (when c-app
+                           (derive-dnd-fns !svg-dom scale))]
+    (let [xy-shift  (if-not full-screen?
+                      [0 0]
+                      ;; NOTE: rounding creates sharper hatching lines
+                      (mapv #(-> %1 (- %2) (/ 2) Math/round) @!svg-dims wh))
+          hov-rec   @!hov-rec
+          sel-rec   @!sel-rec
+          svg-attrs (u/deep-merge (if full-screen?
+                                    {:class "full-screen"}
+                                    {:width w
+                                     :height h})
+                                  {:ref #(when (and % (not @!svg-dom))
+                                           (reset! !svg-dom %)
+                                           (let [f (get-in @!s-app [:ui :on-resize!])]
+                                             (f)))}
                                   (get-in cmpt-base [:canvas :attrs])
                                   dnd-fns)
-          tf-params0 {:tl (case zero
-                            :init   nil
-                            :center [(/ w 2) (/ h 2)])
+          tf-params0 {:tl (->> (case zero
+                                 :init   [0 0]
+                                 :center [(/ w 2) (/ h 2)])
+                               (mapv + xy-shift))
                       :sc [scale
                            scale]}
 
@@ -173,18 +193,20 @@
 
          ;; --- background image
          (when-let [bg (get-in cmpt-base [:canvas :background])]
-           [:image (derive-background-image-attrs cmpt-base bg [w h])])
+           [:image (derive-bg-img-attrs cmpt-base bg [w h])])
 
          ;; --- background hatching
          [:defs
           [:pattern#diagonalHatch
            {:pattern-units "userSpaceOnUse" :width 5 :height 5}
            [:path {:style {:stroke         "var(--blue-light)"
-                           :stroke-width   1
-                           :stroke-linecap "square"}
+                           :stroke-linecap "square"
+                           :stroke-width   1}
                    :d "M 0 5 L 5 0"}]]]
+
          (when (:hatching canvas)
-           [:rect {:width w :height h :fill "url(#diagonalHatch)"}])
+           [tf {:tl xy-shift}
+            [:rect {:width w :height h :fill "url(#diagonalHatch)"}]])
 
 
          [tf* tf-params
@@ -249,7 +271,6 @@
                                 :hov-rec      hov-rec
                                 :controls?    (= (:x-el-k sel-rec)
                                                  s-el-i)}
-                               s-el-i
                                p-els'
                                p-el-pnts-seq)]))])]]
         (catch :default err
@@ -261,7 +282,7 @@
   ([cmpt-root]
    ;; NOTE: used via gallery
    (canvas-paint nil nil cmpt-root cmpt-root cmpt-root))
-  ([c-app s-app
+  ([c-app !s-app
     cmpt-root cmpt-base cmpt-sel]
    (let [;; NOTE: can't be cached b/c floats hash to integer
          ; config (u/deep-merge config-external
@@ -269,7 +290,8 @@
 
          {:keys [variant-active]
           {:as   canvas
-           :keys [instances]} :canvas} cmpt-base
+           :keys [full-screen?
+                  instances]} :canvas} cmpt-base
 
          out-tups (->> (:script cmpt-sel)
                        (map-indexed
@@ -282,7 +304,8 @@
 
 
      [:div.paint
-      (for [canvas-inst  (or instances
+      (for [canvas-inst  (or (when-not full-screen?
+                               instances)
                              [nil])]
         (let [cmpt-base' (-> cmpt-base
                              (cond-> canvas-inst
@@ -290,4 +313,4 @@
           ^{:key (str (hash canvas-inst)
                       (hash (get cmpt-base' :canvas))
                       (get-in cmpt-base' [:canvas :scale]))}
-          [canvas-paint-variant c-app s-app variant-active cmpt-root cmpt-base' cmpt-sel out-tups]))])))
+          [canvas-paint-variant c-app !s-app variant-active cmpt-root cmpt-base' cmpt-sel out-tups]))])))

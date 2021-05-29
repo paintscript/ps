@@ -3,9 +3,11 @@
 (def cmpt0
   {:config {:coords? false}
    :canvas {:dims [100 100]
-            :hatching false
+            :hatching true
+            :full-screen? true
             :instances [{:canvas {:scale 2}}
-                        {:canvas {:scale 4}}]}
+                        {:canvas {:scale 4}}]
+            }
    :attr-classes
    {"blue" {:fill "blue"}}
    :defs

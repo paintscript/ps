@@ -173,8 +173,8 @@
   ([cmpt axis pos]     (-> cmpt (els/update-s-els        #(els/mirror-p-els axis pos %)))))
 
 (defn reverse-path
-  ([cmpt sel] (-> cmpt (els/update-s-el-sel sel  els/reverse-p-els)))
-  ([cmpt]     (-> cmpt (els/update-s-els els/reverse-p-els))))
+  ([cmpt sel] (-> cmpt (els/update-s-el-sel sel els/reverse-p-els)))
+  ([cmpt]     (-> cmpt (els/update-s-els        els/reverse-p-els))))
 
 (defn update-p-opts [cmpt sel-rec f & args]
   (let [pth-vec (-> sel-rec
@@ -184,7 +184,7 @@
 
 (defn toggle-d [cmpt sel-rec]
   (let [pth-vec (-> sel-rec
-                    nav/pth-rec->vec)]
+                    (nav/pth-rec->vec :x-el-k))]
     (update-in cmpt pth-vec
                (fn [[_pth {:as p-opts :keys [d]} & p-els]]
                  (cond
