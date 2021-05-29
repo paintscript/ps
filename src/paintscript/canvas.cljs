@@ -132,6 +132,8 @@
 
 (def ^:private c-fns {:plot-coords plot-coords})
 
+
+
 (defn- canvas-paint-variant
   "notes:
    - in non-interactive contexts (e.g. gallery) `c-app` can be omitted"
@@ -151,48 +153,57 @@
   (r/with-let [!svg-dom        (if full-screen?
                                  (get-in @!s-app [:ui :!full-svg])
                                  (atom nil))
-               !full-scale     (r/cursor !s-app [:ui :full-scale])
-               !svg-dims       (r/cursor !s-app [:ui :full-svg-dims])
-               !ui             (r/cursor !s-app [:ui])
                !hov-rec        (r/cursor !s-app [:ui :hov-rec])
                !sel-rec        (r/cursor !s-app [:ui :sel-rec])
-               [w0 h0 :as wh0] (get-in cmpt-base [:canvas :dims])
 
-               dnd-fns   (when c-app
-                           (derive-dnd-fns !s-app !svg-dom canvas))]
-    (let [scale        (s-app/derive-scale !s-app canvas)
-          [w h :as wh] (->> wh0
-                            (mapv #(* % scale)))
-          svg-dims  @!svg-dims
-          xy-shift  (if-not full-screen?
-                      [0 0]
-                      ;; NOTE: rounding creates sharper hatching lines
-                      (mapv #(-> %1 (- %2) (/ 2) Math/round) svg-dims wh))
-          hov-rec   @!hov-rec
-          sel-rec   @!sel-rec
-          svg-attrs (u/deep-merge (if full-screen?
-                                    {:class "full-screen"}
-                                    {:width w
-                                     :height h})
-                                  {:ref #(when (and % (not= % @!svg-dom))
-                                           (reset! !svg-dom %)
-                                           (let [f (get-in @!s-app [:ui :on-resize!])]
-                                             (f)))}
-                                  (get-in cmpt-base [:canvas :attrs])
-                                  dnd-fns)
-          tf-params0 {:tl (->> (case zero
-                                 :init   [0 0]
-                                 :center [(/ w 2) (/ h 2)])
-                               (mapv + xy-shift))
-                      :sc [scale
-                           scale]}
+               wh0             (get-in cmpt-base [:canvas :dims])
 
-          tf-params  (if-let [rr (:ref-pth sel-rec)]
-                       ;; NOTE: doesn't support :repeat yet
-                       (concat tf-params0
-                               (->> rr
-                                    (mapcat paint/normalize-tf-params)))
-                       tf-params0)]
+               !svg-params     (if full-screen?
+                                 (r/cursor !s-app [:ui :full-svg-params])
+                                 (delay {:scale      scale
+                                         :canvas-wh  (->> wh0 (mapv #(* % scale)))
+                                         :canvas-xy0 [0 0]}))
+
+               dnd-fns         (when c-app
+                                 (derive-dnd-fns !s-app !svg-dom canvas))
+
+               ref-fn          #(when (and % (not= % @!svg-dom))
+                                  (reset! !svg-dom %)
+                                  (let [on-resize! @(r/cursor !s-app [:ui :on-resize!])]
+                                    (on-resize! canvas)))]
+
+    (let [{:as svg-params
+           :keys
+           [scale
+            canvas-xy0]
+           [w h :as
+            canvas-wh]
+           :canvas-wh} @!svg-params
+
+          svg-attrs    (u/deep-merge (if full-screen?
+                                       {:class "full-screen"}
+                                       {:width w
+                                        :height h})
+                                     {:ref ref-fn}
+                                     (get-in cmpt-base [:canvas :attrs])
+                                     dnd-fns)
+
+          tf-params0   {:tl (->> (case zero
+                                   :init   [0 0]
+                                   :center [(/ w 2) (/ h 2)])
+                                 (mapv + canvas-xy0))
+                        :sc [scale
+                             scale]}
+
+          hov-rec      @!hov-rec
+          sel-rec      @!sel-rec
+
+          tf-params    (if-let [rr (:ref-pth sel-rec)]
+                         ;; NOTE: doesn't support :repeat yet
+                         (concat tf-params0
+                                 (->> rr
+                                      (mapcat paint/normalize-tf-params)))
+                         tf-params0)]
 
       (try
         ^{:key (hash variant-active)}
@@ -200,7 +211,7 @@
 
          ;; --- background image
          (when-let [bg (get-in cmpt-base [:canvas :background])]
-           [tf {:tl xy-shift}
+           [tf {:tl canvas-xy0}
             [:image (derive-bg-img-attrs cmpt-base bg scale [w h])]])
 
          ;; --- background hatching
@@ -213,7 +224,7 @@
                    :d "M 0 5 L 5 0"}]]]
 
          (when (:hatching canvas)
-           [tf {:tl xy-shift}
+           [tf {:tl canvas-xy0}
             [:rect {:width w :height h :fill "url(#diagonalHatch)"}]])
 
          [tf* tf-params
@@ -307,7 +318,9 @@
                           (case s-el-k
                             :ref nil ;; TODO: add :ref support
                             [s-el-i s-el-opts p-els])))
-                       (remove nil?))]
+                       (remove nil?))
+
+         full-svg-scale @(r/cursor !s-app [:ui :full-svg-scale])]
 
 
      [:div.paint
@@ -319,5 +332,6 @@
                                      (u/deep-merge canvas-inst)))]
           ^{:key (str (hash canvas-inst)
                       (hash (get cmpt-base' :canvas))
-                      (get-in cmpt-base' [:canvas :scale]))}
+                      (get-in cmpt-base' [:canvas :scale])
+                      full-svg-scale)}
           [canvas-paint-variant c-app !s-app variant-active cmpt-root cmpt-base' cmpt-sel out-tups]))])))

@@ -3,17 +3,22 @@
             [reagent.core :as r]
             [keybind.core :as key]
             [paintscript.els :as els]
-            [paintscript.app.ctl :as ctl]
             [paintscript.util :as u]
             [paintscript.canvas :as canvas]
             [paintscript.app.sidebar :refer [canvas-sidebar]]
-            [paintscript.nav :as nav]))
+            [paintscript.nav :as nav]
+
+            [paintscript.app.ctl :as ctl]
+            [paintscript.app.s-app :as s-app]))
 
 (defn canvas [conf0 cmpt0]
-  (r/with-let [!s-app       (r/atom {:ui {:!full-svg     (atom nil)
-                                          :full-svg-dims [800 800]
-                                          :full-scale    nil
-                                          :window-dims   nil
+  (r/with-let [!s-app       (r/atom {:ui {:!full-svg       (atom nil)
+                                          :full-svg-bounds [800 800]
+                                          :full-svg-xy0    [0 0]
+                                          :full-svg-scale  nil
+                                          :full-svg-params {:scale      1
+                                                            :canvas-wh  [800 800]
+                                                            :canvas-xy0 [0 0]}
                                           :tab           :tab/items
                                           :hov-rec       nil
                                           :sel-rec       nil
@@ -27,7 +32,7 @@
                                      :op-log nil})
 
                !ui          (r/cursor !s-app [:ui])
-               !conf-ext      (r/cursor !s-app [:conf])
+               !conf-ext    (r/cursor !s-app [:conf])
                !scale       (r/cursor !s-app [:conf :canvas :scale])
                !cmpt-root   (r/cursor !s-app [:cmpt])
                !s-log       (r/cursor !s-app [:op-log])
@@ -71,12 +76,19 @@
                                   (js/console.log e)
                                   (dispatch! [:undo]))})
 
-               on-resize! (fn []
+               on-resize! (fn [arg]
+                            ;; NOTE: invoked first by svg's :ref with canvas arg,
+                            ;; and then later via resize w/o canvas arg
                             (when-let [^js full-svg @(get-in @!s-app [:ui :!full-svg])]
-                              (let [rect (-> full-svg (.getBoundingClientRect))]
-                                (swap! !s-app assoc-in [:ui :full-svg-dims]
-                                       [(-> rect .-width)
-                                        (-> rect .-height)]))))
+                              (let [rect       (-> full-svg (.getBoundingClientRect))
+                                    svg-bounds [(-> rect .-width)
+                                                (-> rect .-height)]]
+                                (swap! !s-app update-in [:ui :full-svg-params]
+                                       (fn [full-svg-params]
+                                         (s-app/init-full-svg-params !s-app svg-bounds
+                                                                     (or (when (map? arg)
+                                                                           arg)
+                                                                         (:canvas full-svg-params))))))))
                _ (swap! !s-app assoc-in [:ui :on-resize!] on-resize!)
                _ (.addEventListener js/window "resize" on-resize!)]
 

@@ -112,7 +112,7 @@
     :op/set-cmpt-str   (let [cmpt-edn (edn/read-string arg)]
                          {:cmpt (if (:cmpt-pth sel-rec)
                                   (nav/update-in-pth* cmpt sel-rec :cmpt-pth
-                                                      (fn [_]
+                                                      (fn [cmpt-prev]
                                                         cmpt-edn))
                                   cmpt-edn)})
     :op/set-config-str {:config (edn/read-string arg)}
@@ -145,14 +145,14 @@
     :el-append   (let [el         arg
                        {:keys
                         [p-el-i]} sel-rec
+                       init?      (not (seq (:script cmpt)))
+                       cmpt'      (cond
+                                    init? (-> cmpt (update :script conj [:path {} el]))
+                                    el    (-> cmpt (nav/update-in-pth* sel-rec :x-el-k ops/append-p-el p-el-i el))
+                                    :else (-> cmpt (nav/update-in-pth* sel-rec :x-el-k ops/append-p-el p-el-i)))
                        sel-rec'   (-> sel-rec
-                                      (update :p-el-i #(or (some-> % inc)
-                                                           0)))
-                       init?      (not (seq (:script cmpt)))]
-                   {:cmpt (cond
-                            init? (-> cmpt (update :script conj [:path {} el]))
-                            el    (-> cmpt (nav/update-in-pth* sel-rec :x-el-k ops/append-p-el p-el-i el))
-                            :else (-> cmpt (nav/update-in-pth* sel-rec :x-el-k ops/append-p-el p-el-i)))
+                                      (update :p-el-i #(some-> % inc)))]
+                   {:cmpt cmpt'
                     :ui   (-> ui (assoc :sel-rec sel-rec'))})
 
     :del-sel     (let [[k1 k2]   (drop-while #(not (get sel-rec %)) nav/kk-rev)
@@ -266,8 +266,8 @@
 
     :toggle-snap   {:ui (-> ui (update :snap-to-grid? not))}
     :toggle-insert {:ui (-> ui (update :insert-mode? not))}
-    :set-full-scale {:ui (-> ui
-                             (assoc :full-scale arg))}))
+    :set-full-svg-scale {:ui (-> ui
+                             (assoc :full-svg-scale arg))}))
 
 (defn- get-wh [cmpt]
   (let [{:keys [dims scale]} (:canvas cmpt)]
@@ -328,14 +328,17 @@
    (defn drag-and-drop-fns
      "attached to SVG element"
      [!cmpt !ui dispatch!]
-     (fn _derive-dnd-fns [!s-app !svg-dom {:as canvas :keys [scale]}]
+     (fn _derive-dnd-fns [!s-app !svg-dom {:as canvas :keys [full-screen? scale]}]
        (let [!snap    (r/cursor !ui [:snap])
              !sel-rec (r/cursor !ui [:sel-rec])
              !sel-set (r/cursor !ui [:sel-set])
              xy-svg!  (fn []
-                        (let [rect (-> @!svg-dom (.getBoundingClientRect))]
-                          [(-> rect .-left)
-                           (-> rect .-top)]))]
+                        (let [rect (-> @!svg-dom (.getBoundingClientRect))
+                              xy0  @(r/cursor !s-app [:ui :full-svg-params :canvas-xy0])]
+                          (-> [(-> rect .-left)
+                               (-> rect .-top)]
+                              (cond-> full-screen?
+                                      (#(mapv + % xy0))))))]
          {;; NOTE: invoked after canvas/report-down!
           :on-mouse-down #(let [{:keys
                                  [sel-rec
@@ -421,13 +424,13 @@
    "q"         #(dispatch! [:el-tf :Q])
    "s"         #(dispatch! [:el-tf :S])
    "l"         #(dispatch! [:el-tf :L])
-   "1"         #(dispatch! [:set-full-scale 1])
-   "2"         #(dispatch! [:set-full-scale 2])
-   "3"         #(dispatch! [:set-full-scale 3])
-   "4"         #(dispatch! [:set-full-scale 4])
-   "5"         #(dispatch! [:set-full-scale 5])
-   "6"         #(dispatch! [:set-full-scale 6])
-   "7"         #(dispatch! [:set-full-scale 7])
-   "8"         #(dispatch! [:set-full-scale 8])
-   "9"         #(dispatch! [:set-full-scale 9])
-   "0"         #(dispatch! [:set-full-scale nil])})
+   "1"         #(dispatch! [:set-full-svg-scale 1])
+   "2"         #(dispatch! [:set-full-svg-scale 2])
+   "3"         #(dispatch! [:set-full-svg-scale 3])
+   "4"         #(dispatch! [:set-full-svg-scale 4])
+   "5"         #(dispatch! [:set-full-svg-scale 5])
+   "6"         #(dispatch! [:set-full-svg-scale 6])
+   "7"         #(dispatch! [:set-full-svg-scale 7])
+   "8"         #(dispatch! [:set-full-svg-scale 8])
+   "9"         #(dispatch! [:set-full-svg-scale 9])
+   "0"         #(dispatch! [:set-full-svg-scale nil])})

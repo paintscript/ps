@@ -177,19 +177,19 @@
   ([cmpt]     (-> cmpt (els/update-s-els        els/reverse-p-els))))
 
 (defn update-p-opts [cmpt sel-rec f & args]
-  (let [pth-vec (-> sel-rec
-                    (assoc :p-el-i 1)
-                    nav/pth-rec->vec)]
-    (apply update-in cmpt pth-vec f args)))
+  (-> cmpt
+      (nav/update-in-pth* (-> sel-rec
+                              (assoc :p-el-i 1)) :p-el-i
+                          (fn [pth-el]
+                            (apply f pth-el args)))))
 
 (defn toggle-d [cmpt sel-rec]
-  (let [pth-vec (-> sel-rec
-                    (nav/pth-rec->vec :x-el-k))]
-    (update-in cmpt pth-vec
-               (fn [[_pth {:as p-opts :keys [d]} & p-els]]
-                 (cond
-                   d     (vec
-                          (concat [:path (-> p-opts (dissoc :d))]
-                                  (conv/path-d->els d)))
-                   :else [:path (-> p-opts
-                                    (assoc :d (paint/path-str cmpt p-opts p-els)))])))))
+  (-> cmpt
+      (nav/update-in-pth* sel-rec :x-el-k
+                          (fn [[_pth {:as p-opts :keys [d]} & p-els]]
+                            (cond
+                              d     (vec
+                                     (concat [:path (-> p-opts (dissoc :d))]
+                                             (conv/path-d->els d)))
+                              :else [:path (-> p-opts
+                                               (assoc :d (paint/path-str cmpt p-opts p-els)))])))))

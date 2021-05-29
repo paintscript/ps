@@ -4,7 +4,7 @@
   {:config {:coords? false}
    :canvas {:dims [100 100]
             :hatching true
-            :full-screen? true
+            ; :full-screen? true
             :instances [{:canvas {:scale 2}}
                         {:canvas {:scale 4}}]
             }
@@ -35,9 +35,7 @@
                   :mode :fuse}}
                 [:M [46 29]]
                 [:L [90 19]]
-                [:L [23 34]]]
-
-               ]}
+                [:L [23 34]]]]}
 
      "circs" {:canvas {:dims [50 50]
                        :zero :center}

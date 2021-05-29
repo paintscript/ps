@@ -77,7 +77,9 @@
   (apply update-in cmpt-root (pth-rec->vec pth-rec) f args))
 
 (defn update-in-pth* [cmpt-root pth-rec trunc-k f & args]
-  (apply update-in cmpt-root (pth-rec->vec pth-rec trunc-k) f args))
+  (if-not (get pth-rec trunc-k)
+    cmpt-root
+    (apply update-in cmpt-root (pth-rec->vec pth-rec trunc-k) f args)))
 
 (defn- cmpt->index [cmpt-pth cmpt]
   (->> (keys (get-in cmpt [:defs :components]))
