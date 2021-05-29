@@ -163,17 +163,18 @@
     (let [scale        (s-app/derive-scale !s-app canvas)
           [w h :as wh] (->> wh0
                             (mapv #(* % scale)))
+          svg-dims  @!svg-dims
           xy-shift  (if-not full-screen?
                       [0 0]
                       ;; NOTE: rounding creates sharper hatching lines
-                      (mapv #(-> %1 (- %2) (/ 2) Math/round) @!svg-dims wh))
+                      (mapv #(-> %1 (- %2) (/ 2) Math/round) svg-dims wh))
           hov-rec   @!hov-rec
           sel-rec   @!sel-rec
           svg-attrs (u/deep-merge (if full-screen?
                                     {:class "full-screen"}
                                     {:width w
                                      :height h})
-                                  {:ref #(when (and % (not @!svg-dom))
+                                  {:ref #(when (and % (not= % @!svg-dom))
                                            (reset! !svg-dom %)
                                            (let [f (get-in @!s-app [:ui :on-resize!])]
                                              (f)))}

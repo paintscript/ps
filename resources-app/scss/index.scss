@@ -63,17 +63,7 @@ div.script.sidebar {
   border-style: solid;
   border-color: var(--black);
 
-  > div.controls {
-    &.unsaved-changes div.zc-button.save {
-      background-color: hsl(0,100%,90%);
-    }
-    height:           var(--controls-height);
-    background-color: var(--controls-bg);
-    div.zc.zc-button { --height: var(--controls-height); }
-  }
-
-  > textarea {
-    height:      var(--script-height);
+  textarea {
     font-size:   var(--code-size);
     font-family: var(--code-font);
   }
@@ -107,13 +97,62 @@ div.script.sidebar {
     }
   }
 
+  > div.controls {
+    &.unsaved-changes div.zc-button.save {
+      background-color: hsl(0,100%,90%);
+    }
+    height:           var(--controls-height);
+    background-color: var(--controls-bg);
+    div.zc.zc-button { --height: var(--controls-height); }
+  }
+
+  > div.sidebar-config {
+    > textarea {
+      height:      var(--script-height);
+    }
+  }
+
+  > div.sidebar-source {
+    li.textarea {
+      padding: 0;
+      height: calc(var(--script-height) - var(--panel-height));
+      > textarea {
+        height: 100%;
+      }
+    }
+  }
+
+  ol.cmpt-pth {
+    // NOTE: used via:
+    // - div.sidebar-items
+    // - div.sidebar-source
+    display: flex;
+    li {
+      display: flex;
+      align-items: center;
+      border: none;
+      min-height: 0; // undo min-height of generic ol
+      padding: 0;
+      &.current {
+        font-weight: bold;
+      }
+      &:not(.current) span.cmpt-id {
+        @include link;
+      }
+      & + li {
+        &:before { content: '⟩'; margin: 0 var(--pd); }
+      }
+    }
+  }
+
   > ol.log,
-  > ol.s-els {
+  > div.sidebar-items > ol.s-els {
     height:     var(--script-height);
     overflow:   scroll;
   }
 
-  > ol.s-els {
+  ol.s-els {
+    // NOTE: used via div.sidebar-items & div.sidebar-source
     span.s-el-k,
     span.p-el-k {
       font-weight: bold;
@@ -145,28 +184,6 @@ div.script.sidebar {
     li.cmpt-pth {
       display: flex;
       align-items: center;
-    }
-
-    li.cmpt-pth {
-      ol.cmpt-pth {
-        display: flex;
-        li {
-          display: flex;
-          align-items: center;
-          border: none;
-          min-height: 0; // undo min-height of generic ol
-          padding: 0;
-          &.current {
-            font-weight: bold;
-          }
-          &:not(.current) span.cmpt-id {
-            @include link;
-          }
-          & + li {
-            &:before { content: '⟩'; margin: 0 var(--pd); }
-          }
-        }
-      }
     }
 
     ol.p-els {
@@ -205,14 +222,16 @@ div.script.sidebar {
     }
   }
 
-  &.with-status > textarea {
-    height: var(--script-height-short);
-  }
-
-  &.with-status > ol.log,
-  &.with-status > ol.s-els {
-    height: var(--script-height-short);
-  }
+  // NOTE: status-stack currently disabled; --script-height-short would have to
+  // be applied to new containers to fix this
+  // &.with-status > textarea {
+  //   height: var(--script-height-short);
+  // }
+  //
+  // &.with-status > ol.log,
+  // &.with-status > ol.s-els {
+  //   height: var(--script-height-short);
+  // }
 
   > div.shell {
     padding: 0;

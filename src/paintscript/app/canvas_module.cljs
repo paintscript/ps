@@ -27,7 +27,7 @@
                                      :op-log nil})
 
                !ui          (r/cursor !s-app [:ui])
-               !config      (r/cursor !s-app [:conf])
+               !conf-ext      (r/cursor !s-app [:conf])
                !scale       (r/cursor !s-app [:conf :canvas :scale])
                !cmpt-root   (r/cursor !s-app [:cmpt])
                !s-log       (r/cursor !s-app [:op-log])
@@ -39,7 +39,7 @@
                !sel-rec     (r/cursor !s-app [:ui :sel-rec])
                !sel-set     (r/cursor !s-app [:ui :sel-set])
 
-               dispatch!      (partial ctl/dispatch! !config !cmpt-root !s-log !ui)
+               dispatch!      (partial ctl/dispatch! !conf-ext !cmpt-root !s-log !ui)
                derive-dnd-fns (ctl/drag-and-drop-fns !cmpt-root !ui dispatch!)
                kb-fns         (ctl/keybind-fns       !cmpt-root !ui dispatch!)
 
@@ -80,20 +80,20 @@
                _ (swap! !s-app assoc-in [:ui :on-resize!] on-resize!)
                _ (.addEventListener js/window "resize" on-resize!)]
 
-    (let [config    @!config
-          sel-rec   @!sel-rec
-          cmpt-root @!cmpt-root
-          hov-rec   @!hov-rec
+    (let [conf-ext   @!conf-ext
+          sel-rec    @!sel-rec
+          cmpt-root  @!cmpt-root
+          hov-rec    @!hov-rec
 
-          c-app   {:dispatch!      dispatch!
-                   :report-down!   report-down!
-                   :report-over!   report-over!
-                   :derive-dnd-fns derive-dnd-fns}
+          c-app      {:dispatch!      dispatch!
+                      :report-down!   report-down!
+                      :report-over!   report-over!
+                      :derive-dnd-fns derive-dnd-fns}
 
-          s-app   {:hov-rec hov-rec
-                   :sel-rec sel-rec}
+          s-app      {:hov-rec hov-rec
+                      :sel-rec sel-rec}
 
-          cmpt-root* (u/deep-merge config
+          cmpt-root* (u/deep-merge conf-ext
                                    (:config cmpt-root)
                                    cmpt-root)
 
@@ -112,10 +112,7 @@
       [:div.canvas
        [:div.sidebar.script-phantom]
 
-       [canvas-sidebar
-        dispatch! !ui !shell !s-log !tab !sel-rec
-        config cmpt-root cmpt-sel]
-
-       [canvas-paint' c-app !s-app cmpt-root* cmpt-base* cmpt-sel*]])
+       [canvas-sidebar dispatch! !ui !shell !s-log !tab !sel-rec conf-ext cmpt-root]
+       [canvas-paint'  c-app !s-app cmpt-root* cmpt-base* cmpt-sel*]])
     (finally
       (.removeEventListener js/window "resize" on-resize!))))

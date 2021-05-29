@@ -1,13 +1,14 @@
 (ns paintscript.app.sidebar-items
   (:require [clojure.string :as str]
             [svg-hiccup-kit.core :as shk]
+            [z-com.standard :as zc-std]
             [reagent.core :as r]
+
+            [paintscript.util :as u]
             [paintscript.nav :as nav]
             [paintscript.els :as els]
             [paintscript.paint :as paint]
-            [paintscript.render :as render]
-            [z-com.standard :as zc-std]
-            [paintscript.util :as u]))
+            [paintscript.render :as render]))
 
 (defn- pth-rec-status
   "notes:
@@ -34,7 +35,7 @@
                          [:src-k :x-el-k :p-el-i :xy-i])]
         [sel? false]))))
 
-(defn sidebar-script-item
+(defn sidebar-source-item
   [dispatch! !sel-rec sel-rec-dispatcher
    cmpt-sel
    s-el-i
@@ -81,12 +82,11 @@
                          i-arg0
                          args]} (els/el-vec-->el-rec p-el)
 
-                 p-el-i'   (+ nav/p-el-i0
-                              p-el-i)
-                 pth-rec*  (-> pth-rec* (assoc :p-el-i p-el-i'))
-
+                 p-el-i'        (+ nav/p-el-i0
+                                   p-el-i)
+                 pth-rec*       (-> pth-rec* (assoc :p-el-i p-el-i'))
                  [sel?
-                  foc?]    (pth-rec-status sel-rec pth-rec*)]
+                  foc?]         (pth-rec-status sel-rec pth-rec*)]
              ^{:key p-el-i}
              [:li {:class (when foc? "active")
                    :on-click (sel-rec-dispatcher pth-rec*)}
@@ -109,77 +109,80 @@
                 (render/path paint/svg-renderer cmpt-sel s-el-opts )
                 (apply shk/d))])])]))
 
+(defn cmpt-pth-view [dispatch! cmpt-pth]
+  (let [cmpt-id-active (last cmpt-pth)]
+    [:li.cmpt-pth
+     [:ol.cmpt-pth
+      (loop [cmpt-pth-acc      nil
+             [cmpt-id
+              & cmpt-pth-tail] (cons :root cmpt-pth)
+             li-seq            (list)]
+        (if-not cmpt-id
+          (reverse li-seq)
+          (let [cmpt-pth-acc' (-> cmpt-pth-acc (cond-> (not= :root cmpt-id)
+                                                       (conj cmpt-id)))
+                active?       (= cmpt-id-active
+                                 cmpt-id)]
+            (recur cmpt-pth-acc'
+                   cmpt-pth-tail
+                   (-> li-seq
+                       (conj
+                        ^{:key cmpt-id}
+                        [:li (if active?
+                               {:class "current"}
+                               {:on-click #(dispatch!
+                                            [:sel-rec
+                                             (nav/pth-rec :cmpt-pth cmpt-pth-acc')])})
+                         [:span.cmpt-id cmpt-id]]))))))]]))
+
 
 (defn sidebar-items
-  [dispatch! !sel-rec
-   cmpt-root cmpt-sel]
-  (let [{:as sel-rec :keys [ref-pth cmpt-pth]} @!sel-rec
+  [dispatch! !sel-rec cmpt-root cmpt-sel]
+  (let [{:as sel-rec
+         :keys [ref-pth
+                cmpt-pth]} @!sel-rec
 
-        sel-rec-dispatcher
-        (fn [sel-rec*]
-          (fn [^js ev]
-            (.stopPropagation ev)
-            (dispatch! [:sel-rec (when (not= @!sel-rec
-                                             sel-rec*)
-                                   sel-rec*)])))]
-    [:ol.s-els
+        sel-rec-dispatcher (fn [sel-rec*]
+                             (fn [^js ev]
+                               (.stopPropagation ev)
+                               (dispatch! [:sel-rec (when (not= @!sel-rec
+                                                                sel-rec*)
+                                                      sel-rec*)])))]
+    [:div.sidebar-items
+     [:ol.s-els
 
-     ;; --- cmpt-pth
+      ;; --- cmpt-pth
 
-     (when cmpt-pth
-       (let [cmpt-id-active (last cmpt-pth)]
-         ;; TODO: distinguish cmpt-pth0 & ref-pth
-         [:li.cmpt-pth
-          [:ol.cmpt-pth
-           (loop [cmpt-pth-acc nil
-                  [cmpt-id
-                   & cmpt-pth-tail] (cons :root cmpt-pth)
-                  li-seq (list)]
-             (if-not cmpt-id
-               (reverse li-seq)
-               (let [cmpt-pth-acc' (-> cmpt-pth-acc (cond-> (not= :root cmpt-id)
-                                                            (conj cmpt-id)))
-                     active?       (= cmpt-id-active
-                                      cmpt-id)]
-                 (recur cmpt-pth-acc'
-                        cmpt-pth-tail
-                        (-> li-seq
-                            (conj
-                             ^{:key cmpt-id}
-                             [:li (if active?
-                                    {:class "current"}
-                                    {:on-click #(dispatch!
-                                                 [:sel-rec
-                                                  (nav/pth-rec :cmpt-pth cmpt-pth-acc')])})
-                              [:span.cmpt-id cmpt-id]]))))))]]))
+      (when cmpt-pth
+        [cmpt-pth-view dispatch! cmpt-pth])
 
-     ;; --- ref-pth
+      ;; --- ref-pth
 
-     (when ref-pth
-       [:li.cmpt-pth
-        [zc-std/checkbox
-         :model     true
-         :on-change #(dispatch! [:disable-ref-pth])
-         :label     (str "in context (" (->> ref-pth
-                                             (map #(str "$" (:cmpt-id %)))
-                                             (cons "root")
-                                             (str/join " → "))
-                         ")")]])
+      (when ref-pth
+        [:li.cmpt-pth
+         [zc-std/checkbox
+          :model     true
+          :on-change #(dispatch! [:disable-ref-pth])
+          :label     (str "in context (" (->> ref-pth
+                                              (map #(str "$" (:cmpt-id %)))
+                                              (cons "root")
+                                              (str/join " → "))
+                          ")")]])
 
-     ;; --- cmpt-selector
+      ;; --- cmpt-selector
 
-     (when-let [cmpts (get-in cmpt-sel [:defs :components])]
-       [:li.cmpt-sel
-        [zc-std/select
-         :model     (or (-> @!sel-rec :cmpt-pth last)
-                        "root")
-         :options   (cons "root"
-                          (keys cmpts))
-         :on-change #(dispatch! [:sel-cmpt-id %])]])
+      (when-let [cmpts (get-in cmpt-sel [:defs :components])]
+        [:li.cmpt-sel
+         [zc-std/select
+          :model     (or (-> @!sel-rec :cmpt-pth last)
+                         "root")
+          :options   (cons "root"
+                           (keys cmpts))
+          :on-change #(dispatch! [:sel-cmpt-id %])]])
 
-     ;; --- script items
+      ;; --- script items
 
-     (for [[s-el-i
-            s-el] (map-indexed vector (:script cmpt-sel))]
-       ^{:key s-el-i}
-       [sidebar-script-item dispatch! !sel-rec sel-rec-dispatcher cmpt-sel s-el-i s-el])]))
+      (for [[s-el-i
+             s-el] (map-indexed vector (:script cmpt-sel))]
+        ^{:key s-el-i}
+        [sidebar-source-item dispatch! !sel-rec sel-rec-dispatcher cmpt-sel s-el-i s-el])]]))

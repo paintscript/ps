@@ -15,7 +15,7 @@
             [paintscript.conv :as conv]
             #?(:cljs [paintscript.app.ops-svg :as ops-svg])
             [paintscript.app.s-log :as s-log]
-            [paintscript.app.s-app :as s-app]))
+            #?(:cljs [paintscript.app.s-app :as s-app])))
 
 (def cmpt-clear {:defs {} :script []})
 
@@ -109,7 +109,12 @@
   [s-log cmpt {:as ui :keys [sel-rec]}
    [op-k & [arg :as args] :as op]]
   (case op-k
-    :op/set-cmpt-str   {:cmpt   (edn/read-string arg)}
+    :op/set-cmpt-str   (let [cmpt-edn (edn/read-string arg)]
+                         {:cmpt (if (:cmpt-pth sel-rec)
+                                  (nav/update-in-pth* cmpt sel-rec :cmpt-pth
+                                                      (fn [_]
+                                                        cmpt-edn))
+                                  cmpt-edn)})
     :op/set-config-str {:config (edn/read-string arg)}
 
     (:op.s-log/activate

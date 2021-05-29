@@ -11,16 +11,22 @@
             [paintscript.util :as u]
             [paintscript.nav :as nav]
             [paintscript.app.s-log :as s-log]
-            [paintscript.app.sidebar-items :refer [sidebar-items]]))
+            [paintscript.app.sidebar-items :refer [sidebar-items
+                                                   cmpt-pth-view]]))
 
 (defn- canvas-sidebar
   [dispatch! !ui !shell !s-log !tab !sel-rec
-   config cmpt cmpt-sel]
+   conf-ext cmpt-root]
   (let [tab     @!tab
+        sel-rec @!sel-rec
         status? (and false ;; TODO: status-stack obsolete?
-                     @!sel-rec
+                     sel-rec
                      (-> tab #{:tab/script
-                               :tab/items}))]
+                               :tab/items}))
+
+        ;; NOTE: uses plain cmpt-root (not merged w/ conf-ext)
+        [_cmpt-base
+         cmpt-sel] (nav/get-cmpt-sel cmpt-root @!sel-rec)]
     [:div.sidebar.script {:class (when status? "with-status")}
 
      ;; --- controls
@@ -40,19 +46,24 @@
      ;; --- main
 
      (case tab
-       :tab/items  [sidebar-items dispatch! !sel-rec cmpt cmpt-sel]
+       :tab/items  [sidebar-items dispatch! !sel-rec cmpt-root cmpt-sel]
 
-       :tab/script [:textarea
-                    {:value     (str/trim (u/pprint* cmpt))
-                     :on-focus  #(key/disable!)
-                     :on-blur   #(key/enable!)
-                     :on-change #(dispatch! [:op/set-cmpt-str (-> % .-target .-value)])}]
+       :tab/script [:div.sidebar-source
+                    [:ol.s-els
+                     [cmpt-pth-view dispatch! (:cmpt-pth sel-rec)]
+                     [:li.textarea
+                      [:textarea
+                       {:value     (str/trim (u/pprint* cmpt-sel))
+                        :on-focus  #(key/disable!)
+                        :on-blur   #(key/enable!)
+                        :on-change #(dispatch! [:op/set-cmpt-str (-> % .-target .-value)])}]]]]
 
-       :tab/config [:textarea
-                    {:value     (str/trim (u/pprint* config))
-                     :on-focus  #(key/disable!)
-                     :on-blur   #(key/enable!)
-                     :on-change #(dispatch! [:op/set-config-str (-> % .-target .-value)])}]
+       :tab/config [:div.sidebar-config
+                    [:textarea
+                     {:value     (str/trim (u/pprint* conf-ext))
+                      :on-focus  #(key/disable!)
+                      :on-blur   #(key/enable!)
+                      :on-change #(dispatch! [:op/set-config-str (-> % .-target .-value)])}]]
 
        :tab/log    (let [[i-active i-s-items] (s-log/items !s-log)]
                      [:ol.log
