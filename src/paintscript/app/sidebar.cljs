@@ -32,7 +32,10 @@
      ;; --- controls
 
      [:div.controls
-      (for [tab-k [:tab/items :tab/script :tab/config :tab/log]]
+      (for [tab-k [:tab/items
+                   :tab/script
+                   :tab/config
+                   :tab/log]]
         ^{:key tab-k}
         [zc/button
          :label    (name tab-k)
@@ -72,8 +75,9 @@
                         [:li.log-item
                          {:class         (when (= i-active i) "active")
                           :on-click      #(dispatch! [:op.s-log/activate i])
-                          :on-mouse-over #(dispatch! [:op.s-log/preview i])
-                          :on-mouse-out  #(dispatch! [:op.s-log/activate i-active])}
+                          ; :on-mouse-over #(dispatch! [:op.s-log/preview i])
+                          ; :on-mouse-out  #(dispatch! [:op.s-log/activate i-active])
+                          }
                          n ". " (pr-str op)])]))
 
      ;; --- shell

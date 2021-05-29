@@ -1,20 +1,23 @@
 (ns paintscript.app.ctl
   (:require [clojure.pprint :refer [pprint]]
-            #?(:cljs [reagent.core :as r :refer [atom]])
-            #?(:cljs [cljs.reader :refer [read-string]])
+            [clojure.edn :as edn]
             [clojure.string :as str]
             [clojure.set :as set]
             [clojure.walk :as w]
             [clojure.edn :as edn]
+
+            #?(:cljs [reagent.core :as r :refer [atom]])
             [svg-hiccup-kit.core :refer [d d2]]
+
             [paintscript.util :as u]
             [paintscript.el-path :as el]
             [paintscript.ops :as ops]
 
             [paintscript.nav :as nav]
             [paintscript.conv :as conv]
-            #?(:cljs [paintscript.app.ops-svg :as ops-svg])
+
             [paintscript.app.s-log :as s-log]
+            #?(:cljs [paintscript.app.ops-svg :as ops-svg])
             #?(:cljs [paintscript.app.s-app :as s-app])))
 
 (def cmpt-clear {:defs {} :script []})
@@ -24,8 +27,8 @@
    (-> ev .-clientY)])
 
 (defn- read-xy-str [[x y]]
-  [(or (some-> x read-string) 0)
-   (or (some-> y read-string) 0)])
+  [(or (some-> x edn/read-string) 0)
+   (or (some-> y edn/read-string) 0)])
 
 (defn parse-cmd-line [cmd-line]
   (let [[cmd-str & args] (str/split cmd-line #" ")
@@ -53,14 +56,14 @@
                         [:translate xy])
         ("rt"
          "rotate")    (let [[a cx cy] args
-                            alpha  (read-string a)
+                            alpha  (edn/read-string a)
                             center (if (and cx cy)
                                      (read-xy-str [cx cy])
                                      [50 50])]
                         [:rotate alpha center])
         ("sc"
          "scale")     (let [[n cx cy] args
-                            n      (read-string n)
+                            n      (edn/read-string n)
                             center (if (and cx cy)
                                      (read-xy-str [cx cy])
                                      [50 50])]
@@ -70,8 +73,8 @@
 
         "mirror"      (let [[axis pos] args]
                         [:mirror
-                         (some-> axis read-string)
-                         (some-> pos  read-string)])
+                         (some-> axis edn/read-string)
+                         (some-> pos  edn/read-string)])
 
         "to"          [:el-tf (-> args first keyword)]
         "d"           [:toggle-d]
@@ -93,7 +96,7 @@
         "clear"       [:op.s-log/clear]
         "def"         (let [[pk] args]
                         [:def pk])
-        "script"      (let [sel-path (map read-string args)]
+        "script"      (let [sel-path (map edn/read-string args)]
                         [:sel-rec (cons :script sel-path)])
         "svg"         [:svg-path (str/join " " args)]
         "snap"        [:toggle-snap]
@@ -105,6 +108,14 @@
         ;; else:
         (println (str "command not found: " cmd-line))))))
 
+(def s-log-ops
+  #{:op.s-log/undo
+    :op.s-log/activate
+    :op.s-log/preview
+    :op.s-log/clear
+    :op.s-log/clear<
+    :op.s-log/clear>})
+
 (defn- handle-op
   [s-log cmpt {:as ui :keys [sel-rec]}
    [op-k & [arg :as args] :as op]]
@@ -115,13 +126,7 @@
                                                       (fn [cmpt-prev]
                                                         cmpt-edn))
                                   cmpt-edn)})
-    :op/set-config-str {:config (edn/read-string arg)}
-
-    (:op.s-log/activate
-     :op.s-log/preview
-     :op.s-log/clear
-     :op.s-log/clear<
-     :op.s-log/clear>) (s-log/handle-op s-log cmpt ui op)
+    :op/set-config-str {:conf (edn/read-string arg)}
 
     :set-sel-d   (let [{:keys [cmpt0]} (:snap ui)
                        cmpt (or cmpt0  ;; dnd
@@ -273,50 +278,60 @@
   (let [{:keys [dims scale]} (:canvas cmpt)]
     (mapv (partial * scale) dims)))
 
-(defn dispatch! [!config !cmpt !s-log !ui
+(defn dispatch! [!s-app
+                 ; !config !cmpt !s-log !ui
                  [op-k arg :as op]]
   (case op-k
     :cmd (when-let [op-vec (parse-cmd-line arg)]
-           (dispatch! !config !cmpt !s-log !ui op-vec))
+           (dispatch! !s-app op-vec))
 
     (:dl-png
      :dl-svg)   #?(:cljs ((case op-k :dl-png
                             ops-svg/to-png!
                             ops-svg/to-svg)
-                          (get-wh (merge @!config
-                                         @!cmpt))
-                          (:svg-dom @!ui)
+                          (let [{:keys [conf-ext
+                                        cmpt-root]} @!s-app]
+                            (get-wh (merge conf-ext
+                                           cmpt-root)))
+                          (get-in @!s-app [:ui :svg-dom])
                           #(-> % (ops-svg/download!
                                   (str "paintscript"
                                        (case op-k :dl-png ".png" ".svg")))))
                          :clj nil)
 
     ;; else:
-    (let [cmpt   @!cmpt
-          ui     @!ui
-          config @!config
-          s-log  @!s-log]
+    (let [{:as s-app
+           :keys [conf-ext
+                  cmpt-root
+                  ui
+                  s-log]} @!s-app]
       (try
-        (let [{cmpt'   :cmpt
-               ui'     :ui
-               config' :config} (handle-op s-log cmpt ui op)]
+        (let [{cmpt'  :cmpt
+               ui'    :ui
+               conf'  :conf
+               s-log' :s-log} (if (-> op-k s-log-ops)
+                                (s-log/handle-op s-log cmpt-root ui op)
+                                (handle-op s-log cmpt-root ui op))]
           (do
-            (when cmpt'   (reset! !cmpt cmpt'))
-            (when ui'     (reset! !ui ui'))
-            (when config' (reset! !config config'))
-            (s-log/add !s-log {:op     op
-                               :config config
-                               :cmpt   (or cmpt' cmpt)
-                               :ui     (-> (or ui'     ui)
-                                           (cond-> (= :set-sel-d op-k)
-                                                   (assoc :snap nil)))})))
+            (swap! !s-app
+                   (fn [s-app]
+                     (let [s-app' (-> s-app
+                                      (cond-> conf'  (assoc :conf-ext  conf')
+                                              cmpt'  (assoc :cmpt-root cmpt')
+                                              ui'    (assoc :ui        ui')
+                                              s-log' (assoc :s-log     s-log')))]
+                       (-> s-app'
+                           (cond-> (not (-> op-k s-log-ops))
+                                   (update :s-log s-log/add
+                                           {:op    op
+                                            :s-app (-> s-app'
+                                                       (cond-> (= :set-sel-d op-k)
+                                                               (update :ui assoc :snap nil)))}))))))))
         (catch #?(:cljs :default :clj Exception) e
           (do
             (println "op failed: " (pr-str op))
             #?(:cljs (js/console.log e))
-            (reset! !cmpt   cmpt)
-            (reset! !config config)
-            (reset! !ui     ui)))))))
+            (reset! !s-app s-app)))))))
 
 (defn- pth->cp-ii [pth p-el-i]
   (let [p-el-i' (inc p-el-i)]

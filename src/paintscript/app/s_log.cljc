@@ -43,29 +43,28 @@
                                                 (drop i-active))])]
             [i [s ss]]))]
 
-    {:s-log {:i-active i-active'
-             :s-items  s-items'}
-     :cmpt  (:cmpt     s-active')
-     :ui    (:ui       s-active')}))
+    {:s-log {:i-active  i-active'
+             :s-items   s-items'}
+     :cmpt  (get-in s-active' [:s-app :cmpt-root])
+     :ui    (-> (get-in s-active' [:s-app :ui])
+                (assoc :tab :tab/log))}))
 
 (defn items [!s-log]
   (let [{:keys [i-active s-items]} @!s-log]
     [i-active
      (map-indexed vector s-items)]))
 
-(defn add [!s-log s-item]
-  (let [{:as s-log
-         [{:as s-curr :keys [n]} :as s-items] :s-items} @!s-log]
-    (reset! !s-log
-            {:i-active 0
-             :s-items
-             (if (and (= :set-sel-d
-                         (first (:op s-curr))
-                         (first (:op s-item)))
-                      (= (-> s-curr :ui :sel)
-                         (-> s-item :ui :sel)))
-               (-> s-items
-                   rest
-                   (conj (-> s-item (assoc :n n))))
-               (-> s-items
-                   (conj (-> s-item (assoc :n (-> n inc))))))})))
+(defn add [{:as s-log
+            [{:as s-curr :keys [n]} :as s-items] :s-items} s-item]
+  {:i-active 0
+   :s-items
+   (if (and (= :set-sel-d
+               (first (:op s-curr))
+               (first (:op s-item)))
+            (= (-> s-curr :ui :sel)
+               (-> s-item :ui :sel)))
+     (-> s-items
+         rest
+         (conj (-> s-item (assoc :n n))))
+     (-> s-items
+         (conj (-> s-item (assoc :n (-> n inc))))))})

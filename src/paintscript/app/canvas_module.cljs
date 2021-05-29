@@ -27,15 +27,15 @@
                                           :snap-to-grid? true
                                           :insert-mode?  true
                                           :shell         ""}
-                                     :conf conf0
-                                     :cmpt cmpt0
-                                     :op-log nil})
+                                     :conf-ext  conf0
+                                     :cmpt-root cmpt0
+                                     :s-log     nil})
 
                !ui          (r/cursor !s-app [:ui])
-               !conf-ext    (r/cursor !s-app [:conf])
-               !scale       (r/cursor !s-app [:conf :canvas :scale])
-               !cmpt-root   (r/cursor !s-app [:cmpt])
-               !s-log       (r/cursor !s-app [:op-log])
+               !conf-ext    (r/cursor !s-app [:conf-ext])
+               !scale       (r/cursor !s-app [:conf-ext :canvas :scale])
+               !cmpt-root   (r/cursor !s-app [:cmpt-root])
+               !s-log       (r/cursor !s-app [:s-log])
 
                !win-dims    (r/cursor !s-app [:ui :window-dims])
                !hov-rec     (r/cursor !s-app [:ui :hov-rec])
@@ -44,7 +44,7 @@
                !sel-rec     (r/cursor !s-app [:ui :sel-rec])
                !sel-set     (r/cursor !s-app [:ui :sel-set])
 
-               dispatch!      (partial ctl/dispatch! !conf-ext !cmpt-root !s-log !ui)
+               dispatch!      (partial ctl/dispatch! !s-app)
                derive-dnd-fns (ctl/drag-and-drop-fns !cmpt-root !ui dispatch!)
                kb-fns         (ctl/keybind-fns       !cmpt-root !ui dispatch!)
 
@@ -74,7 +74,7 @@
                                 (fn [e info]
                                   (println :paint-error e)
                                   (js/console.log e)
-                                  (dispatch! [:undo]))})
+                                  (dispatch! [:op.s-log/undo]))})
 
                on-resize! (fn [arg]
                             ;; NOTE: invoked first by svg's :ref with canvas arg,

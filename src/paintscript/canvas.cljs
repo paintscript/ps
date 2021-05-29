@@ -150,27 +150,27 @@
             coords? true}} :canvas}
    cmpt-sel
    out-tups]
-  (r/with-let [!svg-dom        (if full-screen?
-                                 (get-in @!s-app [:ui :!full-svg])
-                                 (atom nil))
-               !hov-rec        (r/cursor !s-app [:ui :hov-rec])
-               !sel-rec        (r/cursor !s-app [:ui :sel-rec])
+  (r/with-let [!svg-dom    (if full-screen?
+                             (get-in @!s-app [:ui :!full-svg])
+                             (atom nil))
+               !hov-rec    (r/cursor !s-app [:ui :hov-rec])
+               !sel-rec    (r/cursor !s-app [:ui :sel-rec])
 
-               wh0             (get-in cmpt-base [:canvas :dims])
+               wh0         (get-in cmpt-base [:canvas :dims])
 
-               !svg-params     (if full-screen?
-                                 (r/cursor !s-app [:ui :full-svg-params])
-                                 (delay {:scale      scale
-                                         :canvas-wh  (->> wh0 (mapv #(* % scale)))
-                                         :canvas-xy0 [0 0]}))
+               !svg-params (if full-screen?
+                             (r/cursor !s-app [:ui :full-svg-params])
+                             (delay {:scale      scale
+                                     :canvas-wh  (->> wh0 (mapv #(* % scale)))
+                                     :canvas-xy0 [0 0]}))
 
-               dnd-fns         (when c-app
-                                 (derive-dnd-fns !s-app !svg-dom canvas))
+               dnd-fns     (when c-app
+                             (derive-dnd-fns !s-app !svg-dom canvas))
 
-               ref-fn          #(when (and % (not= % @!svg-dom))
-                                  (reset! !svg-dom %)
-                                  (let [on-resize! @(r/cursor !s-app [:ui :on-resize!])]
-                                    (on-resize! canvas)))]
+               ref-fn      #(when (and % (not= % @!svg-dom))
+                              (reset! !svg-dom %)
+                              (let [on-resize! @(r/cursor !s-app [:ui :on-resize!])]
+                                (on-resize! canvas)))]
 
     (let [{:as svg-params
            :keys
@@ -294,7 +294,7 @@
         (catch :default err
           (println :paint-exec-error)
           (js/console.log err)
-          (dispatch! [:undo]))))))
+          (dispatch! [:op.s-log/undo]))))))
 
 (defn canvas-paint
   ([cmpt-root]
