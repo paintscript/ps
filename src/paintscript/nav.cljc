@@ -35,15 +35,15 @@
 (def kk-rev    (reverse kk-all))
 
 (defn pth-rec->vec
-  ([pth-rec] (pth-rec->vec pth-rec nil))
-  ([{:as pth-rec :keys [cmpt-pth src-k x-el-k p-el-i xy-i]} trunc-k]
-   {:pre [(instance? Pth pth-rec)]}
+  ([pthr] (pth-rec->vec pthr nil))
+  ([{:as pthr :keys [cmpt-pth src-k x-el-k p-el-i xy-i]} trunc-k]
+   {:pre [(instance? Pth pthr)]}
    (concat (-> cmpt-pth
                cmpt-pth->data-pth)
 
            ;; truncate on nil or trunc-k
            (reduce (fn [pthv k]
-                     (let [v (get pth-rec k)]
+                     (let [v (get pthr k)]
                        (-> pthv
                            (cond-> v (conj v)
                                    (or (not v)
@@ -51,35 +51,29 @@
                    []
                    kk-levels))))
 
-(defn pth-up
-  [{:as pth-rec :keys [cmpt-pth src-k x-el-k p-el-i xy-i]}]
-  (reduce (fn [_ k]
-            (when (get pth-rec k)
-              (reduced (-> pth-rec (assoc k nil)))))
-          nil
-          kk-rev))
-
-(defn truncate-pth [pth-rec k-last]
+(defn truncate-pth [pthr k-last]
   (loop [[k & kk] kk-all
          trunc?   false
-         pth-rec  pth-rec]
+         pthr     pthr]
     (cond
-      (not k)      pth-rec
-      (= k-last k) (recur kk true pth-rec)
-      :else        (let [pth-rec (-> pth-rec
-                                     (cond-> trunc? (assoc k nil)))]
-                     (recur kk trunc? pth-rec)))))
+      (not k)      pthr
+      (= k-last k) (recur kk true pthr)
+      :else        (let [pthr (-> pthr
+                                  (cond-> trunc? (assoc k nil)))]
+                     (recur kk trunc? pthr)))))
 
-(defn get-in-pth [cmpt-root pth-rec trunc-k]
-  (get-in cmpt-root (pth-rec->vec pth-rec trunc-k)))
+(defn get-in-pth
+  ([cmpt-root pthr] (get-in-pth cmpt-root pthr nil))
+  ([cmpt-root pthr trunc-k]
+   (get-in cmpt-root (pth-rec->vec pthr trunc-k))))
 
-(defn update-in-pth [cmpt-root pth-rec f & args]
-  (apply update-in cmpt-root (pth-rec->vec pth-rec) f args))
+(defn update-in-pth [cmpt-root pthr f & args]
+  (apply update-in cmpt-root (pth-rec->vec pthr) f args))
 
-(defn update-in-pth* [cmpt-root pth-rec trunc-k f & args]
-  (if-not (get pth-rec trunc-k)
+(defn update-in-pth* [cmpt-root pthr trunc-k f & args]
+  (if-not (get pthr trunc-k)
     cmpt-root
-    (apply update-in cmpt-root (pth-rec->vec pth-rec trunc-k) f args)))
+    (apply update-in cmpt-root (pth-rec->vec pthr trunc-k) f args)))
 
 (defn- cmpt->index [cmpt-pth cmpt]
   (->> (keys (get-in cmpt [:defs :components]))
@@ -148,8 +142,70 @@
                                           :defs
                                           :attr-classes])))))
 
-(defn xy-pth? [pth-rec]
-  (:xy-i pth-rec))
+(defn- pth-head-k [pthr]
+  (->> kk-rev
+       (filter #(get pthr %))
+       first))
+
+(defn pth-up [pthr & {:keys [drop-src-k?]}]
+  (when-let [k (pth-head-k pthr)]
+    (-> pthr
+        (assoc k nil)
+        (cond-> (and (= :x-el-k k)
+                     drop-src-k?)
+                (assoc :src-k nil)
+
+                (and (= :cmpt-pth k)
+                     (:ref-pth pthr))
+                (update :ref-pth butlast)))))
+
+(defn pth-max [pthr cmpt]
+  (-> (get-in-pth cmpt (-> pthr
+                           pth-up))
+      count
+      (- 1)))
+
+(defn pth-next [pthr cmpt]
+  (if-let [k (pth-head-k pthr)]
+    (-> pthr
+        (update k #(-> % inc (min (pth-max pthr cmpt)))))
+    (pth-rec :src-k :script
+             :x-el-k 0)))
+
+(defn pth-prev [pthr]
+  (when-let [k (pth-head-k pthr)]
+    (-> pthr
+        (update k #(-> % dec (max (case k
+                                    :p-el-i 2
+                                    :xy-i 1
+                                    0)))))))
+
+(defn sel-ref [sel-rec cmpt [_s-el-k
+                             s-el-opts
+                             cmpt-id]]
+  (let [ref-item  (-> s-el-opts (assoc :cmpt-id cmpt-id))
+        ref-pth'  (-> (:ref-pth sel-rec) (u/conjv ref-item))
+        cmpt-pth0 (:cmpt-pth0 sel-rec)
+        cmpt-pth  (ref-pth->cmpt-pth cmpt cmpt-pth0 ref-pth')]
+    (pth-rec
+     :cmpt-pth0 cmpt-pth0
+     :ref-pth   ref-pth'
+     :cmpt-pth  cmpt-pth)))
+
+(defn pth-down [pthr cmpt]
+  (when-let [k (pth-head-k pthr)]
+    (case k
+      :cmpt-pth (-> pthr (assoc :src-k  :script
+                                :x-el-k 0))
+      :x-el-k   (let [[x-el-k :as ref-el] (get-in-pth cmpt pthr)]
+                  (case x-el-k
+                    :ref (-> pthr (sel-ref cmpt ref-el))
+                    (-> pthr (assoc :p-el-i 2))))
+      :p-el-i   (-> pthr (assoc :xy-i   1))
+      pthr)))
+
+(defn xy-pth? [pthr]
+  (:xy-i pthr))
 
 (def p-el-i0 2) ;; offset for first path-el in path
 (def xy-i0   1) ;; offset for first xy in path-el

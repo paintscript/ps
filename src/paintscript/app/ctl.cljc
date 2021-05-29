@@ -82,9 +82,10 @@
         ;; --- configure
         "p-mirror"    (let [[?mode-str] args]
                         [:set-p-opts [:mirror {:mode (or (some-> ?mode-str keyword) :separate)}]])
-        "attr-class"     (let [[?class] args
+        "attr-class"  (let [[?class] args
                             attr-class (or ?class "outline")]
                         [:set-p-opts [:attr-class attr-class]])
+        "rm-attrs"    [:set-p-opts [:attrs nil]]
         "variant-key" (let [[?variant] args
                             variant-key (or ?variant "outline")]
                         [:set-p-opts [:variant-key variant-key]])
@@ -239,18 +240,16 @@
                           (cond-> (nil? arg)
                                   (assoc :snap nil)))}
 
-    :sel-ref     (let [[_s-el-k
-                        s-el-opts
-                        cmpt-id] arg
-                       ref-item      (-> s-el-opts (assoc :cmpt-id cmpt-id))
-                       ref-pth'      (-> (:ref-pth sel-rec) (u/conjv ref-item))
-                       cmpt-pth0     (:cmpt-pth0 sel-rec)
-                       cmpt-pth      (nav/ref-pth->cmpt-pth cmpt cmpt-pth0 ref-pth')
-                       sel-rec       (nav/pth-rec
-                                      :cmpt-pth0 cmpt-pth0
-                                      :ref-pth   ref-pth'
-                                      :cmpt-pth  cmpt-pth)]
-                   (handle-op s-log cmpt ui [:sel-rec sel-rec]))
+    :sel-ref     (handle-op s-log cmpt ui
+                            [:sel-rec (-> sel-rec (nav/sel-ref cmpt arg))])
+
+    :sel-rel     (handle-op s-log cmpt ui
+                            [:sel-rec
+                             (case arg
+                               :next (-> sel-rec (nav/pth-next cmpt))
+                               :prev (-> sel-rec nav/pth-prev)
+                               :up   (-> sel-rec (nav/pth-up :drop-src-k? true))
+                               :open (-> sel-rec (nav/pth-down cmpt)))])
 
     :disable-ref-pth {:ui (-> ui
                               (update :sel-rec #(-> %
@@ -264,7 +263,9 @@
                                                      :cmpt-pth  cmpt-pth')]))
 
     :set-p-opts  (let [[k v] arg]
-                   {:cmpt (-> cmpt (ops/update-p-opts sel-rec assoc k v))})
+                   {:cmpt (if v
+                            (-> cmpt (ops/update-p-opts sel-rec assoc  k v))
+                            (-> cmpt (ops/update-p-opts sel-rec dissoc k)))})
 
     :toggle-d    (let [[k v] arg]
                    {:cmpt (-> cmpt (ops/toggle-d sel-rec))})
@@ -434,6 +435,10 @@
    "up"        #(dispatch! [:set-sel-d [0 -1]])
    "down"      #(dispatch! [:set-sel-d [0 1]])
    "backspace" #(when (:sel-rec @!ui) (dispatch! [:del-sel]))
+   "j"         #(dispatch! [:sel-rel :next])
+   "k"         #(dispatch! [:sel-rel :prev])
+   "u"         #(dispatch! [:sel-rel :up])
+   "o"         #(dispatch! [:sel-rel :open])
    "d"         #(dispatch! [:toggle-d])
    "c"         #(dispatch! [:el-tf :C])
    "q"         #(dispatch! [:el-tf :Q])
