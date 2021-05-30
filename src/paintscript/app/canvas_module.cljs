@@ -20,8 +20,8 @@
                                                             :canvas-wh  [800 800]
                                                             :canvas-xy0 [0 0]}
                                           :tab           :tab/items
-                                          :hov-rec       nil
-                                          :sel-rec       nil
+                                          :navr-hov       nil
+                                          :navr-sel       nil
                                           :sel-set       nil
                                           :snap          nil
                                           :snap-to-grid? true
@@ -38,31 +38,31 @@
                !s-log       (r/cursor !s-app [:s-log])
 
                !win-dims    (r/cursor !s-app [:ui :window-dims])
-               !hov-rec     (r/cursor !s-app [:ui :hov-rec])
+               !navr-hov    (r/cursor !s-app [:ui :navr-hov])
                !tab         (r/cursor !s-app [:ui :tab])
                !shell       (r/cursor !s-app [:ui :shell])
-               !sel-rec     (r/cursor !s-app [:ui :sel-rec])
+               !navr-sel    (r/cursor !s-app [:ui :navr-sel])
                !sel-set     (r/cursor !s-app [:ui :sel-set])
 
                dispatch!      (partial ctl/dispatch! !s-app)
                derive-dnd-fns (ctl/drag-and-drop-fns !cmpt-root !ui dispatch!)
                kb-fns         (ctl/keybind-fns       !cmpt-root !ui dispatch!)
 
-               report-down! (fn [pth-rec i-main shift?]
-                              (let [sel-rec (-> pth-rec
-                                                (with-meta {:main?  (not i-main)
-                                                            :shift? shift?}))]
+               report-down! (fn [navr i-main shift?]
+                              (let [navr-sel (-> navr
+                                                 (with-meta {:main?  (not i-main)
+                                                             :shift? shift?}))]
                                 ; NOTE: toggle doesn't work w/ select followed
                                 ;; by select+drag
-                                ; (swap! !sel-rec #(when (not= % sel-rec) sel-rec))
-                                (reset! !sel-rec sel-rec)))
+                                ; (swap! !navr-sel #(when (not= % navr-sel) navr-sel))
+                                (reset! !navr-sel navr-sel)))
 
-               report-over! (fn [pth-rec val]
-                              (swap! !hov-rec
+               report-over! (fn [navr val]
+                              (swap! !navr-hov
                                      #(cond
-                                        val           pth-rec
-                                        (= pth-rec %) nil
-                                        :else         %)))
+                                        val        navr
+                                        (= navr %) nil
+                                        :else      %)))
 
                ; (reset! !s-log (s-log/init @!cmpt-root @!ui))
 
@@ -93,38 +93,38 @@
                _ (.addEventListener js/window "resize" on-resize!)]
 
     (let [conf-ext   @!conf-ext
-          sel-rec    @!sel-rec
+          navr-sel   @!navr-sel
           cmpt-root  @!cmpt-root
-          hov-rec    @!hov-rec
+          navr-hov   @!navr-hov
 
           c-app      {:dispatch!      dispatch!
                       :report-down!   report-down!
                       :report-over!   report-over!
                       :derive-dnd-fns derive-dnd-fns}
 
-          s-app      {:hov-rec hov-rec
-                      :sel-rec sel-rec}
+          s-app      {:navr-hov navr-hov
+                      :navr-sel navr-sel}
 
           cmpt-root* (u/deep-merge conf-ext
                                    (:config cmpt-root)
                                    cmpt-root)
 
           [cmpt-base
-           cmpt-sel] (nav/get-cmpt-sel cmpt-root* sel-rec)
+           cmpt-sel] (nav/get-cmpt-sel cmpt-root* navr-sel)
 
           cmpt-base* (-> cmpt-base
                          (nav/cmpt-merge-canvas cmpt-root*
-                                                (nav/pth-rec :cmpt-pth (:cmpt-pth0 sel-rec))))
+                                                (nav/nav-rec :cmpt-pth (:cmpt-pth0 navr-sel))))
 
           cmpt-sel*  (-> cmpt-sel
                          ;; NOTE: merges upstream defs (needed to resolve refs
                          ;; during render)
-                         (nav/cmpt-merge-defs cmpt-root* sel-rec)
-                         (update :script els/attach-pth-rec-meta* sel-rec))]
+                         (nav/cmpt-merge-defs cmpt-root* navr-sel)
+                         (update :script els/attach-nav-rec-meta* navr-sel))]
       [:div.canvas
        [:div.sidebar.script-phantom]
 
-       [canvas-sidebar dispatch! !ui !shell !s-log !tab !sel-rec conf-ext cmpt-root]
+       [canvas-sidebar dispatch! !ui !shell !s-log !tab !navr-sel conf-ext cmpt-root]
        [canvas-paint'  c-app !s-app cmpt-root* cmpt-base* cmpt-sel*]])
     (finally
       (.removeEventListener js/window "resize" on-resize!))))

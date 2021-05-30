@@ -22,7 +22,7 @@
                    :ops/del-el       (apply ops/del-el     els ii)
                    :ops/append-pth   (apply ops/append-pth script ii)
                    :ops/del-pth      (apply ops/del-pth    script ii)
-                   :ops/tl-pth       (ops/translate cmpt (nav/pth-vec->rec ii) tl)
+                   :ops/tl-pth       (ops/translate cmpt (nav/nav-vec->rec ii) tl)
                    :ops/rel->abs     (ops/absolute cmpt)
                    :ops/transform-el (ops/transform-el els i to)))))))}})
 

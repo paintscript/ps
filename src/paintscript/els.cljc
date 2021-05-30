@@ -142,12 +142,12 @@
       (update :defs   (partial u/map-vals #(apply f % args)))
       (update :script (partial mapv       #(apply update-p-els % f args)))))
 
-(defn update-s-el-sel [cmpt {:as sel-rec :keys [src-k]} f & args]
-  (if-not sel-rec
+(defn update-s-el-sel [cmpt {:as navr-sel :keys [src-k]} f & args]
+  (if-not navr-sel
     (apply update-s-els cmpt f args)
     (case src-k
-      :defs   (apply nav/update-in-pth* cmpt sel-rec :x-el-k f args)
-      :script (apply nav/update-in-pth* cmpt sel-rec :x-el-k update-p-els f args))))
+      :defs   (apply nav/update-in-nav* cmpt navr-sel :x-el-k f args)
+      :script (apply nav/update-in-nav* cmpt navr-sel :x-el-k update-p-els f args))))
 
 ;; --- scale
 
@@ -190,37 +190,39 @@
        p-els
        (-> p-els (normalize-p-els :op :rel->abs))))
 
-(defn- attach-pth-rec-meta
-  [pth-rec p-el-i0 p-els]
+(defn- attach-nav-rec-meta
+  ;; TODO: remove (obsolete)
+  [nav-rec p-el-i0 p-els]
   (->> p-els
        (map-indexed (fn [i p-el]
                       (-> p-el
-                          (with-meta {:pth-rec
-                                      (-> pth-rec
+                          (with-meta {:nav-rec
+                                      (-> nav-rec
                                           (assoc :p-el-i (+ p-el-i0 i)))}))))
        vec))
 
-(defn attach-pth-rec-meta*
-  [script sel-rec]
+(defn attach-nav-rec-meta*
+  ;; TODO: remove (obsolete)
+  [script navr-sel]
   (->> script
        (map-indexed
         (fn [s-el-i
              [s-el-k :as s-el]]
-          (let [pth-rec (-> (or sel-rec
-                                (nav/pth-rec))
+          (let [nav-rec (-> (or navr-sel
+                                (nav/nav-rec))
                             (assoc :src-k  :script
                                    :x-el-k s-el-i))]
             (case s-el-k
               :path (-> s-el
                         (update-p-els (fn [p-els]
-                                        (attach-pth-rec-meta pth-rec nav/p-el-i0 p-els))))
+                                        (attach-nav-rec-meta nav-rec nav/p-el-i0 p-els))))
               s-el))))
        vec))
 
 ;; TODO: rename to el-k, also use for s-el
 (defrecord El      [p-el-k opts i-arg0 args])
-(defrecord MainPnt [xy xy-abs pth-rec])
-(defrecord CtrlPnt [xy xy-abs pth-rec i-main])
+(defrecord MainPnt [xy xy-abs nav-rec])
+(defrecord CtrlPnt [xy xy-abs nav-rec i-main])
 
 (defn el-vec-->el-rec
   [[p-el-k & [arg1 :as args] :as p-el]]
@@ -233,10 +235,10 @@
   [{:as el-rec :keys [p-el-k i-arg0 args]}
    p-el-i]
   (let [{:keys
-         [pth-rec]} (meta el-rec)
+         [nav-rec]} (meta el-rec)
         cp-cnt      (dec (count args))]
     (map-indexed (fn [xy-i xy]
-                   (let [pth-rec' (-> pth-rec
+                   (let [nav-rec' (-> nav-rec
                                       (assoc :xy-i (+ i-arg0 xy-i)))]
                      ;; TODO: handle arc flags and shape commands
                      ;; NOTE: CPs always come first, the main point last
@@ -246,8 +248,8 @@
                                              (= 0 xy-i))
                                       (dec p-el-i)
                                       p-el-i)]
-                         (->CtrlPnt xy (-> xy meta :xy-abs) pth-rec' i-main))
-                       (->MainPnt xy (-> xy meta :xy-abs) pth-rec'))))
+                         (->CtrlPnt xy (-> xy meta :xy-abs) nav-rec' i-main))
+                       (->MainPnt xy (-> xy meta :xy-abs) nav-rec'))))
                  args)))
 
 (defn p-el->pnts [p-el-recs]
@@ -269,10 +271,10 @@
   (->> els
        (mapcat (fn [el]
                  (if (el/ref? el)
-                   (let [pth-rec (nav/pth-rec :src-k  :defs
+                   (let [nav-rec (nav/nav-rec :src-k  :defs
                                               :x-el-k (get el 1))]
                      (->> (resolve-els-ref defs el)
-                          (attach-pth-rec-meta pth-rec 0)))
+                          (attach-nav-rec-meta nav-rec 0)))
                    [el])))))
 
 (defn get-path-segment [src-k-sel els eli]

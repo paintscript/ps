@@ -176,16 +176,16 @@
   ([cmpt sel] (-> cmpt (els/update-s-el-sel sel els/reverse-p-els)))
   ([cmpt]     (-> cmpt (els/update-s-els        els/reverse-p-els))))
 
-(defn update-p-opts [cmpt sel-rec f & args]
+(defn update-p-opts [cmpt navr-sel f & args]
   (-> cmpt
-      (nav/update-in-pth* (-> sel-rec
+      (nav/update-in-nav* (-> navr-sel
                               (assoc :p-el-i 1)) :p-el-i
                           (fn [pth-el]
                             (apply f pth-el args)))))
 
-(defn toggle-d [cmpt sel-rec]
+(defn toggle-d [cmpt navr-sel]
   (-> cmpt
-      (nav/update-in-pth* sel-rec :x-el-k
+      (nav/update-in-nav* navr-sel :x-el-k
                           (fn [[_pth {:as p-opts :keys [d]} & p-els]]
                             (cond
                               d     (vec

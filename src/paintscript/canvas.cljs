@@ -20,11 +20,15 @@
    - subject to the same tf-params as the main render
      - this is desirable for translations and scaling of translations
      - but the scaling needs to be reversed for the sizing of the controls"
-  [{:as opts :keys [scaled report-down! report-over! coord-size controls? hov-rec sel-rec]}
+  [{:as opts :keys [coord-size scaled controls?
+                    report-down!
+                    report-over!
+                    navr-hov
+                    navr-sel]}
    els
    {:as el  :keys [p-el-k]}
    {:as pnt :keys [xy xy-abs i-main]}
-   pth-rec]
+   navr-ctx]
   (r/with-let [!hover? (r/atom false)]
     (when
       (vector? xy) ;; skip v/V, h/H
@@ -34,10 +38,10 @@
 
             cp?       (some? i-main)
 
-            sel-pv?   (and (= (:x-el-k sel-rec) (:x-el-k pth-rec))
-                           (= (:p-el-i sel-rec) (:p-el-i pth-rec)))
-            hover?    (= hov-rec pth-rec)
-            sel-pnt?  (= sel-rec pth-rec)
+            sel-pv?   (and (= (:x-el-k navr-sel) (:x-el-k navr-ctx))
+                           (= (:p-el-i navr-sel) (:p-el-i navr-ctx)))
+            hover?    (= navr-hov navr-ctx)
+            sel-pnt?  (= navr-sel navr-ctx)
             tf-params (list [:tl [x y]]
                             [:sc (/ 1 scaled)])]
 
@@ -61,9 +65,9 @@
                                     (when sel-pnt? " selected"))
                 :style         {:cursor      "pointer"
                                 :text-select "none"}
-                :on-mouse-down #(report-down! pth-rec i-main (-> % .-shiftKey))
-                :on-mouse-over #(report-over! pth-rec true)
-                :on-mouse-out  #(report-over! pth-rec false)}
+                :on-mouse-down #(report-down! navr-ctx i-main (-> % .-shiftKey))
+                :on-mouse-over #(report-over! navr-ctx true)
+                :on-mouse-out  #(report-over! navr-ctx false)}
 
             [tf tf-params
              (cond
@@ -87,12 +91,12 @@
 
 (defn plot-coords [opts p-els pnts-seq]
   (for [[el pnts] pnts-seq
-        {:as pnt :keys [xy pth-rec i-main]} (->> pnts
+        {:as pnt :keys [xy nav-rec i-main]} (->> pnts
                                                  ;; NOTE: render CPs last
                                                  (sort-by :i-main))
-        :let [_ (assert pth-rec)]]
-    ^{:key (hash pth-rec)}
-    [coord opts p-els el pnt pth-rec]))
+        :let [_ (assert nav-rec)]]
+    ^{:key (hash nav-rec)}
+    [coord opts p-els el pnt nav-rec]))
 
 (defn- derive-bg-img-attrs
   [{:as   cmpt-base :keys [canvas]}
@@ -153,8 +157,8 @@
   (r/with-let [!svg-dom    (if full-screen?
                              (get-in @!s-app [:ui :!full-svg])
                              (atom nil))
-               !hov-rec    (r/cursor !s-app [:ui :hov-rec])
-               !sel-rec    (r/cursor !s-app [:ui :sel-rec])
+               !navr-hov    (r/cursor !s-app [:ui :navr-hov])
+               !navr-sel    (r/cursor !s-app [:ui :navr-sel])
 
                wh0         (get-in cmpt-base [:canvas :dims])
 
@@ -195,10 +199,10 @@
                         :sc [scale
                              scale]}
 
-          hov-rec      @!hov-rec
-          sel-rec      @!sel-rec
+          navr-hov      @!navr-hov
+          navr-sel      @!navr-sel
 
-          tf-params    (if-let [rr (:ref-pth sel-rec)]
+          tf-params    (if-let [rr (:ref-pth navr-sel)]
                          ;; NOTE: doesn't support :repeat yet
                          (concat tf-params0
                                  (->> rr
@@ -241,24 +245,24 @@
 
           ;; --- selected segment
 
-          (when (and sel-rec
-                     (or (and (= :defs (:src-k sel-rec))
-                              (:p-el-i sel-rec))
-                         (> (:p-el-i sel-rec) nav/p-el-i0)))
+          (when (and navr-sel
+                     (or (and (= :defs (:src-k navr-sel))
+                              (:p-el-i navr-sel))
+                         (> (:p-el-i navr-sel) nav/p-el-i0)))
             (let [p-els'    (-> (nav/cmpt> cmpt-sel
-                                           :src-k (:src-k sel-rec)
-                                           :s-eli (:x-el-k sel-rec))
+                                           :src-k (:src-k navr-sel)
+                                           :s-eli (:x-el-k navr-sel))
 
                                 ;; to render an individual el it needs to be full & abs:
                                 (els/update-p-els els/normalize-p-els)
 
-                                (els/extract-p-els (:src-k  sel-rec)
-                                                   (:p-el-i sel-rec))
+                                (els/extract-p-els (:src-k  navr-sel)
+                                                   (:p-el-i navr-sel))
                                 vec)
-                  p-els-seg (els/get-path-segment (:src-k  sel-rec) p-els'
-                                                  (:p-el-i sel-rec))]
+                  p-els-seg (els/get-path-segment (:src-k  navr-sel) p-els'
+                                                  (:p-el-i navr-sel))]
               [:g.sel
-               [paint/path-builder c-fns nil {} (:x-el-k sel-rec) p-els-seg]]))
+               [paint/path-builder c-fns nil {} (:x-el-k navr-sel) p-els-seg]]))
 
           ;; --- coord circles
 
@@ -285,9 +289,9 @@
                                 :coord-size   10
                                 :report-down! report-down!
                                 :report-over! report-over!
-                                :sel-rec      sel-rec
-                                :hov-rec      hov-rec
-                                :controls?    (= (:x-el-k sel-rec)
+                                :navr-sel      navr-sel
+                                :navr-hov      navr-hov
+                                :controls?    (= (:x-el-k navr-sel)
                                                  s-el-i)}
                                p-els'
                                p-el-pnts-seq)]))])]]

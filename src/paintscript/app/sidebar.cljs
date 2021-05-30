@@ -15,18 +15,18 @@
                                                    cmpt-pth-view]]))
 
 (defn- canvas-sidebar
-  [dispatch! !ui !shell !s-log !tab !sel-rec
+  [dispatch! !ui !shell !s-log !tab !navr-sel
    conf-ext cmpt-root]
   (let [tab     @!tab
-        sel-rec @!sel-rec
+        navr-sel @!navr-sel
         status? (and false ;; TODO: status-stack obsolete?
-                     sel-rec
+                     navr-sel
                      (-> tab #{:tab/script
                                :tab/items}))
 
         ;; NOTE: uses plain cmpt-root (not merged w/ conf-ext)
         [_cmpt-base
-         cmpt-sel] (nav/get-cmpt-sel cmpt-root @!sel-rec)]
+         cmpt-sel] (nav/get-cmpt-sel cmpt-root @!navr-sel)]
     [:div.sidebar.script {:class (when status? "with-status")}
 
      ;; --- controls
@@ -49,11 +49,11 @@
      ;; --- main
 
      (case tab
-       :tab/items  [sidebar-items dispatch! !sel-rec cmpt-root cmpt-sel]
+       :tab/items  [sidebar-items dispatch! !navr-sel cmpt-root cmpt-sel]
 
        :tab/script [:div.sidebar-source
                     [:ol.s-els
-                     [cmpt-pth-view dispatch! (:cmpt-pth sel-rec)]
+                     [cmpt-pth-view dispatch! (:cmpt-pth navr-sel)]
                      [:li.textarea
                       [:textarea
                        {:value     (str/trim (u/pprint* cmpt-sel))
@@ -102,16 +102,16 @@
 
      [:div.status
       (when status?
-        (let [sel-rec           @!sel-rec
-              [_ opts :as s-el] (nav/cmpt> cmpt-sel :src-k (:src-k sel-rec) :s-eli (:x-el-k sel-rec))
-              [k & xys]         (nav/s-el> s-el  :p-eli (:p-el-i sel-rec))]
+        (let [navr-sel           @!navr-sel
+              [_ opts :as s-el] (nav/cmpt> cmpt-sel :src-k (:src-k navr-sel) :s-eli (:x-el-k navr-sel))
+              [k & xys]         (nav/s-el> s-el  :p-eli (:p-el-i navr-sel))]
           [:div.selection-stack
            [:div.selection-level.iii
-            [:span (-> sel-rec vals pr-str)]
+            [:span (-> navr-sel vals pr-str)]
             [:div.controls.crud
-             [zc/button :label "blur" :on-click #(dispatch! [:sel-rec nil])]
-             [zc/button :label "up" :on-click #(dispatch! [:sel-rec (-> sel-rec
-                                                                        nav/pth-up)])]]]
+             [zc/button :label "blur" :on-click #(dispatch! [:navr-sel nil])]
+             [zc/button :label "up" :on-click #(dispatch! [:navr-sel (-> navr-sel
+                                                                        nav/nav-up)])]]]
 
            [:div.selection-level.path
             [:span (pr-str opts)]
@@ -126,7 +126,7 @@
              [zc/button :label "del" :on-click #(dispatch! [:el-del])]]]
 
            [:div.selection-level.point
-            [:span (pr-str (nav/xys> xys :xyi (:xy-i sel-rec)))]
+            [:span (pr-str (nav/xys> xys :xyi (:xy-i navr-sel)))]
             (when (contains? #{:L :arc} k)
               [:div.controls.crud
                [zc/button :label "add" :on-click #(dispatch! [:xy-append])]

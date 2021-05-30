@@ -1,7 +1,7 @@
 (ns paintscript.nav
   (:require [paintscript.util :as u]))
 
-(defrecord Pth [cmpt-pth0 ;; base cmpt
+(defrecord Nav [cmpt-pth0 ;; base cmpt
                 ref-pth   ;; chain of references (starting from cmpt-base)
                 cmpt-pth  ;; effective cmpt-pth after resolving references
 
@@ -11,19 +11,23 @@
                 xy-i      ;; point index (within :path element)
                 ])
 
-(defn pth-rec [& {:as args :keys [ cmpt-pth src-k x-el-k p-el-i xy-i]}]
+(def kk-levels [:src-k :x-el-k :p-el-i :xy-i])
+(def kk-all    [:cmpt-pth :src-k :x-el-k :p-el-i :xy-i])
+(def kk-rev    (reverse kk-all))
+
+(defn nav-rec [& {:as args :keys [ cmpt-pth src-k x-el-k p-el-i xy-i]}]
   {:pre [(case src-k
            :script (-> x-el-k integer?)
            :defs   (-> x-el-k string?)
            true)
          (-> p-el-i ((some-fn nil? integer?)))
          (-> xy-i   ((some-fn nil? integer?)))]}
-  (map->Pth args))
+  (map->Nav args))
 
-(defn pth-vec->rec
+(defn nav-vec->rec
   ;; NOTE: only used for xspace
   [[src-k x-el-k p-el-i xy-i]]
-  (pth-rec :src-k  src-k
+  (nav-rec :src-k  src-k
            :x-el-k x-el-k
            :p-el-i p-el-i
            :xy-i   xy-i))
@@ -33,20 +37,16 @@
             (list :defs :components cmpt-id))
           cmpt-pth))
 
-(def kk-levels [:src-k :x-el-k :p-el-i :xy-i])
-(def kk-all    [:cmpt-pth :src-k :x-el-k :p-el-i :xy-i])
-(def kk-rev    (reverse kk-all))
-
-(defn pth-rec->vec
-  ([pthr] (pth-rec->vec pthr nil))
-  ([{:as pthr :keys [cmpt-pth src-k x-el-k p-el-i xy-i]} trunc-k]
-   {:pre [(instance? Pth pthr)]}
+(defn nav-rec->data-vec
+  ([navr] (nav-rec->data-vec navr nil))
+  ([{:as navr :keys [cmpt-pth src-k x-el-k p-el-i xy-i]} trunc-k]
+   {:pre [(instance? Nav navr)]}
    (concat (-> cmpt-pth
                cmpt-pth->data-pth)
 
            ;; truncate on nil or trunc-k
            (reduce (fn [pthv k]
-                     (let [v (get pthr k)]
+                     (let [v (get navr k)]
                        (-> pthv
                            (cond-> v (conj v)
                                    (or (not v)
@@ -54,29 +54,29 @@
                    []
                    kk-levels))))
 
-(defn truncate-pth [pthr k-last]
+(defn nav-truncate [navr k-last]
   (loop [[k & kk] kk-all
          trunc?   false
-         pthr     pthr]
+         navr     navr]
     (cond
-      (not k)      pthr
-      (= k-last k) (recur kk true pthr)
-      :else        (let [pthr (-> pthr
+      (not k)      navr
+      (= k-last k) (recur kk true navr)
+      :else        (let [navr (-> navr
                                   (cond-> trunc? (assoc k nil)))]
-                     (recur kk trunc? pthr)))))
+                     (recur kk trunc? navr)))))
 
-(defn get-in-pth
-  ([cmpt-root pthr] (get-in-pth cmpt-root pthr nil))
-  ([cmpt-root pthr trunc-k]
-   (get-in cmpt-root (pth-rec->vec pthr trunc-k))))
+(defn get-in-nav
+  ([cmpt-root navr] (get-in-nav cmpt-root navr nil))
+  ([cmpt-root navr trunc-k]
+   (get-in cmpt-root (nav-rec->data-vec navr trunc-k))))
 
-(defn update-in-pth [cmpt-root pthr f & args]
-  (apply update-in cmpt-root (pth-rec->vec pthr) f args))
+(defn update-in-nav [cmpt-root navr f & args]
+  (apply update-in cmpt-root (nav-rec->data-vec navr) f args))
 
-(defn update-in-pth* [cmpt-root pthr trunc-k f & args]
-  (if-not (get pthr trunc-k)
+(defn update-in-nav* [cmpt-root navr trunc-k f & args]
+  (if-not (get navr trunc-k)
     cmpt-root
-    (apply update-in cmpt-root (pth-rec->vec pthr trunc-k) f args)))
+    (apply update-in cmpt-root (nav-rec->data-vec navr trunc-k) f args)))
 
 (defn- cmpt->index [cmpt-pth cmpt]
   (->> (keys (get-in cmpt [:defs :components]))
@@ -107,7 +107,7 @@
                 (get cmpt-id->pth' cmpt-id)
                 cmpt-id->pth'))))))
 
-(defn get-cmpt-sel [cmpt-root {:as sel-rec :keys [cmpt-pth0
+(defn get-cmpt-sel [cmpt-root {:as navr-sel :keys [cmpt-pth0
                                                   ref-pth
                                                   cmpt-pth]}]
   (let [cmpt-base (-> cmpt-root
@@ -123,7 +123,7 @@
     [cmpt-base
      cmpt-sel]))
 
-(defn cmpt-merge-canvas [cmpt cmpt-root {:as sel-rec :keys [cmpt-pth]}]
+(defn cmpt-merge-canvas [cmpt cmpt-root {:as navr-sel :keys [cmpt-pth]}]
   (-> cmpt
       (cond-> cmpt-pth
               (merge (u/cascading-merges cmpt-root
@@ -132,7 +132,7 @@
                                                      (cmpt-pth->data-pth [cmpt-id]))))
                                          [:canvas])))))
 
-(defn cmpt-merge-defs [cmpt cmpt-root {:as sel-rec :keys [cmpt-pth]}]
+(defn cmpt-merge-defs [cmpt cmpt-root {:as navr-sel :keys [cmpt-pth]}]
   (-> cmpt
       (cond-> cmpt-pth
               (merge (u/cascading-merges cmpt-root
@@ -145,70 +145,68 @@
                                           :defs
                                           :attr-classes])))))
 
-(defn- pth-head-k [pthr]
+(defn- nav-head-k [navr]
   (->> kk-rev
-       (filter #(get pthr %))
+       (filter #(get navr %))
        first))
 
-(defn pth-up [pthr & {:keys [drop-src-k?]}]
-  (when-let [k (pth-head-k pthr)]
-    (-> pthr
+(defn nav-up [navr & {:keys [drop-src-k?]}]
+  (when-let [k (nav-head-k navr)]
+    (-> navr
         (assoc k nil)
         (cond-> (and (= :x-el-k k)
                      drop-src-k?)
                 (assoc :src-k nil)
 
                 (and (= :cmpt-pth k)
-                     (:ref-pth pthr))
+                     (:ref-pth navr))
                 (update :ref-pth butlast)))))
 
-(defn pth-max [pthr cmpt]
-  (-> (get-in-pth cmpt (-> pthr
-                           pth-up))
+(defn- nav-max [navr cmpt]
+  (-> (get-in-nav cmpt (-> navr
+                           nav-up))
       count
       (- 1)))
 
-(defn pth-next [pthr cmpt]
-  (if-let [k (pth-head-k pthr)]
-    (-> pthr
-        (update k #(-> % inc (min (pth-max pthr cmpt)))))
-    (pth-rec :src-k :script
+(defn nav-next [navr cmpt]
+  (if-let [k (nav-head-k navr)]
+    (-> navr
+        (update k #(-> % inc (min (nav-max navr cmpt)))))
+    (nav-rec :src-k :script
              :x-el-k 0)))
 
-(defn pth-prev [pthr]
-  (when-let [k (pth-head-k pthr)]
-    (-> pthr
+(defn nav-prev [navr]
+  (when-let [k (nav-head-k navr)]
+    (-> navr
         (update k #(-> % dec (max (case k
                                     :p-el-i 2
                                     :xy-i 1
                                     0)))))))
 
-(defn sel-ref [sel-rec cmpt [_s-el-k
-                             s-el-opts
-                             cmpt-id]]
+(defn nav-into-ref [navr cmpt [_s-el-k
+                          s-el-opts
+                          cmpt-id]]
   (let [ref-item  (-> s-el-opts (assoc :cmpt-id cmpt-id))
-        ref-pth'  (-> (:ref-pth sel-rec) (u/conjv ref-item))
-        cmpt-pth0 (:cmpt-pth0 sel-rec)
+        ref-pth'  (-> (:ref-pth navr) (u/conjv ref-item))
+        cmpt-pth0 (:cmpt-pth0 navr)
         cmpt-pth  (ref-pth->cmpt-pth cmpt cmpt-pth0 ref-pth')]
-    (pth-rec
-     :cmpt-pth0 cmpt-pth0
-     :ref-pth   ref-pth'
-     :cmpt-pth  cmpt-pth)))
+    (nav-rec :cmpt-pth0 cmpt-pth0
+             :ref-pth   ref-pth'
+             :cmpt-pth  cmpt-pth)))
 
-(defn pth-down [pthr cmpt]
-  (when-let [k (pth-head-k pthr)]
+(defn nav-into [navr cmpt]
+  (when-let [k (nav-head-k navr)]
     (case k
-      :cmpt-pth (-> pthr (assoc :src-k  :script
+      :cmpt-pth (-> navr (assoc :src-k  :script
                                 :x-el-k 0))
-      :x-el-k   (let [[x-el-k :as ref-el] (get-in-pth cmpt pthr)]
+      :x-el-k   (let [[x-el-k :as ref-el] (get-in-nav cmpt navr)]
                   (case x-el-k
-                    :ref (-> pthr (sel-ref cmpt ref-el))
-                    (-> pthr (assoc :p-el-i 2))))
-      :p-el-i   (-> pthr (assoc :xy-i   1))
-      pthr)))
+                    :ref (-> navr (nav-into-ref cmpt ref-el))
+                    (-> navr (assoc :p-el-i 2))))
+      :p-el-i   (-> navr (assoc :xy-i   1))
+      navr)))
 
-(defn xy-pth? [pthr]
-  (:xy-i pthr))
+(defn xy-nav? [navr] (:xy-i navr))
 
 (def p-el-i0 2) ;; offset for first path-el in path
 (def xy-i0   1) ;; offset for first xy in path-el

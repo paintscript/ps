@@ -10,23 +10,23 @@
             [paintscript.paint :as paint]
             [paintscript.render :as render]))
 
-(defn- pth-rec-status
+(defn- nav-rec-status
   "notes:
    - a path counts as focused when the selection is idential to the path
    - a path counts as selected if the prefix up to the last non-nil elemen matches
      that of the selection (this includes more specific selections that have
      additional non-nil fields after this prefix)
    "
-  [sel-rec pth-rec]
-  (when (:src-k sel-rec)
+  [navr-sel navr-ctx]
+  (when (:src-k navr-sel)
     (cond
-      (= sel-rec pth-rec) [true true]
-      (not= (:cmpt-pth sel-rec)
-            (:cmpt-pth pth-rec)) nil
+      (= navr-sel navr-ctx) [true true]
+      (not= (:cmpt-pth navr-sel)
+            (:cmpt-pth navr-ctx)) nil
       :else
       (let [sel? (reduce (fn [_ k]
-                           (let [s (get sel-rec k)
-                                 p (get pth-rec k)]
+                           (let [s (get navr-sel k)
+                                 p (get navr-ctx k)]
                              (cond
                                (and p
                                     (not= s p)) (reduced false)
@@ -36,24 +36,24 @@
         [sel? false]))))
 
 (defn sidebar-source-item
-  [dispatch! !sel-rec sel-rec-dispatcher
+  [dispatch! !navr-sel navr-sel-dispatcher
    cmpt-sel
    s-el-i
    [s-el-k
     s-el-opts
     & s-el-args
     :as s-el]]
-  (let [sel-rec   @!sel-rec
-        pth-rec*  (nav/pth-rec :cmpt-pth0 (:cmpt-pth0 sel-rec)
-                               :ref-pth   (:ref-pth   sel-rec)
-                               :cmpt-pth  (:cmpt-pth  sel-rec)
+  (let [navr-sel  @!navr-sel
+        navr-ctx* (nav/nav-rec :cmpt-pth0 (:cmpt-pth0 navr-sel)
+                               :ref-pth   (:ref-pth   navr-sel)
+                               :cmpt-pth  (:cmpt-pth  navr-sel)
                                :src-k     :script
                                :x-el-k    s-el-i)
         [sel?
-         foc?]    (pth-rec-status sel-rec pth-rec*)]
+         foc?]    (nav-rec-status navr-sel navr-ctx*)]
 
     [:li {:class (when foc? "active")
-          :on-click (sel-rec-dispatcher pth-rec*)}
+          :on-click (navr-sel-dispatcher navr-ctx*)}
      [:span.s-el-k (name s-el-k)]
      (when-let [doc (:doc s-el-opts)]
        [:span.s-el-doc doc])
@@ -67,7 +67,7 @@
                 [:span.ref {:on-click
                             (fn [^js ev]
                               (.stopPropagation ev)
-                              (dispatch! [:sel-ref s-el]))}
+                              (dispatch! [:nav-into-ref s-el]))}
                  cmpt-id])
         nil)]
      (when (and sel?
@@ -84,24 +84,24 @@
 
                  p-el-i'        (+ nav/p-el-i0
                                    p-el-i)
-                 pth-rec*       (-> pth-rec* (assoc :p-el-i p-el-i'))
+                 navr-ctx*      (-> navr-ctx* (assoc :p-el-i p-el-i'))
                  [sel?
-                  foc?]         (pth-rec-status sel-rec pth-rec*)]
+                  foc?]         (nav-rec-status navr-sel navr-ctx*)]
              ^{:key p-el-i}
              [:li {:class (when foc? "active")
-                   :on-click (sel-rec-dispatcher pth-rec*)}
+                   :on-click (navr-sel-dispatcher navr-ctx*)}
               [:span.p-el-k (name p-el-k)]
               [:ol.p-el-args
                (for [[arg-i
                       arg] (map-indexed vector args)]
                  (let [xy-i      (+ i-arg0
                                     arg-i)
-                       pth-rec*  (-> pth-rec* (assoc :xy-i xy-i))
+                       navr-ctx*  (-> navr-ctx* (assoc :xy-i xy-i))
                        [sel?
-                        foc?]    (pth-rec-status sel-rec pth-rec*)]
+                        foc?]    (nav-rec-status navr-sel navr-ctx*)]
                    ^{:key arg-i}
                    [:li {:class (when foc? "active")
-                         :on-click (sel-rec-dispatcher pth-rec*)}
+                         :on-click (navr-sel-dispatcher navr-ctx*)}
                     (pr-str arg)]))]]))]
         (when sel?
           [:span.p-out {:on-click (fn [^js ev] (.stopPropagation ev))}
@@ -131,23 +131,23 @@
                         [:li (if active?
                                {:class "current"}
                                {:on-click #(dispatch!
-                                            [:sel-rec
-                                             (nav/pth-rec :cmpt-pth cmpt-pth-acc')])})
+                                            [:navr-sel
+                                             (nav/nav-rec :cmpt-pth cmpt-pth-acc')])})
                          [:span.cmpt-id cmpt-id]]))))))]]))
 
 
 (defn sidebar-items
-  [dispatch! !sel-rec cmpt-root cmpt-sel]
-  (let [{:as sel-rec
+  [dispatch! !navr-sel cmpt-root cmpt-sel]
+  (let [{:as navr-sel
          :keys [ref-pth
-                cmpt-pth]} @!sel-rec
+                cmpt-pth]} @!navr-sel
 
-        sel-rec-dispatcher (fn [sel-rec*]
-                             (fn [^js ev]
-                               (.stopPropagation ev)
-                               (dispatch! [:sel-rec (when (not= @!sel-rec
-                                                                sel-rec*)
-                                                      sel-rec*)])))]
+        navr-sel-dispatcher (fn [navr-sel*]
+                              (fn [^js ev]
+                                (.stopPropagation ev)
+                                (dispatch! [:navr-sel (when (not= @!navr-sel
+                                                                  navr-sel*)
+                                                        navr-sel*)])))]
     [:div.sidebar-items
      [:ol.s-els
 
@@ -174,7 +174,7 @@
       (when-let [cmpts (get-in cmpt-sel [:defs :components])]
         [:li.cmpt-sel
          [zc-std/select
-          :model     (or (-> @!sel-rec :cmpt-pth last)
+          :model     (or (-> @!navr-sel :cmpt-pth last)
                          "root")
           :options   (cons "root"
                            (keys cmpts))
@@ -185,4 +185,4 @@
       (for [[s-el-i
              s-el] (map-indexed vector (:script cmpt-sel))]
         ^{:key s-el-i}
-        [sidebar-source-item dispatch! !sel-rec sel-rec-dispatcher cmpt-sel s-el-i s-el])]]))
+        [sidebar-source-item dispatch! !navr-sel navr-sel-dispatcher cmpt-sel s-el-i s-el])]]))
