@@ -1,12 +1,15 @@
 (ns paintscript.nav
   (:require [paintscript.util :as u]))
 
-(defrecord Pth [cmpt-pth0 ref-pth
-                cmpt-pth
-                src-k
-                x-el-k
-                p-el-i
-                xy-i])
+(defrecord Pth [cmpt-pth0 ;; base cmpt
+                ref-pth   ;; chain of references (starting from cmpt-base)
+                cmpt-pth  ;; effective cmpt-pth after resolving references
+
+                src-k     ;; :script or :defs (only used for path-seq defs)
+                x-el-k    ;; main-element index (within :script or :defs)
+                p-el-i    ;; sub-element index (within :path)
+                xy-i      ;; point index (within :path element)
+                ])
 
 (defn pth-rec [& {:as args :keys [ cmpt-pth src-k x-el-k p-el-i xy-i]}]
   {:pre [(case src-k

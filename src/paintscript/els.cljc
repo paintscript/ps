@@ -238,6 +238,8 @@
     (map-indexed (fn [xy-i xy]
                    (let [pth-rec' (-> pth-rec
                                       (assoc :xy-i (+ i-arg0 xy-i)))]
+                     ;; TODO: handle arc flags and shape commands
+                     ;; NOTE: CPs always come first, the main point last
                      (if (and (el/has-cp? p-el-k)
                               (< xy-i cp-cnt))
                        (let [i-main (if (and (= 2 cp-cnt)
