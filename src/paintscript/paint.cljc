@@ -3,8 +3,9 @@
             [svg-hiccup-kit.pattern :as sk-pat]
 
             [paintscript.util :as u]
-            [paintscript.el-path :as el-path]
-            [paintscript.els :as els]
+
+            [paintscript.data-ops :as data-ops]
+            [paintscript.data-ops-path :as data-ops-path]
 
             [paintscript.render :as render]))
 
@@ -12,7 +13,7 @@
 
 (def svg-renderer
   (reify render/Renderer
-    (p-els->out [_ els]       (el-path/p-els->out els))
+    (p-els->out [_ els]       (data-ops-path/p-els->out els))
     (group      [_ els]       (vec (cons :g els)))
     (group      [_ opts els]  (vec (concat [:g opts] els)))
     (tf         [_   tfs el]  (sk/tf   tfs el))
@@ -35,8 +36,8 @@
     pi
     p-els]
    (cond
-     d            (let [d' (-> d (cond-> (el-path/ref? d)
-                                         (->> (els/resolve-d-ref (:defs cmpt)))))
+     d            (let [d' (-> d (cond-> (data-ops-path/ref? d)
+                                         (->> (data-ops/resolve-d-ref (:defs cmpt)))))
                         {:keys [translate]
                          {scale-factor :factor} :scale} p-opts
 
@@ -81,11 +82,11 @@
   "compose a sequence of components into one, offset each by the width of prior ones"
   [c-fns {:as cmpt-ctx :keys [defs]}
    s-el-opts' ref-els]
-  {:pre [(every? el-path/ref? ref-els)]}
+  {:pre [(every? data-ops-path/ref? ref-els)]}
   [:g (->> ref-els
            (reduce (fn [[out offset] ref-el]
                      (let [{:as cmpt-ref
-                            {:keys [dims]} :canvas}  (els/resolve-cmpt-ref defs ref-el)
+                            {:keys [dims]} :canvas}  (data-ops/resolve-cmpt-ref defs ref-el)
 
                            cmpt* (merge cmpt-ctx
                                         cmpt-ref)
@@ -95,7 +96,7 @@
 
                             {:as scale
                              sc-ctr :center
-                             sc-fct :factor} :scale} (els/get-opts ref-el)
+                             sc-fct :factor} :scale} (:el-opts ref-el)
 
                            tf-params' (-> tf-params
                                           (update :translate #(->> (or % [0 0])
@@ -139,8 +140,11 @@
 (defn- derive-s-el-hiccup
   [c-fns
    {:as cmpt :keys [defs script data?]}
-   s-el-i [s-el-k
-           s-el-opts & x-els :as s-el]]
+   s-el-i
+   {:as s-el
+    s-el-k    :el-k
+    s-el-opts :el-opts
+    x-els     :el-argv}]
   (let [attrs      (derive-attrs cmpt s-el-opts)
         s-el-opts' (-> s-el-opts
                        (dissoc :attr-class
@@ -159,11 +163,11 @@
       :path    (path-builder    c-fns cmpt s-el-opts' s-el-i x-els)
       :layout  (layout-builder  c-fns cmpt s-el-opts' x-els)
       ; :pattern (pattern-builder c-fns cmpt s-el-opts' x-els)
-      :ref     (if-let [cmpt-ref (els/resolve-cmpt-ref (:defs cmpt) s-el)]
+      :ref     (if-let [cmpt-ref (data-ops/resolve-cmpt-ref (:defs cmpt) s-el)]
                  (let [cmpt*       (u/deep-merge cmpt
                                                  cmpt-ref)
                        cmpt-hiccup (paint c-fns cmpt*)
-                       opts        (els/get-opts s-el)]
+                       opts        (:el-opts s-el)]
                    (if-let [{:keys [tfs+]} (:repeat opts)]
                      (cond
                        ;; NOTE: uses svg-hiccup-kit's (different) tf params
@@ -174,17 +178,17 @@
 
       (:rect
        :circle
-       :ellipse) (-> s-el (assoc 1 s-el-opts')))))
+       :ellipse) [s-el-k s-el-opts'])))
 
 (defn paint
   ([cmpt] (paint nil cmpt))
   ([c-fns cmpt]
    [:g
     (for [[s-el-i
-           [s-el-k
-            s-el-opts
-            :as s-el]] (->> (:script cmpt)
-                            (map-indexed vector))
+           {:as s-el
+            s-el-k    :el-k
+            s-el-opts :el-opts}] (->> (:script cmpt)
+                                      (map-indexed vector))
 
           :when (and (not (:disabled? s-el-opts))
                      (or (not (:variant-active cmpt))

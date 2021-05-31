@@ -6,11 +6,14 @@
             [reagent.core :as r]
 
             [paintscript.util :as u]
-            [paintscript.el-path :as el-path]
-            [paintscript.els :as els]
             [paintscript.nav :as nav]
 
+            [paintscript.data :as data]
+            [paintscript.data-ops :as data-ops]
+            [paintscript.data-ops-path :as data-ops-path]
+
             [paintscript.render :as render]
+            [paintscript.data :as data]
 
             [paintscript.paint :as paint]
             [paintscript.app.s-app :as s-app]))
@@ -26,77 +29,81 @@
                     navr-hov
                     navr-sel]}
    els
-   {:as el  :keys [p-el-k]}
-   {:as pnt :keys [xy xy-abs i-main]}
-   navr-ctx]
+   {:as el  :keys [el-k]}
+   {:as pnt :keys [xy xy-abs pnt-i-main]}
+   locr-ctx]
   (r/with-let [!hover? (r/atom false)]
-    (when
-      (vector? xy) ;; skip v/V, h/H
-      (let [
-            [x y :as xy*] (or xy-abs
-                              xy)
+    (let [navr-hov (-> navr-hov (assoc :ref-pth nil))
+          navr-sel (-> navr-sel (assoc :ref-pth nil))
+          navr-ctx (-> locr-ctx data/locr->nav)]
+      (when
+        (vector? xy) ;; skip v/V, h/H
+        (let [[x y :as xy*] (or xy-abs
+                                xy)
 
-            cp?       (some? i-main)
+              cp?       (some? pnt-i-main)
 
-            sel-pv?   (and (= (:x-el-k navr-sel) (:x-el-k navr-ctx))
-                           (= (:p-el-i navr-sel) (:p-el-i navr-ctx)))
-            hover?    (= navr-hov navr-ctx)
-            sel-pnt?  (= navr-sel navr-ctx)
-            tf-params (list [:tl [x y]]
-                            [:sc (/ 1 scaled)])]
+              sel-pv?   (and (= (:x-el-k navr-sel) (:x-el-k navr-ctx))
+                             (= (:p-el-i navr-sel) (:p-el-i navr-ctx)))
+              hover?    (= navr-hov navr-ctx)
+              sel-pnt?  (= navr-sel navr-ctx)
+              tf-params (list [:tl [x y]]
+                              [:sc (/ 1 scaled)])]
 
-        (when (or (not cp?) sel-pv?)
-          [:g
-           (when cp?
-             (let [[x1 y1] xy*
-                   [x2 y2] (-> els
-                               (nth i-main)
-                               last
-                               (cond-> (el-path/relative? p-el-k)
-                                       (#(-> % els/xy-abs-meta (or %)))))
-                   line-params {:x1 x1 :x2 x2
-                                :y1 y1 :y2 y2}]
-               [:g
-                [:line.ctrl-target.under line-params]
-                [:line.ctrl-target.over  line-params]]))
+          (when (or (not cp?) sel-pv?)
+            [:g
+             (when cp?
+               (let [el-main (-> els (get pnt-i-main) :el-argv peek)
 
-           [:g {:class         (str (if i-main "control" "target")
-                                    (when hover? " hover")
-                                    (when sel-pnt? " selected"))
-                :style         {:cursor      "pointer"
-                                :text-select "none"}
-                :on-mouse-down #(report-down! navr-ctx i-main (-> % .-shiftKey))
-                :on-mouse-over #(report-over! navr-ctx true)
-                :on-mouse-out  #(report-over! navr-ctx false)}
+                     [x1 y1] xy*
+                     [x2 y2] (-> el-main
+                                 (cond-> (data-ops-path/relative? el-k)
+                                         (#(-> % data-ops/xy-abs-meta (or %)))))
+                     line-params {:x1 x1 :x2 x2
+                                  :y1 y1 :y2 y2}]
+                 [:g
+                  [:line.ctrl-target.under line-params]
+                  [:line.ctrl-target.over  line-params]]))
 
-            [tf tf-params
-             (cond
-               cp?   [:g.cp
-                      [:rect {:x      (- (/ coord-size 2))
-                              :y      (- (/ coord-size 2))
-                              :width  coord-size
-                              :height coord-size}]]
-               :else (let [big? (or sel-pnt? hover?)]
-                       [:g
-                        [:circle {:r (-> coord-size (cond-> big? (* 1.8)))}]
-                        (when (and big?
-                                   (not (or sel-pnt? cp?)))
-                          [:text {:fill              "white"
-                                  :font-size         coord-size
-                                  :text-anchor       "middle"
-                                  :dominant-baseline "middle"
-                                  :style             {:user-select "none"}}
-                           (str/join " " xy)])]))]]])))))
+             [:g {:class         (str (if pnt-i-main "control" "target")
+                                      (when hover? " hover")
+                                      (when sel-pnt? " selected"))
+                  :style         {:cursor      "pointer"
+                                  :text-select "none"}
+                  :on-mouse-down #(report-down! navr-ctx pnt-i-main (-> % .-shiftKey))
+                  :on-mouse-over #(report-over! navr-ctx true)
+                  :on-mouse-out  #(report-over! navr-ctx false)}
+
+              [tf tf-params
+               (cond
+                 cp?   [:g.cp
+                        [:rect {:x      (- (/ coord-size 2))
+                                :y      (- (/ coord-size 2))
+                                :width  coord-size
+                                :height coord-size}]]
+                 :else (let [big? (or sel-pnt? hover?)]
+                         [:g
+                          [:circle {:r (-> coord-size (cond-> big? (* 1.8)))}]
+                          (when (and big?
+                                     (not (or sel-pnt? cp?)))
+                            [:text {:fill              "white"
+                                    :font-size         coord-size
+                                    :text-anchor       "middle"
+                                    :dominant-baseline "middle"
+                                    :style             {:user-select "none"}}
+                             (str/join " " xy)])]))]]]))))))
 
 
 (defn plot-coords [opts p-els pnts-seq]
-  (for [[el pnts] pnts-seq
-        {:as pnt :keys [xy nav-rec i-main]} (->> pnts
-                                                 ;; NOTE: render CPs last
-                                                 (sort-by :i-main))
-        :let [_ (assert nav-rec)]]
-    ^{:key (hash nav-rec)}
-    [coord opts p-els el pnt nav-rec]))
+
+  (for [[el pnts]      pnts-seq
+        {:as pnt
+         :keys [locr]} (->> pnts
+                            ;; NOTE: render CPs last
+                            (sort-by :pnt-i-main))
+        :let [_ (assert locr (pr-str pnts-seq))]]
+    ^{:key (hash locr)}
+    [coord opts p-els el pnt locr]))
 
 (defn- derive-bg-img-attrs
   [{:as   cmpt-base :keys [canvas]}
@@ -153,12 +160,13 @@
             zero    :init
             coords? true}} :canvas}
    cmpt-sel
-   out-tups]
+   out-tups
+   cmpt-sel-recs]
   (r/with-let [!svg-dom    (if full-screen?
                              (get-in @!s-app [:ui :!full-svg])
                              (atom nil))
-               !navr-hov    (r/cursor !s-app [:ui :navr-hov])
-               !navr-sel    (r/cursor !s-app [:ui :navr-sel])
+               !navr-hov   (r/cursor !s-app [:ui :navr-hov])
+               !navr-sel   (r/cursor !s-app [:ui :navr-sel])
 
                wh0         (get-in cmpt-base [:canvas :dims])
 
@@ -246,21 +254,16 @@
           ;; --- selected segment
 
           (when (and navr-sel
-                     (or (and (= :defs (:src-k navr-sel))
-                              (:p-el-i navr-sel))
-                         (> (:p-el-i navr-sel) nav/p-el-i0)))
+                     (:p-el-i navr-sel))
             (let [p-els'    (-> (nav/cmpt> cmpt-sel
                                            :src-k (:src-k navr-sel)
                                            :s-eli (:x-el-k navr-sel))
 
                                 ;; to render an individual el it needs to be full & abs:
-                                (els/update-p-els els/normalize-p-els)
-
-                                (els/extract-p-els (:src-k  navr-sel)
-                                                   (:p-el-i navr-sel))
-                                vec)
-                  p-els-seg (els/get-path-segment (:src-k  navr-sel) p-els'
-                                                  (:p-el-i navr-sel))]
+                                (data-ops/update-p-els data-ops/normalize-pcmd-seq)
+                                :el-argv)
+                  p-els-seg (data-ops/get-path-segment (:src-k  navr-sel) p-els'
+                                                       (:p-el-i navr-sel))]
               [:g.sel
                [paint/path-builder c-fns nil {} (:x-el-k navr-sel) p-els-seg]]))
 
@@ -269,21 +272,27 @@
           (when coords?
             [:g.coords
              (for [[s-el-i
-                    {:as s-el-opts :keys [variant-key]} p-els] out-tups
+                    {:as s-el
+                     :keys [locr el-k]
+                     s-el-opts :el-opts
+                     p-els     :el-argv}] out-tups
+
                    :when (and (not (:disabled? s-el-opts))
                               (or (not (:variant-active cmpt-base))
-                                  (not variant-key)
-                                  (= (:variant-active cmpt-base) variant-key)
-                                  (= (:variant-active cmpt-base) variant-key)))]
+                                  (not (:variant-key s-el-opts))
+                                  (= (:variant-active cmpt-base) (:variant-key s-el-opts))
+                                  (= (:variant-active cmpt-base) (:variant-key s-el-opts))))]
 
                (let [p-els'        (->> p-els
-                                        (els/resolve-els-refs (:defs cmpt-sel))
-                                        (els/attach-xy-abs-meta))
+                                        (data-ops/resolve-els-refs (:defs cmpt-sel))
+                                        ; (data-ops/attach-xy-abs-meta)
+                                        )
                      p-el-pnts-seq (render/path-pnts {:interactive? true
                                                       :coords? true}
+                                                     ; s-el-opts
                                                      s-el-opts
                                                      p-els')]
-                 ^{:key s-el-i}
+                 ^{:key (hash locr)}
                  [:g.coords-plot
                   (plot-coords {:scaled       scale
                                 :coord-size   10
@@ -291,10 +300,14 @@
                                 :report-over! report-over!
                                 :navr-sel      navr-sel
                                 :navr-hov      navr-hov
+                                ; :controls?    (= (:x-el-k navr-sel)
+                                ;                  s-el-i)
                                 :controls?    (= (:x-el-k navr-sel)
-                                                 s-el-i)}
+                                                 (data/get-locr locr :x-el-k))
+                                }
                                p-els'
-                               p-el-pnts-seq)]))])]]
+                               p-el-pnts-seq)]))])
+          ]]
         (catch :default err
           (println :paint-exec-error)
           (js/console.log err)
@@ -317,11 +330,11 @@
 
          out-tups (->> (:script cmpt-sel)
                        (map-indexed
-                        (fn [s-el-i [s-el-k
-                                     s-el-opts & p-els]]
-                          (case s-el-k
+                        (fn [s-el-i
+                             s-el]
+                          (case (:el-k s-el)
                             :ref nil ;; TODO: add :ref support
-                            [s-el-i s-el-opts p-els])))
+                            [s-el-i s-el])))
                        (remove nil?))
 
          full-svg-scale @(r/cursor !s-app [:ui :full-svg-scale])]
@@ -338,4 +351,7 @@
                       (hash (get cmpt-base' :canvas))
                       (get-in cmpt-base' [:canvas :scale])
                       full-svg-scale)}
-          [canvas-paint-variant c-app !s-app variant-active cmpt-root cmpt-base' cmpt-sel out-tups]))])))
+          [canvas-paint-variant c-app !s-app variant-active cmpt-root cmpt-base' cmpt-sel
+
+           out-tups
+           cmpt-sel]))])))

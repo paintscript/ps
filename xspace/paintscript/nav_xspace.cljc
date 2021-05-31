@@ -1,6 +1,6 @@
  (ns paintscript.nav-xspace
-  (:require [clojure.test :refer [deftest testing is]]
-            [xspace.core :as x :refer [x-> xx x:=]]
+  (:require [clojure.test :refer [testing is]]
+            [xspace.core :refer [x-> xx x:=]]
             [paintscript.nav :as nav]))
 
 (def nav-xspace-cfg
@@ -33,7 +33,3 @@
 
                 :ref-pth [{:cmpt-id "A"} {:cmpt-id "B"} {:cmpt-id "C"}]
                 :=>      ["C"])))])
-
-(deftest nav-test
-  (x/traverse-xspace nav-xspace-cfg
-                     nav-xspace))

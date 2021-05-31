@@ -1,7 +1,8 @@
  (ns paintscript.path-xspace
-  (:require [clojure.test :refer [deftest testing is]]
-            [xspace.core :as x :refer [x-> xx x:=]]
-            [paintscript.core :as core]))
+  (:require [clojure.test :refer [testing is]]
+            [xspace.core :refer [x-> xx x:=]]
+            [paintscript.core :as core]
+            [paintscript.data :as data]))
 
 (def path-xspace-cfg
   {:fns
@@ -9,8 +10,10 @@
     :x->
     (fn [ctx c args]
       (let [{:keys [=> opts path]} (merge (-> ctx :args) args)]
-        (is (= =>
-               (core/path opts path)))))}})
+        (let [path (->> path
+                        (mapv data/elv->r))]
+          (is (= =>
+                 (core/path opts path))))))}})
 
 (def path-xspace
   [(x:= :view-opts
@@ -98,7 +101,8 @@
            (x-> :=>   ["M" 0 0
                        "L" 15 0 30 0 30 15 30 30 15 30 0 30 0 15 0 0])
 
-           (x-> :opts {:scale {:center [15 15] :factor (/ 1 2)}
+           (x-> :opts {:scale {:center [15 15]
+                               :factor (/ 1 2)}
                        :mirror {:mode :separate}}
                 :=>   ["M" 6.792893218813453 6.792893218813452
                        "L" 15.0 6.5 23.207106781186546 6.792893218813452 23.5 15.0 23.207106781186546 23.207106781186546 15.0 23.5 6.792893218813453 23.207106781186546 6.5 15.0 6.792893218813453 6.792893218813452 "M" 93.20710678118655 6.792893218813452 "L" 85.0 6.5 76.79289321881345 6.792893218813452 76.5 15.0 76.79289321881345 23.207106781186546 85.0 23.5 93.20710678118655 23.207106781186546 93.5 15.0 93.20710678118655 6.792893218813452]))
@@ -139,7 +143,3 @@
    ;     (x-> :cmpt {:script [[:circle {:cx 10 :cy 10 :r 10}]]}
    ;          :=>   '[:g ([:circle {:cx 10 :cy 10 :r 10}])]))
    ])
-
-(deftest path-test
-  (x/traverse-xspace path-xspace-cfg
-                     path-xspace))

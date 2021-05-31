@@ -1,7 +1,8 @@
  (ns paintscript.els-xspace
-  (:require [clojure.test :refer [deftest testing is]]
-            [xspace.core :as x :refer [x-> xx x:=]]
-            [paintscript.els :as els]))
+  (:require [clojure.test :refer [testing is]]
+            [xspace.core :refer [x-> xx x:=]]
+            [paintscript.data :as data]
+            [paintscript.data-ops :as data-ops]))
 
 (def els-xspace-cfg
   {:fns
@@ -10,13 +11,17 @@
     (fn [ctx c args]
       (let [{:keys [=> op arcs opts path drop?] :or {drop? true}}
             (merge (-> ctx :args) args)]
-        (is (= =>
-               (case op
-                 :els/normalize-p-els  (#'els/normalize-p-els path)
-                 :els/reverse-p-el-xys (#'els/reverse-p-el-xys {:drop-last? drop?} path)
-                 ; :mirror-xys     (#'els/mirror-xys width xys)
-                 ; :scale-p-els      (#'els/scale-p-els path center factor)
-                 )))))}})
+        (let [path' (->> path
+                         (mapv data/elv->r))]
+          (is (= =>
+                 (->> (case op
+                        :els/normalize-p-els  (->> path'
+                                                   (#'data-ops/normalize-pcmd-seq))
+
+                        :els/reverse-p-el-xys (->> path'
+                                                   (#'data-ops/reverse-p-el-xys
+                                                     {:drop-last? drop?})))
+                      (mapv data/elr->v)))))))}})
 
 (def els-xspace
   [(xx {:= {:op :els/normalize-p-els}}
@@ -47,7 +52,3 @@
 
            (x-> :drop? true  :=> '([:C 7 6 5] [:C 4 3 2] [:L 1]))
            (x-> :drop? false :=> '([:M 8] [:C 7 6 5] [:C 4 3 2] [:L 1]))))])
-
-(deftest els-test
-  (x/traverse-xspace els-xspace-cfg
-                     els-xspace))

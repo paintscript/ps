@@ -9,10 +9,14 @@
                         {:canvas {:scale 4}}]
             }
    :attr-classes
-   {"blue" {:fill "blue"}}
+   {"blue" {:fill "blue"}
+    "outline" {:stroke "blue"}}
    :defs
    {:components
-    {"reps"  {:canvas {:dims [90 90]}
+    {"nothing" {:script
+                [[:path {:attr-class "outline"} [:M [50 50]] [:L [60 60]]]]}
+
+     "reps"  {:canvas {:dims [90 90]}
               :script
               [[:path
                 {:doc "repeat tl (blue circles)"
@@ -47,13 +51,14 @@
                [:circle {:r 2  :cx 0   :cy -15 :fill "red" :stroke "none"}]
                [:circle {:r 2  :cx 10.5  :cy  10.5 :fill "red" :stroke "none"}]]}}},
    :script
-   [[:ref {} "reps"]
+   [[:circle {:cx 50 :cy 50 :r 10 :fill "red"}]
+    [:ref {} "reps"]
 
     [:path
      {:doc "red curve"
-      :attrs {:style {:stroke "red"}}}
+      :attrs {:style {:stroke "red" :fill "none"}}}
      [:M [10 10]]
-     [:C [10 10] [90 10] [90 10]]]
+     [:C [125 33] [-8 61] [90 10]]]
 
     [:ref {:doc "cascading tfs"
            :repeat {:tfs+ [{:tl [50 50] :sc 1.2}

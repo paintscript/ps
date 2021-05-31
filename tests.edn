@@ -4,5 +4,5 @@
           :test-paths   ["xspace/"]
           :ns-patterns  [".*"]}]
 
- :capture-output? true
+ :capture-output? false
  }

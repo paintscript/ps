@@ -8,28 +8,38 @@
    {:xx (fn [_ctx {:keys [title]} f] (testing title (f)))
     :x->
     (fn [ctx c args]
-      (let [{:keys [=> op cmpt]}
+      (let [{:keys [=> op cmpt elv]}
             (merge (-> ctx :args) args)]
-        (is (= =>
-               (case op
-                 :data/parse-cmpt (d/parse-cmpt cmpt)
-                 )))))}})
-
-(defn l+
-  [locr & args]
-  (apply update locr :el-pthv conj args))
+        (case op
+          :data/parse-cmpt (is (= => (d/parse-cmpt cmpt)))
+          :data/vec<->rec  (let [elr  (d/elv->r elv)
+                                 elv' (d/elr->v elr)]
+                             (is (= =>  elr))
+                             (is (= elv elv'))))))}})
 
 (defn ll
-  ([cmpt-pthv el-pthv]
-   (-> d/locr-root
-       (assoc :cmpt-pthv cmpt-pthv
-              :el-pthv  el-pthv)))
-  ([el-pthv]
-   (-> d/locr-root
-       (assoc :el-pthv el-pthv))))
+  ([cmpt-pthv
+    el-pthv] (-> d/locr-root (assoc :cmpt-pthv cmpt-pthv
+                                    :el-pthv   el-pthv)))
+  ([el-pthv] (-> d/locr-root (assoc :el-pthv   el-pthv))))
 
 (def data-xspace
-  [(xx {:= {:op :data/parse-cmpt}}
+  [(xx {:= {:op :data/vec<->rec}}
+
+       (x-> "path command"
+            :elv [:M [10 10]]
+            :=>  (d/elem :el-k    :M
+                         :el-src  [:M [10 10]]
+                         :el-argv [[10 10]]))
+
+       (x-> "path command w/ opts"
+            :elv [:M {:k 42} [10 10]]
+            :=>  (d/elem :el-k    :M
+                         :el-opts {:k 42}
+                         :el-src  [:M {:k 42} [10 10]]
+                         :el-argv [[10 10]])))
+
+   (xx {:= {:op :data/parse-cmpt}}
 
        (x-> :cmpt {:defs   {:components
                             {"c1" {:script [[:path {} [:A [5 10] [0 0 1] [20 20]]]]}}}
@@ -46,13 +56,7 @@
                                                                   :el-argv 0])
                                              :el-src  [:A [5 10] [0 0 1] [20 20]]
                                              :el-k    :A
-                                             :el-argv
-                                             [[5 10]
-                                              [0 0 1]
-                                              (d/pnt :locr  (ll ["c1"] [:script  0
-                                                                        :el-argv 0
-                                                                        :el-argv 2])
-                                                     :xy    [20 20])])])]}}}
+                                             :el-argv [[5 10] [0 0 1] [20 20]])])]}}}
                    :script
                    [(d/elem :locr    (ll [:script 0])
                             :el-src  [:path {} [:M [10 10]] [:Q [5 5] [15 15]]]
@@ -63,30 +67,10 @@
                                                    :el-argv 0])
                                      :el-src  [:M [10 10]]
                                      :el-k    :M
-                                     :el-argv
-                                     [(d/pnt :locr  (ll [:script  0
-                                                         :el-argv 0
-                                                         :el-argv 0])
-                                             :pnt-k :pnt/main
-                                             :xy    [10 10])])
+                                     :el-argv [[10 10]])
 
                              (d/elem :locr    (ll [:script  0
                                                    :el-argv 1])
                                      :el-src  [:Q [5 5] [15 15]]
                                      :el-k    :Q
-                                     :el-argv
-                                     [(d/pnt :locr  (ll [:script  0
-                                                         :el-argv 1
-                                                         :el-argv 0])
-                                             :pnt-k :pnt/cp
-                                             :xy    [5 5]
-                                             :pnt-i-main 1)
-                                      (d/pnt :locr  (ll [:script  0
-                                                         :el-argv 1
-                                                         :el-argv 1])
-                                             :pnt-k :pnt/main
-                                             :xy    [15 15])])])]}))])
-
-(deftest data-test
-  (x/traverse-xspace data-xspace-cfg
-                     data-xspace))
+                                     :el-argv [[5 5] [15 15]])])]}))])

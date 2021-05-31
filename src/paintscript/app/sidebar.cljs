@@ -9,6 +9,7 @@
             [keybind.core :as key]
 
             [paintscript.util :as u]
+            [paintscript.data :as data]
             [paintscript.nav :as nav]
             [paintscript.app.s-log :as s-log]
             [paintscript.app.sidebar-items :refer [sidebar-items
@@ -56,7 +57,9 @@
                      [cmpt-pth-view dispatch! (:cmpt-pth navr-sel)]
                      [:li.textarea
                       [:textarea
-                       {:value     (str/trim (u/pprint* cmpt-sel))
+                       {:value     (str/trim (-> cmpt-sel
+                                                 data/serialize-cmpt
+                                                 u/pprint*))
                         :on-focus  #(key/disable!)
                         :on-blur   #(key/enable!)
                         :on-change #(dispatch! [:op/set-cmpt-str (-> % .-target .-value)])}]]]]

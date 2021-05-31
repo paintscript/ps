@@ -10,8 +10,10 @@
             [svg-hiccup-kit.core :refer [d d2]]
 
             [paintscript.util :as u]
-            [paintscript.el-path :as el]
-            [paintscript.ops :as ops]
+
+            [paintscript.data :as data]
+            [paintscript.data-ops-path :as data-ops-path]
+            [paintscript.data-ops-cmpt :as data-ops-cmpt]
 
             [paintscript.nav :as nav]
             [paintscript.conv :as conv]
@@ -33,7 +35,7 @@
 (defn parse-cmd-line [cmd-line]
   (let [[cmd-str & args] (str/split cmd-line #" ")
         cmd-k (keyword cmd-str)]
-    (if (el/el? cmd-k)
+    (if (data-ops-path/el? cmd-k)
       (let [num-vecs (->> args (partition 2) (map read-xy-str))
             el       (vec (cons cmd-k num-vecs))]
         [:el-append el])
@@ -132,8 +134,10 @@
     :set-sel-d   (let [{:keys [cmpt0]} (:snap ui)
                        cmpt (or cmpt0  ;; dnd
                                 cmpt)] ;; kb
+
                    {:cmpt
                     (reduce (fn [acc' {:as sel-item :keys [nav-rec main?]}]
+
                               (let [pth-vec (nav/nav-rec->data-vec nav-rec)
                                     v-curr  (get-in cmpt pth-vec)
                                     v-next  (mapv + v-curr arg)]
@@ -142,10 +146,10 @@
                             cmpt
                             (:sel-set ui))})
 
-    :pth-append  {:cmpt (-> cmpt (update :script ops/append-pth (:x-el-k navr-sel)))
+    :pth-append  {:cmpt (-> cmpt (update :script data-ops-cmpt/append-pth (:x-el-k navr-sel)))
                   :ui   (-> ui   (merge {:navr-sel nil :snap nil}))}
 
-    :pth-del     {:cmpt (-> cmpt (update :script ops/del-pth (:x-el-k navr-sel)))
+    :pth-del     {:cmpt (-> cmpt (update :script data-ops-cmpt/del-pth (:x-el-k navr-sel)))
                   :ui   (-> ui   (merge {:navr-sel nil :snap nil}))}
 
     :el-append   (let [el         arg
@@ -153,9 +157,10 @@
                         [p-el-i]} navr-sel
                        init?      (not (seq (:script cmpt)))
                        cmpt'      (cond
-                                    init? (-> cmpt (update :script conj [:path {} el]))
-                                    el    (-> cmpt (nav/update-in-nav* navr-sel :x-el-k ops/append-p-el p-el-i el))
-                                    :else (-> cmpt (nav/update-in-nav* navr-sel :x-el-k ops/append-p-el p-el-i)))
+                                    init? (-> cmpt (update :script conj
+                                                           (data/elemv :path [el])))
+                                    el    (-> cmpt (nav/update-in-nav* navr-sel :x-el-k data-ops-cmpt/append-p-el p-el-i el))
+                                    :else (-> cmpt (nav/update-in-nav* navr-sel :x-el-k data-ops-cmpt/append-p-el p-el-i)))
                        navr-sel'   (-> navr-sel
                                        (update :p-el-i #(some-> % inc)))]
                    {:cmpt cmpt'
@@ -169,32 +174,32 @@
                        navr-sel'' (-> navr-sel' (update k2 dec))]
 
                    ;; TODO: when coll is empty delete k2 as well
-                   {:cmpt (-> cmpt (update-in coll-pth ops/del-el i-del))
+                   {:cmpt (-> cmpt (update-in coll-pth data-ops-cmpt/del-el i-del))
                     :ui   (-> ui   (merge {:navr-sel (-> navr-sel )}))})
 
     :el-tf       (let [to arg]
                    {:cmpt (-> cmpt (nav/update-in-nav* navr-sel :x-el-k
-                                                       ops/transform-el (:p-el-i navr-sel) to))
+                                                       data-ops-cmpt/transform-el (:p-el-i navr-sel) to))
                     :ui   (-> ui   (update :navr-sel nav/nav-truncate :p-el-i))})
 
     :xy-append   {:cmpt (-> cmpt (update-in [:script (:x-el-k navr-sel)]
-                                            ops/append-pnt (:p-el-i navr-sel)))
+                                            data-ops-cmpt/append-pnt (:p-el-i navr-sel)))
                   :ui   (-> ui   (merge {:navr-sel nil :snap nil}))}
 
     :xy-del      {:cmpt (-> cmpt (update-in [:script (:x-el-k navr-sel)]
-                                            ops/del-pnt (:p-el-i navr-sel)
-                                            (- (:xy-i navr-sel) nav/xy-i0)))
+                                            data-ops-cmpt/del-pnt (:p-el-i navr-sel)
+                                            (:xy-i navr-sel)))
                   :ui   (-> ui   (merge {:navr-sel nil :snap nil}))}
 
-    :rel->abs    {:cmpt (-> cmpt (ops/absolute  navr-sel))}
-    :short->full {:cmpt (-> cmpt (ops/full      navr-sel))}
-    :normalize   {:cmpt (-> cmpt (ops/normalize navr-sel))}
+    :rel->abs    {:cmpt (-> cmpt (data-ops-cmpt/absolute  navr-sel))}
+    :short->full {:cmpt (-> cmpt (data-ops-cmpt/full      navr-sel))}
+    :normalize   {:cmpt (-> cmpt (data-ops-cmpt/normalize navr-sel))}
     :scale       (let [[ctr k] args]
-                   {:cmpt (-> cmpt (ops/scale navr-sel ctr k))})
+                   {:cmpt (-> cmpt (data-ops-cmpt/scale navr-sel ctr k))})
     :mirror      (let [[axis pos] args]
-                   {:cmpt (-> cmpt (ops/mirror (or axis 0) (or pos 100) navr-sel))})
+                   {:cmpt (-> cmpt (data-ops-cmpt/mirror (or axis 0) (or pos 100) navr-sel))})
 
-    :reverse     {:cmpt (-> cmpt (ops/reverse-path navr-sel))}
+    :reverse     {:cmpt (-> cmpt (data-ops-cmpt/reverse-path navr-sel))}
 
     :round       (let [n arg]
                    {:cmpt
@@ -207,10 +212,10 @@
                               #(-> % (cond-> (number? %) u/round)))
                             s))))})
 
-    :translate   {:cmpt (-> cmpt (ops/translate navr-sel arg))}
+    :translate   {:cmpt (-> cmpt (data-ops-cmpt/translate navr-sel arg))}
 
     :rotate      (let [[alpha center] args]
-                   {:cmpt (-> cmpt (ops/rotate navr-sel center alpha))})
+                   {:cmpt (-> cmpt (data-ops-cmpt/rotate navr-sel center alpha))})
 
     :clear       {:cmpt (-> cmpt (merge cmpt-clear))
                   :ui   (-> ui (merge {:navr-sel nil :snap nil}))}
@@ -225,7 +230,8 @@
                      ;; --- create
                      {:cmpt (-> cmpt (#(-> %
                                            (assoc-in [:defs pk] [])
-                                           (update :script conj [:path {} [:ref pk]]))))
+                                           (update :script conj
+                                                   (data/elemv :path [(data/elemv :ref [pk])])))))
                       :ui   (-> ui (merge {:navr-sel [:defs pk nil]}))}))
 
     :svg-path    (let [[svg-path] args]
@@ -264,11 +270,11 @@
 
     :set-p-opts  (let [[k v] arg]
                    {:cmpt (if v
-                            (-> cmpt (ops/update-p-opts navr-sel assoc  k v))
-                            (-> cmpt (ops/update-p-opts navr-sel dissoc k)))})
+                            (-> cmpt (data-ops-cmpt/update-p-opts navr-sel assoc  k v))
+                            (-> cmpt (data-ops-cmpt/update-p-opts navr-sel dissoc k)))})
 
     :toggle-d    (let [[k v] arg]
-                   {:cmpt (-> cmpt (ops/toggle-d navr-sel))})
+                   {:cmpt (-> cmpt (data-ops-cmpt/toggle-d navr-sel))})
 
     :toggle-snap   {:ui (-> ui (update :snap-to-grid? not))}
     :toggle-insert {:ui (-> ui (update :insert-mode? not))}
@@ -334,27 +340,27 @@
             #?(:cljs (js/console.log e))
             (reset! !s-app s-app)))))))
 
-(defn- pth->cp-ii [pth p-el-i]
+(defn- pth->cp-ii [p-el p-el-i]
   (let [p-el-i' (inc p-el-i)]
     (concat
-     (when-let [cp-i (some-> (get pth p-el-i)  (el/el->cp-i :term))] [[p-el-i  cp-i]])
-     (when-let [cp-i (some-> (get pth p-el-i') (el/el->cp-i :init))] [[p-el-i' cp-i]]))))
+     (when-let [cp-i (some-> (get-in p-el [:el-argv p-el-i])  (data-ops-path/el->cp-i :term))] [[p-el-i  cp-i]])
+     (when-let [cp-i (some-> (get-in p-el [:el-argv p-el-i']) (data-ops-path/el->cp-i :init))] [[p-el-i' cp-i]]))))
 
 #?(:cljs
    (defn drag-and-drop-fns
      "attached to SVG element"
      [!cmpt !ui dispatch!]
      (fn _derive-dnd-fns [!s-app !svg-dom {:as canvas :keys [full-screen? scale]}]
-       (let [!snap    (r/cursor !ui [:snap])
+       (let [!snap     (r/cursor !ui [:snap])
              !navr-sel (r/cursor !ui [:navr-sel])
-             !sel-set (r/cursor !ui [:sel-set])
-             xy-svg!  (fn []
-                        (let [rect (-> @!svg-dom (.getBoundingClientRect))
-                              xy0  @(r/cursor !s-app [:ui :full-svg-params :canvas-xy0])]
-                          (-> [(-> rect .-left)
-                               (-> rect .-top)]
-                              (cond-> full-screen?
-                                      (#(mapv + % xy0))))))]
+             !sel-set  (r/cursor !ui [:sel-set])
+             xy-svg!   (fn []
+                         (let [rect (-> @!svg-dom (.getBoundingClientRect))
+                               xy0  @(r/cursor !s-app [:ui :full-svg-params :canvas-xy0])]
+                           (-> [(-> rect .-left)
+                                (-> rect .-top)]
+                               (cond-> full-screen?
+                                       (#(mapv + % xy0))))))]
          {;; NOTE: invoked after canvas/report-down!
           :on-mouse-down #(let [{:keys
                                  [navr-sel
@@ -399,10 +405,10 @@
                                                  (mapv - xy* xy-svg)
                                                  (mapv / xy* [scale scale])
                                                  (mapv u/round xy*))
-                                    p-el-k   (if (seq (:script @!cmpt))
+                                    p-el-k (if (seq (:script @!cmpt))
                                              :L
                                              :M)]
-                                (dispatch! [:el-append [p-el-k xy']]))))
+                                (dispatch! [:el-append (data/elemv p-el-k [xy'])]))))
 
           :on-mouse-move (fn [ev]
                            (let [{:keys [snap-to-grid?]

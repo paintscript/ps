@@ -1,8 +1,9 @@
 (ns paintscript.ops-xspace
-  (:require [clojure.test :refer [deftest testing is]]
-            [paintscript.ops :as ops]
-            [xspace.core :as x :refer [x-> xx x:=]]
-            [paintscript.nav :as nav]))
+  (:require [clojure.test :refer [testing is]]
+            [xspace.core :refer [x-> xx x:=]]
+            [paintscript.nav :as nav]
+            [paintscript.data :as data]
+            [paintscript.data-ops-cmpt :as data-ops-cmpt]))
 
 (def ops-xspace-cfg
   {:fns
@@ -10,21 +11,42 @@
     :x->
     (fn [ctx c args]
       (let [{:keys [op cmpt script els pnt ii i to tl =>]}
-            (merge (-> ctx :args) args)]
-        (let []
-          (is (= =>
-                 (case op
-                   :ops/append-pnt   (if pnt
-                                       (apply ops/append-pnt els (concat ii [pnt]))
-                                       (apply ops/append-pnt els ii))
-                   :ops/del-pnt      (apply ops/del-pnt    els ii)
-                   :ops/append-p-el    (apply ops/append-p-el  els ii)
-                   :ops/del-el       (apply ops/del-el     els ii)
-                   :ops/append-pth   (apply ops/append-pth script ii)
-                   :ops/del-pth      (apply ops/del-pth    script ii)
-                   :ops/tl-pth       (ops/translate cmpt (nav/nav-vec->rec ii) tl)
-                   :ops/rel->abs     (ops/absolute cmpt)
-                   :ops/transform-el (ops/transform-el els i to)))))))}})
+            (merge (-> ctx :args) args)
+
+            cmpt   (some->> cmpt
+                            data/parse-cmpt)
+            script (some->> script
+                            (mapv #(#'data/elvv->rr data/locr-root %)))
+            els    (some->> els
+                            (mapv data/elv->r))]
+        (is (= =>
+               (case op
+                 ;; --- els
+                 :ops/append-pnt   (->> (if pnt
+                                          (apply data-ops-cmpt/append-pnt els (concat ii [pnt]))
+                                          (apply data-ops-cmpt/append-pnt els ii))
+                                        (mapv data/elr->v))
+                 :ops/del-pnt      (->> (apply data-ops-cmpt/del-pnt    els ii)
+                                        (mapv data/elr->v))
+                 :ops/append-p-el  (->> (apply data-ops-cmpt/append-p-el  els ii)
+                                        (mapv data/elr->v))
+                 :ops/del-el       (->> (apply data-ops-cmpt/del-el     els ii)
+                                        (mapv data/elr->v))
+
+                 :ops/transform-el (->> (data-ops-cmpt/transform-el els i to)
+                                        (mapv data/elr->v))
+
+                 ;; --- script
+                 :ops/append-pth   (->> (apply data-ops-cmpt/append-pth script ii)
+                                        (mapv #'data/elrr->vv))
+                 :ops/del-pth      (->> (apply data-ops-cmpt/del-pth    script ii)
+                                        (mapv #'data/elrr->vv))
+
+                 ;; --- cmpt
+                 :ops/tl-pth       (-> (data-ops-cmpt/translate cmpt (nav/nav-vec->rec ii) tl)
+                                       data/serialize-cmpt)
+                 :ops/rel->abs     (-> (data-ops-cmpt/absolute cmpt)
+                                       data/serialize-cmpt))))))}})
 
 (def ops-xspace
   [;; pnt
@@ -79,13 +101,13 @@
             :to  :L
             :=>  [[:M [0 0]] [:L [5 5]]]))
 
-   ;; pth
+   ; ;; pth
    (xx {:= {:op :ops/append-pth}}
 
-       (x-> :script [[:path {} [:M [5 5]]]]
+       (x-> :script [[:path [:M [5 5]]]]
             :ii     [0]
-            :=>     [[:path {} [:M [5 5]]]
-                     [:path {} [:M [10 10]]]]))
+            :=>     [[:path [:M [5 5]]]
+                     [:path [:M [10 10]]]]))
 
    (xx {:= {:op :ops/del-pth}}
 
@@ -122,7 +144,3 @@
             :=>   {:defs {}
                    :script
                    [[:path {} [:M [5 5]] [:A [5 5] [0 0 1] [12 12]]]]}))])
-
-(deftest ops-test
-  (x/traverse-xspace ops-xspace-cfg
-                     ops-xspace))

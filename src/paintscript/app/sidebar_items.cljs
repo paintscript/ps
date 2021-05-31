@@ -6,7 +6,6 @@
 
             [paintscript.util :as u]
             [paintscript.nav :as nav]
-            [paintscript.els :as els]
             [paintscript.paint :as paint]
             [paintscript.render :as render]))
 
@@ -39,10 +38,10 @@
   [dispatch! !navr-sel navr-sel-dispatcher
    cmpt-sel
    s-el-i
-   [s-el-k
-    s-el-opts
-    & s-el-args
-    :as s-el]]
+   {:as s-el
+    s-el-k :el-k
+    s-el-opts :el-opts
+    s-el-args :el-argv}]
   (let [navr-sel  @!navr-sel
         navr-ctx* (nav/nav-rec :cmpt-pth0 (:cmpt-pth0 navr-sel)
                                :ref-pth   (:ref-pth   navr-sel)
@@ -62,7 +61,7 @@
                           pr-str)]
      [:span.s-el-args
       (case s-el-k
-        :path [:span.data (pr-str s-el-args)]
+        ; :path [:span.data (pr-str s-el-args)]
         :ref  (let [cmpt-id (first s-el-args)]
                 [:span.ref {:on-click
                             (fn [^js ev]
@@ -78,23 +77,25 @@
          (for [[p-el-i
                 p-el] (map-indexed vector s-el-args)]
            (let [{:as p-el-rec
-                  :keys [p-el-k
-                         i-arg0
-                         args]} (els/el-vec-->el-rec p-el)
+                  :keys [el-k
+                         ; i-arg0
+                         el-argv]} (-> p-el
+                                       ; els/el-vec-->el-rec
+                                       )
 
-                 p-el-i'        (+ nav/p-el-i0
-                                   p-el-i)
+                 p-el-i'        p-el-i
                  navr-ctx*      (-> navr-ctx* (assoc :p-el-i p-el-i'))
                  [sel?
-                  foc?]         (nav-rec-status navr-sel navr-ctx*)]
+                  foc?]         (nav-rec-status navr-sel
+                                                navr-ctx*)]
              ^{:key p-el-i}
              [:li {:class (when foc? "active")
                    :on-click (navr-sel-dispatcher navr-ctx*)}
-              [:span.p-el-k (name p-el-k)]
+              [:span.p-el-k (name el-k)]
               [:ol.p-el-args
                (for [[arg-i
-                      arg] (map-indexed vector args)]
-                 (let [xy-i      (+ i-arg0
+                      arg] (map-indexed vector el-argv)]
+                 (let [xy-i      (+ ;i-arg0
                                     arg-i)
                        navr-ctx*  (-> navr-ctx* (assoc :xy-i xy-i))
                        [sel?

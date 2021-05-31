@@ -1,6 +1,7 @@
 (ns paintscript.nav
   (:require [paintscript.util :as u]))
 
+;; TODO: add layering capability either by stacking or nesting navs
 (defrecord Nav [cmpt-pth0 ;; base cmpt
                 ref-pth   ;; chain of references (starting from cmpt-base)
                 cmpt-pth  ;; effective cmpt-pth after resolving references
@@ -15,7 +16,7 @@
 (def kk-all    [:cmpt-pth :src-k :x-el-k :p-el-i :xy-i])
 (def kk-rev    (reverse kk-all))
 
-(defn nav-rec [& {:as args :keys [ cmpt-pth src-k x-el-k p-el-i xy-i]}]
+(defn nav-rec [& {:as args :keys [cmpt-pth src-k x-el-k p-el-i xy-i]}]
   {:pre [(case src-k
            :script (-> x-el-k integer?)
            :defs   (-> x-el-k string?)
@@ -39,7 +40,7 @@
 
 (defn nav-rec->data-vec
   ([navr] (nav-rec->data-vec navr nil))
-  ([{:as navr :keys [cmpt-pth src-k x-el-k p-el-i xy-i]} trunc-k]
+  ([{:as navr :keys [cmpt-pth]} trunc-k]
    {:pre [(instance? Nav navr)]}
    (concat (-> cmpt-pth
                cmpt-pth->data-pth)
@@ -48,7 +49,9 @@
            (reduce (fn [pthv k]
                      (let [v (get navr k)]
                        (-> pthv
-                           (cond-> v (conj v)
+                           (cond-> (-> k #{:p-el-i :xy-i}) (conj :el-argv)
+                                   v
+                                   (conj v)
                                    (or (not v)
                                        (= trunc-k k)) reduced))))
                    []
@@ -126,24 +129,23 @@
 (defn cmpt-merge-canvas [cmpt cmpt-root {:as navr-sel :keys [cmpt-pth]}]
   (-> cmpt
       (cond-> cmpt-pth
-              (merge (u/cascading-merges cmpt-root
-                                         (->> cmpt-pth
-                                              (map (fn [cmpt-id]
-                                                     (cmpt-pth->data-pth [cmpt-id]))))
-                                         [:canvas])))))
+              (merge (u/cascading-merges
+                      cmpt-root
+                      (->> cmpt-pth
+                           (map (fn [cmpt-id]
+                                  (cmpt-pth->data-pth [cmpt-id]))))
+                      [:canvas])))))
 
 (defn cmpt-merge-defs [cmpt cmpt-root {:as navr-sel :keys [cmpt-pth]}]
   (-> cmpt
       (cond-> cmpt-pth
-              (merge (u/cascading-merges cmpt-root
-                                         (->> cmpt-pth
-                                              (map (fn [cmpt-id]
-                                                     (cmpt-pth->data-pth [cmpt-id]))))
-                                         [
-                                          ; :config
-                                          ; :canvas
-                                          :defs
-                                          :attr-classes])))))
+              (merge (u/cascading-merges
+                      cmpt-root
+                      (->> cmpt-pth
+                           (map (fn [cmpt-id]
+                                  (cmpt-pth->data-pth [cmpt-id]))))
+                      [:defs
+                       :attr-classes])))))
 
 (defn- nav-head-k [navr]
   (->> kk-rev
@@ -183,9 +185,10 @@
                                     :xy-i 1
                                     0)))))))
 
-(defn nav-into-ref [navr cmpt [_s-el-k
-                          s-el-opts
-                          cmpt-id]]
+(defn nav-into-ref [navr cmpt
+                    {:as s-el
+                     s-el-opts :el-opts
+                     [cmpt-id] :el-argv}]
   (let [ref-item  (-> s-el-opts (assoc :cmpt-id cmpt-id))
         ref-pth'  (-> (:ref-pth navr) (u/conjv ref-item))
         cmpt-pth0 (:cmpt-pth0 navr)
@@ -199,17 +202,14 @@
     (case k
       :cmpt-pth (-> navr (assoc :src-k  :script
                                 :x-el-k 0))
-      :x-el-k   (let [[x-el-k :as ref-el] (get-in-nav cmpt navr)]
-                  (case x-el-k
+      :x-el-k   (let [ref-el (get-in-nav cmpt navr)]
+                  (case (:el-k ref-el)
                     :ref (-> navr (nav-into-ref cmpt ref-el))
                     (-> navr (assoc :p-el-i 2))))
       :p-el-i   (-> navr (assoc :xy-i   1))
       navr)))
 
 (defn xy-nav? [navr] (:xy-i navr))
-
-(def p-el-i0 2) ;; offset for first path-el in path
-(def xy-i0   1) ;; offset for first xy in path-el
 
 (defn cmpt> [cmpt & {:keys [src-k s-eli ii iii] :or {src-k :script}}]
   (cond s-eli (get-in cmpt [src-k s-eli])
@@ -221,28 +221,28 @@
   [s-el & {:keys [p-eli
                   p-eln]}]
   (cond p-eli (get s-el p-eli)
-        p-eln (get s-el (+ p-eln p-el-i0))))
+        p-eln (get s-el p-eln)))
 
 ;; TODO: path elements?
 (defn els> [els & {:keys [eli eln]}]
-  (cond eli (nth els (- eli p-el-i0))
+  (cond eli (nth els eli)
         eln (nth els eln)))
 
 ;; TODO: path element?
 (defn el> [el & {:keys [xyi xyn]}]
   (cond xyi (get el xyi)
-        xyn (get el (+ xyn xy-i0))))
+        xyn (get el xyn)))
 
 (defn xys> [xys & {:keys [xyi xyn]}]
-  (cond xyi (nth xys (- xyi xy-i0))
+  (cond xyi (nth xys xyi)
         xyn (nth xys xyn)))
 
 ;; --- rels
 
 ;; TODO: path elements?
 (defn els-prev [els & {:keys [eli eln]}]
-  (get els (cond eli (-> eli (- p-el-i0) (- 1))
+  (get els (cond eli (-> eli (- 1))
                  eln (-> eln (- 1)))))
 
 (defn els-next [els & {:keys [eli eln]}]
-  (get els (-> eli (- p-el-i0) (+ 1))))
+  (get els (-> eli (+ 1))))

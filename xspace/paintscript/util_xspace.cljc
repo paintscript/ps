@@ -1,6 +1,6 @@
  (ns paintscript.util-xspace
-  (:require [clojure.test :refer [deftest testing is]]
-            [xspace.core :as x :refer [x-> xx x:=]]
+  (:require [clojure.test :refer [testing is]]
+            [xspace.core :refer [x-> xx x:=]]
             [paintscript.util :as util]))
 
 (def util-xspace-cfg
@@ -86,7 +86,3 @@
        (x-> :alpha  90 :=> [50.0 30.0])
        (x-> :alpha 180 :=> [30.0 50.0])
        (x-> :alpha -90 :=> [50.0 70.0]))])
-
-(deftest util-test
-  (x/traverse-xspace util-xspace-cfg
-                     util-xspace))

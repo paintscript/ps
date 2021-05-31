@@ -2,7 +2,7 @@
   (:require [clojure.string :as str]
             [reagent.core :as r]
             [keybind.core :as key]
-            [paintscript.els :as els]
+            [paintscript.data-ops :as data-ops]
             [paintscript.util :as u]
             [paintscript.canvas :as canvas]
             [paintscript.app.sidebar :refer [canvas-sidebar]]
@@ -49,13 +49,21 @@
                kb-fns         (ctl/keybind-fns       !cmpt-root !ui dispatch!)
 
                report-down! (fn [navr i-main shift?]
-                              (let [navr-sel (-> navr
-                                                 (with-meta {:main?  (not i-main)
-                                                             :shift? shift?}))]
+                              (let [navr-sel0 @!navr-sel
+                                    navr-sel  (-> navr
+                                                  (with-meta {:main?  (not i-main)
+                                                              :shift? shift?}))
+                                    navr-sel' (-> navr-sel
+
+                                                  ;; NOTE: locr doesn't track ref-pth
+                                                  (cond-> (= :cmpt-pth navr-sel0)
+                                                          (= :cmpt-pth navr-sel))
+                                                  (assoc :ref-pth (:ref-pth navr-sel0)))]
+
                                 ; NOTE: toggle doesn't work w/ select followed
                                 ;; by select+drag
                                 ; (swap! !navr-sel #(when (not= % navr-sel) navr-sel))
-                                (reset! !navr-sel navr-sel)))
+                                (reset! !navr-sel navr-sel')))
 
                report-over! (fn [navr val]
                               (swap! !navr-hov
@@ -120,10 +128,9 @@
                          ;; NOTE: merges upstream defs (needed to resolve refs
                          ;; during render)
                          (nav/cmpt-merge-defs cmpt-root* navr-sel)
-                         (update :script els/attach-nav-rec-meta* navr-sel))]
+                         (update :script data-ops/attach-nav-rec-meta* navr-sel))]
       [:div.canvas
        [:div.sidebar.script-phantom]
-
        [canvas-sidebar dispatch! !ui !shell !s-log !tab !navr-sel conf-ext cmpt-root]
        [canvas-paint'  c-app !s-app cmpt-root* cmpt-base* cmpt-sel*]])
     (finally
