@@ -2,7 +2,6 @@
   (:require [clojure.string :as str]
             [reagent.core :as r]
             [keybind.core :as key]
-            [paintscript.data-ops :as data-ops]
             [paintscript.util :as u]
             [paintscript.canvas :as canvas]
             [paintscript.app.sidebar :refer [canvas-sidebar]]
@@ -127,8 +126,7 @@
           cmpt-sel*  (-> cmpt-sel
                          ;; NOTE: merges upstream defs (needed to resolve refs
                          ;; during render)
-                         (nav/cmpt-merge-defs cmpt-root* navr-sel)
-                         (update :script data-ops/attach-nav-rec-meta* navr-sel))]
+                         (nav/cmpt-merge-defs cmpt-root* navr-sel))]
       [:div.canvas
        [:div.sidebar.script-phantom]
        [canvas-sidebar dispatch! !ui !shell !s-log !tab !navr-sel conf-ext cmpt-root]

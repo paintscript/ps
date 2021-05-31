@@ -4,7 +4,6 @@
             [urlkit-util.app-dispatcher :refer [app-dispatcher]]
             [paintscript.util-xspace :refer [util-xspace]]
             [paintscript.path-xspace :refer [path-xspace]]
-            [paintscript.els-xspace :refer [els-xspace]]
             [paintscript.ops-xspace :refer [ops-xspace]]
             [paintscript.xspace-view :refer [xspace-paintscript]]))
 

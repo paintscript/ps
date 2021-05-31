@@ -9,8 +9,9 @@
             [paintscript.nav :as nav]
 
             [paintscript.data :as data]
-            [paintscript.data-ops :as data-ops]
-            [paintscript.data-ops-path :as data-ops-path]
+            [paintscript.ops.ops-elem :as ops-elem]
+            [paintscript.ops.ops-path :as ops-path]
+            [paintscript.ops.ops-path-tf :as ops-path-tf]
 
             [paintscript.render :as render]
             [paintscript.data :as data]
@@ -57,8 +58,8 @@
 
                      [x1 y1] xy*
                      [x2 y2] (-> el-main
-                                 (cond-> (data-ops-path/relative? el-k)
-                                         (#(-> % data-ops/xy-abs-meta (or %)))))
+                                 (cond-> (ops-path/relative? el-k)
+                                         (#(-> % ops-path-tf/xy-abs-meta (or %)))))
                      line-params {:x1 x1 :x2 x2
                                   :y1 y1 :y2 y2}]
                  [:g
@@ -260,10 +261,10 @@
                                            :s-eli (:x-el-k navr-sel))
 
                                 ;; to render an individual el it needs to be full & abs:
-                                (data-ops/update-p-els data-ops/normalize-pcmd-seq)
+                                (ops-elem/update-el-argv ops-path-tf/normalize-pcmd-seq)
                                 :el-argv)
-                  p-els-seg (data-ops/get-path-segment (:src-k  navr-sel) p-els'
-                                                       (:p-el-i navr-sel))]
+                  p-els-seg (ops-path-tf/get-path-segment (:src-k  navr-sel) p-els'
+                                                          (:p-el-i navr-sel))]
               [:g.sel
                [paint/path-builder c-fns nil {} (:x-el-k navr-sel) p-els-seg]]))
 
@@ -284,7 +285,7 @@
                                   (= (:variant-active cmpt-base) (:variant-key s-el-opts))))]
 
                (let [p-els'        (->> p-els
-                                        (data-ops/resolve-els-refs (:defs cmpt-sel))
+                                        (ops-elem/resolve-els-refs (:defs cmpt-sel))
                                         ; (data-ops/attach-xy-abs-meta)
                                         )
                      p-el-pnts-seq (render/path-pnts {:interactive? true
@@ -300,14 +301,10 @@
                                 :report-over! report-over!
                                 :navr-sel      navr-sel
                                 :navr-hov      navr-hov
-                                ; :controls?    (= (:x-el-k navr-sel)
-                                ;                  s-el-i)
                                 :controls?    (= (:x-el-k navr-sel)
-                                                 (data/get-locr locr :x-el-k))
-                                }
+                                                 (data/get-locr locr :x-el-k))}
                                p-els'
-                               p-el-pnts-seq)]))])
-          ]]
+                               p-el-pnts-seq)]))])]]
         (catch :default err
           (println :paint-exec-error)
           (js/console.log err)

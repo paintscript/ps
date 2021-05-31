@@ -1,4 +1,4 @@
-(ns paintscript.data-ops-path
+(ns paintscript.ops.ops-path
   "https://developer.mozilla.org/en-US/docs/Web/SVG/Tutorial/Paths"
   (:require [clojure.set :as set]
             [paintscript.util :as u]))
@@ -44,7 +44,7 @@
 
 (def el?       (set/union relative? absolute?))
 
-(defn ref? [x] (-> x :el-k (= :ref)))
+
 
 
 ;; -----------------------------------------------------------------------------
@@ -168,20 +168,6 @@
     ; [el (el->tgt el)]
     [[el-k el-argv] (el->tgt el)]))
 
-;; ------------------------------------
-;; dispatch
-
-(defn normalization-steps
-  ;; NOTE: short->full is only implemented on abs els, necessitating :rel->abs
-  [p-el-k op]
-  (or (some-> (concat
-               (when (and (#{:all :rel->abs :short->full} op) (relative? p-el-k)) [[:rel->abs rel->abs]])
-               (when (and (#{:all :short->full} op) (short? p-el-k)) [[:short->full short->full]]))
-              seq)
-      (when (has-cp? p-el-k) [[:curve->tgt-cp curve->tgt-cp]])
-      [[:el->tgt el->tgt']]))
-
-
 ;; -----------------------------------------------------------------------------
 ;; reverse
 
@@ -248,3 +234,13 @@
     :arc*   (arcs el-argv (assoc el-opts :ctd? true))))
 
 (defn p-els->out [els] (->> els (map p-el->out) flatten))
+
+(defn normalization-steps
+  ;; NOTE: short->full is only implemented on abs els, necessitating :rel->abs
+  [p-el-k op]
+  (or (some-> (concat
+               (when (and (#{:all :rel->abs :short->full} op) (relative? p-el-k)) [[:rel->abs rel->abs]])
+               (when (and (#{:all :short->full} op) (short? p-el-k)) [[:short->full short->full]]))
+              seq)
+      (when (has-cp? p-el-k) [[:curve->tgt-cp curve->tgt-cp]])
+      [[:el->tgt el->tgt']]))

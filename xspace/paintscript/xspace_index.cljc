@@ -4,7 +4,6 @@
 
             [paintscript.data-xspace :as data-xs]
             [paintscript.nav-xspace :as nav-xs]
-            [paintscript.els-xspace :as els-xs]
             [paintscript.ops-xspace :as ops-xs]
             [paintscript.path-xspace :as path-xs]
             [paintscript.util-xspace :as util-xs]))
@@ -12,10 +11,6 @@
 (deftest data-test
   (x/traverse-xspace data-xs/data-xspace-cfg
                      data-xs/data-xspace))
-
-(deftest els-test
-  (x/traverse-xspace els-xs/els-xspace-cfg
-                     els-xs/els-xspace))
 
 (deftest nav-test
   (x/traverse-xspace nav-xs/nav-xspace-cfg

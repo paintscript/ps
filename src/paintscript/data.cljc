@@ -25,6 +25,15 @@
                [:src-k :x-el-k :p-el-i :xy-i]
                (remove #{:el-argv} (:el-pthv locr)))))
 
+(defn navr->locr [navr]
+  (->Loc (or (:cmpt-pth navr) [])
+         (reduce (fn [acc k]
+                   (if-let [v (get navr k)]
+                     (conj acc v)
+                     (reduced acc)))
+                 []
+                 [:src-k :x-el-k :p-el-i :xy-i])))
+
 ;; NOTE: the pnt wrapper is only useful for the visual/interactive editor,
 ;; not for programmatic processing
 (defrecord Pnt [locr pnt-k xy xy-norm pnt-i-main])
@@ -85,7 +94,7 @@
              (pnt :locr locr' :pnt-k :pnt/main :xy xy))))
        el-argv))))
 
-(defn- elvv->rr
+(defn elvv->rr
   [locr elv-tree]
   (let [{:as elr
          :keys [el-k
@@ -101,15 +110,13 @@
                    :path (->> (map-indexed vector el-argv)
                               (mapv (fn [[i pcmdv]]
                                       (let [locr' (-> locr (update :el-pthv conj :el-argv i))]
-                                        (-> (elv->r locr' pcmdv)
-                                            ; parse-pcmd-pnts
-                                            )))))
+                                        (elv->r locr' pcmdv)))))
                    nil)]
     (-> elr
         (cond-> el-opts' (assoc :el-opts el-opts')
                 el-argv' (assoc :el-argv el-argv')))))
 
-(defn- elrr->vv
+(defn elrr->vv
   [{:as elr-tree :keys [el-k]}]
   (case el-k
     :path (-> elr-tree

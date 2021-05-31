@@ -4,8 +4,8 @@
 
             [paintscript.util :as u]
 
-            [paintscript.data-ops :as data-ops]
-            [paintscript.data-ops-path :as data-ops-path]
+            [paintscript.ops.ops-elem :as ops-elem]
+            [paintscript.ops.ops-path :as ops-path]
 
             [paintscript.render :as render]))
 
@@ -13,7 +13,7 @@
 
 (def svg-renderer
   (reify render/Renderer
-    (p-els->out [_ els]       (data-ops-path/p-els->out els))
+    (p-els->out [_ els]       (ops-path/p-els->out els))
     (group      [_ els]       (vec (cons :g els)))
     (group      [_ opts els]  (vec (concat [:g opts] els)))
     (tf         [_   tfs el]  (sk/tf   tfs el))
@@ -36,8 +36,8 @@
     pi
     p-els]
    (cond
-     d            (let [d' (-> d (cond-> (data-ops-path/ref? d)
-                                         (->> (data-ops/resolve-d-ref (:defs cmpt)))))
+     d            (let [d' (-> d (cond-> (ops-elem/ref? d)
+                                         (->> (ops-elem/resolve-d-ref (:defs cmpt)))))
                         {:keys [translate]
                          {scale-factor :factor} :scale} p-opts
 
@@ -82,11 +82,11 @@
   "compose a sequence of components into one, offset each by the width of prior ones"
   [c-fns {:as cmpt-ctx :keys [defs]}
    s-el-opts' ref-els]
-  {:pre [(every? data-ops-path/ref? ref-els)]}
+  {:pre [(every? ops-elem/ref? ref-els)]}
   [:g (->> ref-els
            (reduce (fn [[out offset] ref-el]
                      (let [{:as cmpt-ref
-                            {:keys [dims]} :canvas}  (data-ops/resolve-cmpt-ref defs ref-el)
+                            {:keys [dims]} :canvas}  (ops-elem/resolve-cmpt-ref defs ref-el)
 
                            cmpt* (merge cmpt-ctx
                                         cmpt-ref)
@@ -163,7 +163,7 @@
       :path    (path-builder    c-fns cmpt s-el-opts' s-el-i x-els)
       :layout  (layout-builder  c-fns cmpt s-el-opts' x-els)
       ; :pattern (pattern-builder c-fns cmpt s-el-opts' x-els)
-      :ref     (if-let [cmpt-ref (data-ops/resolve-cmpt-ref (:defs cmpt) s-el)]
+      :ref     (if-let [cmpt-ref (ops-elem/resolve-cmpt-ref (:defs cmpt) s-el)]
                  (let [cmpt*       (u/deep-merge cmpt
                                                  cmpt-ref)
                        cmpt-hiccup (paint c-fns cmpt*)

@@ -3,53 +3,91 @@
             [xspace.core :refer [x-> xx x:=]]
             [paintscript.nav :as nav]
             [paintscript.data :as data]
-            [paintscript.data-ops-cmpt :as data-ops-cmpt]))
+
+            [paintscript.ops.ops-path-tf :as ops-path-tf]
+            [paintscript.ops.ops-cmpt :as ops-cmpt]))
 
 (def ops-xspace-cfg
   {:fns
    {:xx (fn [_ctx {:keys [title]} f] (testing title (f)))
     :x->
     (fn [ctx c args]
-      (let [{:keys [op cmpt script els pnt ii i to tl =>]}
+      (let [{:keys [op cmpt script path drop? els pnt ii i to tl =>] :or {drop? true}}
             (merge (-> ctx :args) args)
 
-            cmpt   (some->> cmpt
-                            data/parse-cmpt)
-            script (some->> script
-                            (mapv #(#'data/elvv->rr data/locr-root %)))
-            els    (some->> els
-                            (mapv data/elv->r))]
+            cmpt   (some->> cmpt   data/parse-cmpt)
+            script (some->> script (mapv #(#'data/elvv->rr data/locr-root %)))
+            els    (some->> els    (mapv data/elv->r))
+            path   (some->> path   (mapv data/elv->r))]
         (is (= =>
                (case op
-                 ;; --- els
+                 ;; --- ops-path-tf
+                 :ops/normalize-p-els  (->> path
+                                            (#'ops-path-tf/normalize-pcmd-seq)
+                                            (mapv data/elr->v))
+
+                 :ops/reverse-p-el-xys (->> path
+                                            (#'ops-path-tf/reverse-p-el-xys
+                                              {:drop-last? drop?})
+                                            (mapv data/elr->v))
+
                  :ops/append-pnt   (->> (if pnt
-                                          (apply data-ops-cmpt/append-pnt els (concat ii [pnt]))
-                                          (apply data-ops-cmpt/append-pnt els ii))
+                                          (apply ops-path-tf/append-pnt els (concat ii [pnt]))
+                                          (apply ops-path-tf/append-pnt els ii))
                                         (mapv data/elr->v))
-                 :ops/del-pnt      (->> (apply data-ops-cmpt/del-pnt    els ii)
+                 :ops/del-pnt      (->> (apply ops-path-tf/del-pnt     els ii)
                                         (mapv data/elr->v))
-                 :ops/append-p-el  (->> (apply data-ops-cmpt/append-p-el  els ii)
+                 :ops/append-p-el  (->> (ops-path-tf/append-p-el els ii)
                                         (mapv data/elr->v))
-                 :ops/del-el       (->> (apply data-ops-cmpt/del-el     els ii)
-                                        (mapv data/elr->v))
-
-                 :ops/transform-el (->> (data-ops-cmpt/transform-el els i to)
+                 :ops/del-el       (->> (apply ops-path-tf/del-el      els ii)
                                         (mapv data/elr->v))
 
-                 ;; --- script
-                 :ops/append-pth   (->> (apply data-ops-cmpt/append-pth script ii)
+                 :ops/transform-el (->> (ops-path-tf/transform-el els i to)
+                                        (mapv data/elr->v))
+
+                 ;; --- ops-cmpt
+                 :ops/append-pth   (->> (apply ops-cmpt/append-pth script ii)
                                         (mapv #'data/elrr->vv))
-                 :ops/del-pth      (->> (apply data-ops-cmpt/del-pth    script ii)
+                 :ops/del-pth      (->> (apply ops-cmpt/del-pth    script ii)
                                         (mapv #'data/elrr->vv))
 
-                 ;; --- cmpt
-                 :ops/tl-pth       (-> (data-ops-cmpt/translate cmpt (nav/nav-vec->rec ii) tl)
+                 :ops/tl-pth       (-> (ops-cmpt/translate cmpt (nav/nav-vec->rec ii) tl)
                                        data/serialize-cmpt)
-                 :ops/rel->abs     (-> (data-ops-cmpt/absolute cmpt)
+                 :ops/rel->abs     (-> (ops-cmpt/absolute cmpt)
                                        data/serialize-cmpt))))))}})
 
 (def ops-xspace
-  [;; pnt
+  [(xx {:= {:op :ops/normalize-p-els}}
+
+       (x-> "C1"
+            :path '([:C1 [10 10] [20 20]])
+            :=>   '([:C  [10 10] [20 20] [20 20]]))
+
+       (x-> "S"
+            :path '([:C [0 0] [10 15] [20 25]]
+                    [:S [25 25] [35 35]])
+            :=>   '([:C [0 0] [10 15] [20 25]]
+                    [:C [30 35] [25 25] [35 35]])))
+
+   (xx {:= {:op :ops/reverse-p-el-xys}}
+
+       (xx {:= {:path '([:M 1] [:L 2])}}
+
+           (x-> :drop? true  :=> '([:L 1]))
+           (x-> :drop? false :=> '([:M 2] [:L 1])))
+
+       (xx {:= {:path '([:M 1] [:C 2 3 4])}}
+
+           (x-> :drop? true  :=> '([:C 3 2 1]))
+           (x-> :drop? false :=> '([:M 4] [:C 3 2 1])))
+
+       (xx {:= {:path '([:M 1] [:L 2] [:C 3 4 5] [:C 6 7 8])}}
+
+           (x-> :drop? true  :=> '([:C 7 6 5] [:C 4 3 2] [:L 1]))
+           (x-> :drop? false :=> '([:M 8] [:C 7 6 5] [:C 4 3 2] [:L 1]))))
+
+
+   ;; pnt
    (xx {:= {:op :ops/append-pnt}}
 
        (xx {:title "infer pnt (|2|)"
@@ -80,7 +118,7 @@
    (xx {:= {:op :ops/append-p-el}}
 
        (x-> :els [[:L [0 0] [5 5]]]
-            :ii  [0]
+            :ii  0
             :=>  [[:L [0 0] [5 5]] [:L [15 15]]]))
 
    (xx {:= {:op :ops/del-el}}
