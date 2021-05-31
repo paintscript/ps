@@ -180,10 +180,7 @@
 (defn nav-prev [navr]
   (when-let [k (nav-head-k navr)]
     (-> navr
-        (update k #(-> % dec (max (case k
-                                    :p-el-i 2
-                                    :xy-i 1
-                                    0)))))))
+        (update k #(-> % dec (max 0))))))
 
 (defn nav-into-ref [navr cmpt
                     {:as s-el
@@ -205,8 +202,8 @@
       :x-el-k   (let [ref-el (get-in-nav cmpt navr)]
                   (case (:el-k ref-el)
                     :ref (-> navr (nav-into-ref cmpt ref-el))
-                    (-> navr (assoc :p-el-i 2))))
-      :p-el-i   (-> navr (assoc :xy-i   1))
+                    (-> navr (assoc :p-el-i 0))))
+      :p-el-i   (-> navr (assoc :xy-i 0))
       navr)))
 
 (defn xy-nav? [navr] (:xy-i navr))

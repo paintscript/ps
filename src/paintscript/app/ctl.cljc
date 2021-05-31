@@ -124,7 +124,9 @@
   [s-log cmpt {:as ui :keys [navr-sel]}
    [op-k & [arg :as args] :as op]]
   (case op-k
-    :op/set-cmpt-str   (let [cmpt-edn (edn/read-string arg)]
+    :op/set-cmpt-str   (let [cmpt-edn (->> (edn/read-string arg)
+                                           (data/parse-cmpt (-> navr-sel
+                                                                data/navr->locr)))]
                          {:cmpt (if (:cmpt-pth navr-sel)
                                   (nav/update-in-nav* cmpt navr-sel :cmpt-pth
                                                       (fn [cmpt-prev]
@@ -274,8 +276,7 @@
                             (-> cmpt (ops-cmpt/update-p-opts navr-sel assoc  k v))
                             (-> cmpt (ops-cmpt/update-p-opts navr-sel dissoc k)))})
 
-    :toggle-d    (let [[k v] arg]
-                   {:cmpt (-> cmpt (ops-cmpt/toggle-d navr-sel))})
+    :toggle-d    {:cmpt (-> cmpt (ops-cmpt/toggle-d navr-sel))}
 
     :toggle-snap   {:ui (-> ui (update :snap-to-grid? not))}
     :toggle-insert {:ui (-> ui (update :insert-mode? not))}

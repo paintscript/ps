@@ -75,11 +75,14 @@
 (defn toggle-d [cmpt navr-sel]
   (-> cmpt
       (nav/update-in-nav* navr-sel :x-el-k
-                          (fn [{:keys [el-argv], {:as el-opts :keys [d]} :el-opts}]
+                          (fn [{:as el-path :keys [el-argv], {:as el-opts :keys [d]} :el-opts}]
                             (cond
-                              d     (data/elem :el-k    :path
-                                               :el-opts (-> el-opts (dissoc :d))
-                                               :el-argv (conv/path-d->els d))
-                              :else (data/elem :el-k    :path
-                                               :el-opts (-> el-opts
-                                                            (assoc :d (paint/path-str cmpt el-opts el-argv)))))))))
+                              d     (-> ;; NOTE: path-d->els returns vecs so requires
+                                        ;; parsing with contextual locr
+                                        (vec
+                                         (concat [:path (-> (:el-opts el-path) (dissoc :d))]
+                                                 (conv/path-d->els d)))
+                                        (->> (data/elvv->rr (:locr el-path))))
+                              :else (-> el-path
+                                        (update :el-opts assoc :d (paint/path-str cmpt el-opts el-argv))
+                                        (assoc  :el-argv nil)))))))
