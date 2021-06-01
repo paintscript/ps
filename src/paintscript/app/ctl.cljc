@@ -132,7 +132,7 @@
                    {:cmpt
                     (reduce (fn [acc' {:as sel-item :keys [nav-rec main?]}]
 
-                              (let [pth-vec (nav/nav-rec->data-vec nav-rec)
+                              (let [pth-vec (nav/nav-rec->data-pth nav-rec)
                                     v-curr  (get-in cmpt pth-vec)
                                     v-next  (mapv + v-curr arg)]
                                 (-> acc'
@@ -162,9 +162,9 @@
 
     :del-sel     (let [[k1 k2]    (drop-while #(not (get navr-sel %)) nav/kk-rev)
                        i-del      (get navr-sel k1)
-                       pth-vec    (nav/nav-rec->data-vec navr-sel)
+                       pth-vec    (nav/nav-rec->data-pth navr-sel)
                        navr-sel'  (-> navr-sel (assoc k1 nil))
-                       coll-pth   (-> navr-sel' nav/nav-rec->data-vec)
+                       coll-pth   (-> navr-sel' nav/nav-rec->data-pth)
                        navr-sel'' (-> navr-sel' (update k2 dec))]
 
                    ;; TODO: when coll is empty delete k2 as well
@@ -264,8 +264,8 @@
 
     :set-p-opts  (let [[k v] arg]
                    {:cmpt (if v
-                            (-> cmpt (ops-cmpt/update-p-opts navr-sel assoc  k v))
-                            (-> cmpt (ops-cmpt/update-p-opts navr-sel dissoc k)))})
+                            (-> cmpt (ops-cmpt/update-el navr-sel update :el-opts assoc  k v))
+                            (-> cmpt (ops-cmpt/update-el navr-sel update :el-opts dissoc k)))})
 
     :toggle-d    {:cmpt (-> cmpt (ops-cmpt/toggle-d navr-sel))}
 

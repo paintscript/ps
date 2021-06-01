@@ -13,6 +13,8 @@
                 xy-i      ;; point index (within :path element)
                 ])
 
+(def navr-root (map->Nav {}))
+
 (def kk-levels [:src-k :x-el-k :p-el-i :xy-i])
 (def kk-all    [:cmpt-pth :src-k :x-el-k :p-el-i :xy-i])
 (def kk-rev    (reverse kk-all))
@@ -44,28 +46,31 @@
       (->> (str/join "/"))))
 
 (defn- cmpt-pth->data-pth [cmpt-pth]
-  (mapcat (fn [cmpt-id]
-            (list :defs :components cmpt-id))
-          cmpt-pth))
+  (->> cmpt-pth
+       (mapcat (fn [cmpt-id]
+                 (list :defs :components cmpt-id)))
+       seq))
 
-(defn nav-rec->data-vec
-  ([navr] (nav-rec->data-vec navr nil))
+(defn nav-rec->data-pth
+  ([navr] (nav-rec->data-pth navr nil))
   ([{:as navr :keys [cmpt-pth]} trunc-k]
-   {:pre [(instance? Nav navr)]}
-   (concat (-> cmpt-pth
-               cmpt-pth->data-pth)
+   (when navr
+     (seq
+      (concat (-> cmpt-pth
+                  cmpt-pth->data-pth)
 
-           ;; truncate on nil or trunc-k
-           (reduce (fn [pthv k]
-                     (let [v (get navr k)]
-                       (-> pthv
-                           (cond-> (-> k #{:p-el-i :xy-i}) (conj :el-argv)
-                                   v
-                                   (conj v)
-                                   (or (not v)
-                                       (= trunc-k k)) reduced))))
-                   []
-                   kk-levels))))
+              ;; truncate on nil or trunc-k
+              (reduce (fn [pthv k]
+                        (let [v (get navr k)]
+                          (-> pthv
+                              (cond-> (and v
+                                           (-> k #{:p-el-i :xy-i})) (conj :el-argv)
+                                      v
+                                      (conj v)
+                                      (or (not v)
+                                          (= trunc-k k)) reduced))))
+                      []
+                      kk-levels))))))
 
 (defn nav-truncate [navr k-last]
   (loop [[k & kk] kk-all
@@ -81,15 +86,21 @@
 (defn get-in-nav
   ([cmpt-root navr] (get-in-nav cmpt-root navr nil))
   ([cmpt-root navr trunc-k]
-   (get-in cmpt-root (nav-rec->data-vec navr trunc-k))))
+   (-> cmpt-root
+       (get-in (nav-rec->data-pth navr trunc-k)))))
+
+(defn- update-in* [value data-pth f args]
+  (if data-pth
+    (apply update-in value data-pth f args)
+    (apply f value args)))
 
 (defn update-in-nav [cmpt-root navr f & args]
-  (apply update-in cmpt-root (nav-rec->data-vec navr) f args))
+  (update-in* cmpt-root (nav-rec->data-pth navr) f args))
 
 (defn update-in-nav* [cmpt-root navr trunc-k f & args]
   (if-not (get navr trunc-k)
     cmpt-root
-    (apply update-in cmpt-root (nav-rec->data-vec navr trunc-k) f args)))
+    (update-in* cmpt-root (nav-rec->data-pth navr trunc-k) f args)))
 
 (defn- cmpt->index [cmpt-pth cmpt]
   (->> (keys (get-in cmpt [:defs :components]))

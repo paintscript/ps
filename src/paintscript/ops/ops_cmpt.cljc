@@ -11,6 +11,25 @@
 
 ;; --- HOF
 
+(defn update-el [cmpt navr-sel f & args]
+  (-> cmpt
+      (nav/update-in-nav* navr-sel :x-el-k #(apply f % args))))
+
+(defn update-els [cmpt navr-sel f & args]
+  (case (nav/nav-head-k navr-sel)
+    (nil
+     :cmpt-pth) (-> cmpt
+                    (nav/update-in-nav navr-sel
+                                       (fn [cmpt-sel]
+                                         (-> cmpt-sel
+                                             (update :script
+                                                     (partial mapv
+                                                              #(case (:el-k %)
+                                                                 :path (apply f % args)
+                                                                 %)))))))
+    :x-el-k     (-> cmpt
+                    (nav/update-in-nav navr-sel #(apply f % args)))))
+
 (defn update-pcmds-src-k
   [cmpt src-k f-pcmds args]
   (case src-k
@@ -50,13 +69,6 @@
                                           (fn [el]
                                             (apply ops-elem/update-el-argv el f-pcmds args)))))))
 
-(defn update-p-opts [cmpt navr-sel f & args]
-  (-> cmpt
-      (nav/update-in-nav* (-> navr-sel
-                              (assoc :p-el-i 1)) :p-el-i
-                          (fn [pth-el]
-                            (apply f pth-el args)))))
-
 ;; --- generic (TODO: add support for non-path elements)
 
 (defn translate
@@ -95,18 +107,19 @@
 
 (defn toggle-d [cmpt navr-sel]
   (-> cmpt
-      (nav/update-in-nav* navr-sel :x-el-k
-                          (fn [{:as el-path :keys [el-argv], {:as el-opts :keys [d]} :el-opts}]
-                            (cond
-                              d     (-> ;; NOTE: path-d->els returns vecs so requires
-                                        ;; parsing with contextual locr
-                                        (vec
-                                         (concat [:path (-> (:el-opts el-path) (dissoc :d))]
-                                                 (conv/path-d->els d)))
-                                        (->> (data/elvv->rr (:locr el-path))))
-                              :else (-> el-path
-                                        (update :el-opts assoc :d (paint/path-str cmpt el-opts el-argv))
-                                        (assoc  :el-argv nil)))))))
+      (update-els navr-sel
+                  (fn [{:as el-path :keys [el-argv], {:as el-opts :keys [d]} :el-opts}]
+                    {:pre [(-> el-path :el-k (= :path))]}
+                    (cond
+                      d     (-> ;; NOTE: path-d->els returns vecs so requires
+                             ;; parsing with contextual locr
+                                (vec
+                                 (concat [:path (-> (:el-opts el-path) (dissoc :d))]
+                                         (conv/path-d->els d)))
+                                (->> (data/elvv->rr (:locr el-path))))
+                      :else (-> el-path
+                                (update :el-opts assoc :d (paint/path-str cmpt el-opts el-argv))
+                                (assoc  :el-argv nil)))))))
 
 (defn append-pth
   [script pi]

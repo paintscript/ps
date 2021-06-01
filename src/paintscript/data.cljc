@@ -17,10 +17,10 @@
             :xy-i   3)]
     (get-in locr [:el-pthv i])))
 
-(defn locr->nav [locr]
+(defn locr->nav [{:as locr :keys [cmpt-pthv]}]
   (reduce (fn [acc [k v]]
             (assoc acc k v))
-          (nav/nav-rec :cmpt-pth (:cmpt-pthv locr))
+          (nav/nav-rec :cmpt-pth (when (seq cmpt-pthv) cmpt-pthv))
           (map vector
                [:src-k :x-el-k :p-el-i :xy-i]
                (remove #{:el-argv} (:el-pthv locr)))))

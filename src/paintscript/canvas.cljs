@@ -34,8 +34,8 @@
    {:as pnt :keys [xy xy-abs pnt-i-main]}
    locr-ctx]
   (r/with-let [!hover? (r/atom false)]
-    (let [navr-hov (-> navr-hov (assoc :ref-pth nil))
-          navr-sel (-> navr-sel (assoc :ref-pth nil))
+    (let [navr-hov (-> navr-hov (assoc :ref-pth nil :cmpt-pth0 nil))
+          navr-sel (-> navr-sel (assoc :ref-pth nil :cmpt-pth0 nil))
           navr-ctx (-> locr-ctx data/locr->nav)]
       (when
         (vector? xy) ;; skip v/V, h/H
@@ -256,9 +256,7 @@
 
           (when (and navr-sel
                      (:p-el-i navr-sel))
-            (let [p-els'    (-> (nav/cmpt> cmpt-sel
-                                           :src-k (:src-k navr-sel)
-                                           :s-eli (:x-el-k navr-sel))
+            (let [p-els'    (-> (nav/get-in-nav cmpt-root navr-sel :x-el-k)
 
                                 ;; to render an individual el it needs to be full & abs:
                                 (ops-elem/update-el-argv ops-path-tf/normalize-pcmds)

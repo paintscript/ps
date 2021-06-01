@@ -49,20 +49,22 @@
 
                report-down! (fn [navr i-main shift?]
                               (let [navr-sel0 @!navr-sel
+
                                     navr-sel  (-> navr
                                                   (with-meta {:main?  (not i-main)
                                                               :shift? shift?}))
                                     navr-sel' (-> navr-sel
 
-                                                  ;; NOTE: locr doesn't track ref-pth
+                                                  ;; NOTE: locr doesn't track {cmpt0, ref}-pth
                                                   (cond-> (= :cmpt-pth navr-sel0)
                                                           (= :cmpt-pth navr-sel))
-                                                  (assoc :ref-pth (:ref-pth navr-sel0)))]
+                                                  (assoc :cmpt-pth0 (:cmpt-pth0 navr-sel0))
+                                                  (assoc :ref-pth   (:ref-pth navr-sel0)))]
 
                                 ; NOTE: toggle doesn't work w/ select followed
                                 ;; by select+drag
                                 ; (swap! !navr-sel #(when (not= % navr-sel) navr-sel))
-                                (reset! !navr-sel navr-sel')))
+                                (dispatch! [:navr-sel navr-sel'])))
 
                report-over! (fn [navr val]
                               (swap! !navr-hov
@@ -112,6 +114,9 @@
           s-app      {:navr-hov navr-hov
                       :navr-sel navr-sel}
 
+          ;; TODO: write dedicated merge fn that only deep-merges where it makes sense
+          ;; (e.g. it makes sense for :defs but not for :canvas where a new value
+          ;; shouldn't inherit a parent's :background)
           cmpt-root* (u/deep-merge conf-ext
                                    (:config cmpt-root)
                                    cmpt-root)

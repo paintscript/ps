@@ -51,8 +51,7 @@
                [:circle {:r 2  :cx 0   :cy -15 :fill "red" :stroke "none"}]
                [:circle {:r 2  :cx 10.5  :cy  10.5 :fill "red" :stroke "none"}]]}}},
    :script
-   [
-    [:circle {:cx 50 :cy 50 :r 10 :fill "red"}]
+   [[:circle {:cx 50 :cy 50 :r 10 :fill "red"}]
     [:ref {} "reps"]
 
     [:path
