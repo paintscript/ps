@@ -351,37 +351,49 @@
       (u/vec-remove eli)))
 
 (defn p-el-prev [pth p-el-i]
-  (let [v (get-in pth [:el-argv (dec p-el-i)])]
+  (let [v (get pth (dec p-el-i))]
     (when (record? v)
       v)))
 
+(defn change-pcmd-k*
+  [pth-el-argv p-el-i to]
+  (let [{:as el,   p-el-k :el-k} (get pth-el-argv p-el-i)
+        {:as el-1, el-1-k :el-k} (p-el-prev pth-el-argv p-el-i)]
+    (case p-el-k
+      :L (let [tgt (-> el :el-argv peek)]
+           (case to
+             :S (data/elemv :S [tgt tgt])
+             :Q (data/elemv :Q [tgt tgt])
+             :C (data/elemv :C [(-> el-1 :el-argv peek) tgt tgt])))
+      :C (let [{[c1 c2 tgt] :el-argv} el]
+           (case to
+             :S (data/elemv :S [c2 tgt])
+             :Q (data/elemv :Q [c2 tgt])
+             :L (data/elemv :L [tgt])))
+      :S (let [{[c tgt] :el-argv} el]
+           (case to
+             :L (data/elemv :L [tgt])
+             :Q (data/elemv :Q [c tgt])
+             :C (data/elemv :C [(-> el-1 :el-argv peek) c tgt])))
+      :Q (let [{[c tgt] :el-argv} el]
+           (case to
+             :L (data/elemv :L [tgt])
+             :S (data/elemv :S [c tgt])
+             :C (data/elemv :C [(-> el-1 :el-argv peek) c tgt]))))))
+
 (defn change-pcmd-k
   [pth p-el-i to]
-  (let [pth   (-> pth
-                  (update :el-argv normalize-pcmds :rel->bs))
-        {:as el,   p-el-k :el-k} (get-in pth [:el-argv p-el-i])
-        {:as el-1, el-1-k :el-k} (p-el-prev pth p-el-i)
-        p-el' (case p-el-k
-                :L (let [tgt (-> el :el-argv peek)]
-                     (case to
-                       :S (data/elemv :S [tgt tgt])
-                       :Q (data/elemv :Q [tgt tgt])
-                       :C (data/elemv :C [(-> el-1 :el-argv peek) tgt tgt])))
-                :C (let [{[c1 c2 tgt] :el-argv} el]
-                     (case to
-                       :S (data/elemv :S [c2 tgt])
-                       :Q (data/elemv :Q [c2 tgt])
-                       :L (data/elemv :L [tgt])))
-                :S (let [{[c tgt] :el-argv} el]
-                     (case to
-                       :L (data/elemv :L [tgt])
-                       :Q (data/elemv :Q [c tgt])
-                       :C (data/elemv :C [(-> el-1 :el-argv peek) c tgt])))
-                :Q (let [{[c tgt] :el-argv} el]
-                     (case to
-                       :L (data/elemv :L [tgt])
-                       :S (data/elemv :S [c tgt])
-                       :C (data/elemv :C [(-> el-1 :el-argv peek) c tgt]))))]
-    (-> pth
-        (update :el-argv u/vec-replace p-el-i p-el')
-        data/refresh-elrr)))
+  (cond
+    (record? pth) (let [pth'  (-> pth
+                                  (update :el-argv normalize-pcmds :op :rel->abs))
+                        p-el' (change-pcmd-k* (:el-argv pth) p-el-i to)]
+                    (-> pth
+                        (update :el-argv u/vec-replace p-el-i p-el')
+                        data/refresh-elrr))
+
+    ;; path-seq (only used in ops-xspace?)
+    (vector? pth) (let [pth   (-> pth
+                                  (normalize-pcmds :op :rel->abs))
+                        p-el' (change-pcmd-k* pth p-el-i to)]
+                    (-> pth
+                        (u/vec-replace p-el-i p-el')))))

@@ -27,7 +27,7 @@
                                             (mapv data/elr->v))
 
                  :ops/reverse-p-el-xys (->> path
-                                            (#'ops-path-tf/reverse-p-el-xys
+                                            (#'ops-path-tf/reverse-pcmds
                                               {:drop-last? drop?})
                                             (mapv data/elr->v))
 
@@ -43,7 +43,7 @@
                                         (mapv data/elr->v))
 
                  :ops/change-pcmd-k (->> (ops-path-tf/change-pcmd-k els i to)
-                                        (mapv data/elr->v))
+                                         (mapv data/elr->v))
 
                  ;; --- ops-cmpt
                  :ops/append-pth   (->> (apply ops-cmpt/append-pth script ii)

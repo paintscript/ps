@@ -10,10 +10,8 @@
     :x->
     (fn [ctx c args]
       (let [{:keys [=> opts path]} (merge (-> ctx :args) args)]
-        (let [path (->> path
-                        (mapv data/elv->r))]
-          (is (= =>
-                 (core/path opts path))))))}})
+        (is (= =>
+               (core/path opts path)))))}})
 
 (def path-xspace
   [(x:= :view-opts

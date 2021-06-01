@@ -14,4 +14,4 @@ if [[ $ONCE != true ]]; then args="$args --watch"; fi
 
 echo "running xx with: $args"
 
-clojure -A:xx $args
+clojure -M:xx $args
