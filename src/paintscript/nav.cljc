@@ -147,7 +147,7 @@
                       [:defs
                        :attr-classes])))))
 
-(defn- nav-head-k [navr]
+(defn nav-head-k [navr]
   (->> kk-rev
        (filter #(get navr %))
        first))

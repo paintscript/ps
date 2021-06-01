@@ -23,7 +23,7 @@
                (case op
                  ;; --- ops-path-tf
                  :ops/normalize-p-els  (->> path
-                                            (#'ops-path-tf/normalize-pcmd-seq)
+                                            (#'ops-path-tf/normalize-pcmds)
                                             (mapv data/elr->v))
 
                  :ops/reverse-p-el-xys (->> path

@@ -5,7 +5,7 @@
             [paintscript.ops.ops-elem :as ops-elem]
             [paintscript.ops.ops-path :as ops-path]))
 
-(defn normalize-pcmd-seq
+(defn normalize-pcmds
   [pcmd-seq & {:keys [op] :or {op :all}}]
   {:pre [(when op (-> op #{:all :rel->abs :short->full}))]}
   (loop [[{:as el :keys [el-k]} & els-tail] pcmd-seq
@@ -23,39 +23,38 @@
             el'' (-> el' (with-meta (meta el)))]
         (recur els-tail tgt' cp' (conj acc el''))))))
 
-(defn- reverse-p-el-xys
+(defn- reverse-pcmds*
   "drop last point (implicit) and redistribute the rest in reverse:
     ([:M 1] [:L 2 3] [:C 4 5 6] [:C 7 8 9])
     ~> ([:C 7 8 9] [:C 4 5 6] [:L 2 3] [:M 1])
     => ([:C 8 7 6] [:C 5 4 3] [:L 2 1])
   "
-  [{:keys [drop-last?]} els]
+  [{:keys [drop-last?]} pcmd-seq]
   ;; TODO: handle (:Z :z)
-  (loop [[el & els-tail] els
+  (loop [[pcmd & pcmds-tail] pcmd-seq
          acc      []
          tgt-prev nil]
-    (if-not el
+    (if-not pcmd
       (-> (reverse acc)
           (cond-> (not drop-last?)
-                  (conj (data/elem :el-k    :M
-                                   :el-argv [tgt-prev]))))
-      (let [[el' tgt] (ops-path/el->reversed el tgt-prev)]
-        (recur els-tail (-> acc (cond-> el' (conj el'))) tgt)))))
+                  (conj (data/elemv :M [tgt-prev]))))
+      (let [[pcmd' tgt] (ops-path/el->reversed pcmd tgt-prev)]
+        (recur pcmds-tail (-> acc (cond-> pcmd' (conj pcmd'))) tgt)))))
 
-(defn reverse-p-els
-  ([els] (reverse-p-els nil els))
+(defn reverse-pcmds
+  ([els] (reverse-pcmds nil els))
   ([opts els]
    (->> els
-        normalize-pcmd-seq
-        (reverse-p-el-xys opts))))
+        normalize-pcmds
+        (reverse-pcmds* opts))))
 
 ;; --- mirror
 
 (defn- mirror-xy  [axis pos pnt] (update pnt axis #(- pos %)))
 (defn- mirror-xys [axis pos xys] (map #(mirror-xy axis pos %) xys))
 
-(defn mirror-p-els [axis pos els]
-  (->> els
+(defn mirror-pcmds [pcmd-seq axis pos]
+  (->> pcmd-seq
        (mapv (fn [{:as el :keys [el-k el-opts], xys :el-argv}]
                (case el-k
                  :arc (-> el
@@ -87,21 +86,19 @@
             (fn [els-part]
               (concat
                els-part
-               (->> (case mode
-                      :merged   (->> els-part (reverse-p-els {:drop-last? true}))
-                      :separate (->  els-part
-                                     (normalize-pcmd-seq
-                                      ;; - :rel->abs for math
-                                      ;; - :short->full for uniform data (esp. :arc)
-                                      :op :all)))
+               (-> (case mode
+                     :merged   (->> els-part (reverse-pcmds {:drop-last? true}))
+                     :separate (->  els-part
+                                    (normalize-pcmds
+                                     ;; - :rel->abs for math
+                                     ;; - :short->full for uniform data (esp. :arc)
+                                     :op :all)))
 
-                    (mirror-p-els axis pos))))))
+                   (mirror-pcmds axis pos))))))
      els-parts)))
 
-
-
-(defn map-p-xys [f p-els]
-  (->> p-els
+(defn map-pcmd-xys [f pcmd-seq]
+  (->> pcmd-seq
        (mapv (fn [{:as p-el :keys [el-k]}]
                (let [el' (case el-k
                            :A      (-> p-el (update-in [:el-argv 2] f))
@@ -110,23 +107,17 @@
                                (ops-elem/map-el-args f)))]
                  (-> el' (with-meta (meta p-el))))))))
 
+(defn scale-pcmds [pcmd-seq center factor]
+  (->> pcmd-seq
+       (map-pcmd-xys #(u/tl-point-towards % center factor))))
 
+(defn translate-pcmds [pcmd-seq xy-delta]
+  (->> pcmd-seq
+       (map-pcmd-xys (partial u/v+ xy-delta))))
 
-
-;; --- scale
-
-(defn scale-p-els [els center factor]
-  (map-p-xys #(u/tl-point-towards % center factor) els))
-
-;; --- translate
-
-(defn translate-p-els [els xyd]
-  (map-p-xys (partial u/v+ xyd) els))
-
-;; --- rotate
-
-(defn rotate-p-els [els ctr alpha]
-  (map-p-xys #(u/tl-point-around ctr % alpha) els))
+(defn rotate-pcmds [pcmd-seq ctr alpha]
+  (->> pcmd-seq
+       (map-pcmd-xys #(u/tl-point-around ctr % alpha))))
 
 (declare apply-path-opts)
 
@@ -181,9 +172,9 @@
    pcmd-seq]
   (-> pcmd-seq
       (->> (ops-elem/resolve-els-refs cmpt-defs))
-      (cond-> scale     (scale-p-els scale-ctr scale-factor)
-              translate (translate-p-els translate)
-              rotate    (rotate-p-els rot-ctr rot-deg)
+      (cond-> scale     (scale-pcmds scale-ctr scale-factor)
+              translate (translate-pcmds translate)
+              rotate    (rotate-pcmds rot-ctr rot-deg)
               close?    (concat [(data/elem :el-k :z)])
               (and repeat
                    (not interactive?)) (apply-repeat cmpt-ctx opts)
@@ -223,7 +214,7 @@
            (-> p-el'
                (with-meta (meta p-el)))))
        p-els
-       (-> p-els (normalize-pcmd-seq :op :rel->abs))))
+       (-> p-els (normalize-pcmds :op :rel->abs))))
 
 
 

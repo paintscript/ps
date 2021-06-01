@@ -1,5 +1,13 @@
 (ns paintscript.app.s-log)
 
+(def s-log-ops
+  #{:op.s-log/undo
+    :op.s-log/activate
+    :op.s-log/preview
+    :op.s-log/clear
+    :op.s-log/clear<
+    :op.s-log/clear>})
+
 (defn init [cmpt0 ui-init]
   {:i-active 0
    :s-items  (list

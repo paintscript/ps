@@ -112,14 +112,6 @@
         ;; else:
         (println (str "command not found: " cmd-line))))))
 
-(def s-log-ops
-  #{:op.s-log/undo
-    :op.s-log/activate
-    :op.s-log/preview
-    :op.s-log/clear
-    :op.s-log/clear<
-    :op.s-log/clear>})
-
 (defn- handle-op
   [s-log cmpt {:as ui :keys [navr-sel]}
    [op-k & [arg :as args] :as op]]
@@ -318,7 +310,7 @@
         (let [{cmpt'  :cmpt
                ui'    :ui
                conf'  :conf
-               s-log' :s-log} (if (-> op-k s-log-ops)
+               s-log' :s-log} (if (-> op-k s-log/s-log-ops)
                                 (s-log/handle-op s-log cmpt-root ui op)
                                 (handle-op s-log cmpt-root ui op))]
           (do
@@ -330,7 +322,7 @@
                                               ui'    (assoc :ui        ui')
                                               s-log' (assoc :s-log     s-log')))]
                        (-> s-app'
-                           (cond-> (not (-> op-k s-log-ops))
+                           (cond-> (not (-> op-k s-log/s-log-ops))
                                    (update :s-log s-log/add
                                            {:op    op
                                             :s-app (-> s-app'

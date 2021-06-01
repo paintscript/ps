@@ -7,7 +7,6 @@ css/
 *creds*
 *tfstate*
 .terraform
-*.json
 *.xml
 .cpcache/
 .m2/

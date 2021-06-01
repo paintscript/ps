@@ -261,7 +261,7 @@
                                            :s-eli (:x-el-k navr-sel))
 
                                 ;; to render an individual el it needs to be full & abs:
-                                (ops-elem/update-el-argv ops-path-tf/normalize-pcmd-seq)
+                                (ops-elem/update-el-argv ops-path-tf/normalize-pcmds)
                                 :el-argv)
                   p-els-seg (ops-path-tf/get-path-segment (:src-k  navr-sel) p-els'
                                                           (:p-el-i navr-sel))]
