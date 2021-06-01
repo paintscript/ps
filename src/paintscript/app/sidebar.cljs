@@ -23,7 +23,7 @@
         status? (and false ;; TODO: status-stack obsolete?
                      navr-sel
                      (-> tab #{:tab/script
-                               :tab/items}))
+                               :tab/elems}))
 
         ;; NOTE: uses plain cmpt-root (not merged w/ conf-ext)
         [_cmpt-base
@@ -33,7 +33,7 @@
      ;; --- controls
 
      [:div.controls
-      (for [tab-k [:tab/items
+      (for [tab-k [:tab/elems
                    :tab/script
                    :tab/config
                    :tab/log]]
@@ -50,7 +50,7 @@
      ;; --- main
 
      (case tab
-       :tab/items  [sidebar-items dispatch! !navr-sel cmpt-root cmpt-sel]
+       :tab/elems  [sidebar-items dispatch! !navr-sel cmpt-root cmpt-sel]
 
        :tab/script [:div.sidebar-source
                     [:ol.s-els
@@ -71,17 +71,23 @@
                       :on-blur   #(key/enable!)
                       :on-change #(dispatch! [:op/set-config-str (-> % .-target .-value)])}]]
 
-       :tab/log    (let [[i-active i-s-items] (s-log/items !s-log)]
+       :tab/log    (let [[i-active
+                          i-s-items] (s-log/items !s-log)]
                      [:ol.log
-                      (for [[i {:as log-item :keys [n op]}] i-s-items]
-                        ^{:key n}
-                        [:li.log-item
-                         {:class         (when (= i-active i) "active")
-                          :on-click      #(dispatch! [:op.s-log/activate i])
-                          ; :on-mouse-over #(dispatch! [:op.s-log/preview i])
-                          ; :on-mouse-out  #(dispatch! [:op.s-log/activate i-active])
-                          }
-                         n ". " (pr-str op)])]))
+                      (for [[i {:as log-item :keys [n op navr-sel]}] i-s-items]
+                        (let [[op-k & op-args] op]
+                          ^{:key n}
+                          [:li.log-item
+                           {:class         (when (= i-active i) "active")
+                            :on-click      #(dispatch! [:op.s-log/activate i])
+                            ; :on-mouse-over #(dispatch! [:op.s-log/preview i])
+                            ; :on-mouse-out  #(dispatch! [:op.s-log/activate i-active])
+                            }
+                           [:span.n n]
+                           [:span.nav (-> navr-sel nav/navr->str)]
+                           [:span.op
+                            [:span.op-k (name op-k)]
+                            [:span.op-args (str/join " " op-args)]]]))]))
 
      ;; --- shell
 

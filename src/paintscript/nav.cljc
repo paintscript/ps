@@ -1,5 +1,6 @@
 (ns paintscript.nav
-  (:require [paintscript.util :as u]))
+  (:require [clojure.string :as str]
+            [paintscript.util :as u]))
 
 ;; TODO: add layering capability either by stacking or nesting navs
 (defrecord Nav [cmpt-pth0 ;; base cmpt
@@ -32,6 +33,15 @@
            :x-el-k x-el-k
            :p-el-i p-el-i
            :xy-i   xy-i))
+
+(defn navr->str [{:as args :keys [cmpt-pth src-k x-el-k p-el-i xy-i]}]
+  (-> []
+      (cond-> cmpt-pth (conj (str/join "/" cmpt-pth))
+              src-k    (conj (name src-k))
+              x-el-k   (conj x-el-k)
+              p-el-i   (conj p-el-i)
+              xy-i     (conj xy-i))
+      (->> (str/join "/"))))
 
 (defn- cmpt-pth->data-pth [cmpt-pth]
   (mapcat (fn [cmpt-id]

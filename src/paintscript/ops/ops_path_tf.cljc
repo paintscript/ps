@@ -5,6 +5,23 @@
             [paintscript.ops.ops-elem :as ops-elem]
             [paintscript.ops.ops-path :as ops-path]))
 
+(defn map-pcmd-xys [f pcmd-seq]
+  (->> pcmd-seq
+       (mapv (fn [{:as p-el :keys [el-k]}]
+               (let [el' (case el-k
+                           :A      (-> p-el (update-in [:el-argv 2] f))
+                           :circle (-> p-el (update-in [:el-opts :center] f))
+                           (-> p-el
+                               (ops-elem/map-el-args f)))]
+                 (-> el' (with-meta (meta p-el))))))))
+
+(defn pcmds-xys [pcmd-seq]
+  (->> pcmd-seq
+       (map #(case (:el-k %)
+               :A      (-> % :el-argv (get 2))
+               :circle (-> % :el-opts :center)
+               (-> % :el-argv peek)))))
+
 (defn normalize-pcmds
   [pcmd-seq & {:keys [op] :or {op :all}}]
   {:pre [(when op (-> op #{:all :rel->abs :short->full}))]}
@@ -97,19 +114,32 @@
                    (mirror-pcmds axis pos))))))
      els-parts)))
 
-(defn map-pcmd-xys [f pcmd-seq]
-  (->> pcmd-seq
-       (mapv (fn [{:as p-el :keys [el-k]}]
-               (let [el' (case el-k
-                           :A      (-> p-el (update-in [:el-argv 2] f))
-                           :circle (-> p-el (update-in [:el-opts :center] f))
-                           (-> p-el
-                               (ops-elem/map-el-args f)))]
-                 (-> el' (with-meta (meta p-el))))))))
+(defn min* [a b] (if a (min a b) b))
+(defn max* [a b] (if a (max a b) b))
+
+(defn pcmds-cxy
+  "derive the center of all target-xys by deriving the mins & maxes
+   and then halving the delta"
+  [pcmds-seq]
+  (let [xys (pcmds-xys pcmds-seq)
+        acc (reduce (fn [acc [x y]]
+                                  (-> acc
+                                      (update :x-min min* x)
+                                      (update :x-max max* x)
+                                      (update :y-min min* y)
+                                      (update :y-max max* y)))
+                                nil
+                                xys)]
+    (mapv (fn [a b]
+            (-> b (- a) (/ 2)))
+          (mapv acc [:x-min :y-min])
+          (mapv acc [:x-max :y-max]))))
 
 (defn scale-pcmds [pcmd-seq center factor]
-  (->> pcmd-seq
-       (map-pcmd-xys #(u/tl-point-towards % center factor))))
+  (let [cxy (or center
+                (pcmds-cxy pcmd-seq))]
+    (->> pcmd-seq
+         (map-pcmd-xys #(u/tl-point-towards % cxy factor)))))
 
 (defn translate-pcmds [pcmd-seq xy-delta]
   (->> pcmd-seq
@@ -342,8 +372,7 @@
            ;; NOTE: when a pcmd is inserted anywhere other than at the end,
            ;; all subsequent locrs become out of sync; a conversion round-trip
            ;; re-initializes them correctly
-           data/elrr->vv
-           (->> (data/elvv->rr (:locr p-els)))))
+           data/refresh-elrr))
 
      ;; --- path-seq (:defs)
      (seq p-els) (-> p-els (u/vec-append p-el-i p-el))

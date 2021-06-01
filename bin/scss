@@ -8,16 +8,16 @@ while [[ $1 ]]; do
   esac
 done
 
-if [ $WATCH ];
-then ## --- compile only (sass' watch mode much faster than npm watch)
-  ./node_modules/sass/sass.js \
-  resources-app/scss/index.scss \
-  resources-app/public/css/index.css \
-  --watch
-else ## --- compile, autoprefix, minify (use for prod; watch via 'npm run scss')
+if [ $RELEASE ];
+then ## --- compile, autoprefix, minify (use for prod; watch via 'npm run scss')
   ./node_modules/sass/sass.js \
     resources-app/scss/index.scss \
     resources-app/public/css/index.css && \
   ./node_modules/postcss-cli/bin/postcss resources-app/public/css/index.css -r \
     -u autoprefixer cssnano --no-map
+else ## --- compile only (sass' watch mode much faster than npm watch)
+  ./node_modules/sass/sass.js \
+  resources-app/scss/index.scss \
+  resources-app/public/css/index.css \
+  --watch
 fi

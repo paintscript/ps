@@ -67,9 +67,8 @@
         ("sc"
          "scale")     (let [[n cx cy] args
                             n      (edn/read-string n)
-                            center (if (and cx cy)
-                                     (read-xy-str [cx cy])
-                                     [50 50])]
+                            center (when (and cx cy)
+                                     (read-xy-str [cx cy]))]
                         [:scale center n])
 
         "reverse"     [:reverse]
@@ -280,7 +279,6 @@
     (mapv (partial * scale) dims)))
 
 (defn dispatch! [!s-app
-                 ; !config !cmpt !s-log !ui
                  [op-k arg :as op]]
   (case op-k
     :cmd (when-let [op-vec (parse-cmd-line arg)]
@@ -324,10 +322,11 @@
                        (-> s-app'
                            (cond-> (not (-> op-k s-log/s-log-ops))
                                    (update :s-log s-log/add
-                                           {:op    op
-                                            :s-app (-> s-app'
-                                                       (cond-> (= :set-sel-d op-k)
-                                                               (update :ui assoc :snap nil)))}))))))))
+                                           {:op       op
+                                            :navr-sel (:navr-sel ui)
+                                            :s-app    (-> s-app'
+                                                          (cond-> (= :set-sel-d op-k)
+                                                                  (update :ui assoc :snap nil)))}))))))))
         (catch #?(:cljs :default :clj Exception) e
           (do
             (println "op failed: " (pr-str op))

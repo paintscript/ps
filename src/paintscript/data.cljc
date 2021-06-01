@@ -163,3 +163,8 @@
                                           [cmpt-id
                                            (-> cmpt-def serialize-cmpt)])))
               script    (update :script #(mapv elrr->vv %)))))
+
+(defn refresh-elrr [elrr]
+  (-> elrr
+      elrr->vv
+      (->> (elvv->rr (:locr elrr)))))

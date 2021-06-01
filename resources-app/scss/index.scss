@@ -151,6 +151,20 @@ div.script.sidebar {
     overflow:   scroll;
   }
 
+  ol.log {
+    li.log-item {
+      > * + * { margin-left: var(--pd); }
+      span.n {
+        &:after { content: '.'; }
+      }
+      span.nav {}
+      span.op {
+        font-family: monospace;
+        span.op-k { font-weight: bold; margin-right: var(--pd); }
+      }
+    }
+  }
+
   ol.s-els {
     // NOTE: used via div.sidebar-items & div.sidebar-source
     span.s-el-k,

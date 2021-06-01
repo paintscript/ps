@@ -18,7 +18,7 @@
                                           :full-svg-params {:scale      1
                                                             :canvas-wh  [800 800]
                                                             :canvas-xy0 [0 0]}
-                                          :tab           :tab/items
+                                          :tab           :tab/elems
                                           :navr-hov       nil
                                           :navr-sel       nil
                                           :sel-set       nil
