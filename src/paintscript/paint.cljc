@@ -1,5 +1,7 @@
 (ns paintscript.paint
-  (:require [svg-hiccup-kit.core :as sk :refer [d tf tf*]]
+  (:require [clojure.string :as str]
+
+            [svg-hiccup-kit.core :as sk :refer [d tf tf*]]
             [svg-hiccup-kit.pattern :as sk-pat]
 
             [paintscript.util :as u]
@@ -70,13 +72,19 @@
                         :keys [margin translate]
                         {:as scale
                          sc-ctr :center
-                         sc-fct :factor} :scale} cmpt]
+                         sc-fct :factor
+                         sc-vec :vector} :scale} cmpt]
   {:tl (-> translate
            (cond->  margin (update 0 + (margin-side margin :left)))
-           (cond->> scale  (mapv + (scale->tl (get-in cmpt [:canvas :dims])
-                                              scale))))
-   :sc (when scale
-         [sc-fct])})
+           (cond->> sc-fct (mapv + (scale->tl (get-in cmpt [:canvas :dims])
+                                              sc-fct))))
+   :sc (cond
+         sc-fct [sc-fct]
+         sc-vec sc-vec)
+
+   :aa (when sc-ctr
+         ;; TODO: add support for :canvas.center
+         {"transform-origin" (str/join " " sc-ctr)})})
 
 (defn- layout-builder
   "compose a sequence of components into one, offset each by the width of prior ones"
