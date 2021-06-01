@@ -173,7 +173,7 @@
 
     :el-tf       (let [to arg]
                    {:cmpt (-> cmpt (nav/update-in-nav* navr-sel :x-el-k
-                                                       ops-path-tf/transform-el (:p-el-i navr-sel) to))
+                                                       ops-path-tf/change-pcmd-k (:p-el-i navr-sel) to))
                     :ui   (-> ui   (update :navr-sel nav/nav-truncate :p-el-i))})
 
     :xy-append   {:cmpt (-> cmpt (update-in [:script (:x-el-k navr-sel)]

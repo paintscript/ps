@@ -42,7 +42,7 @@
                  :ops/del-el       (->> (apply ops-path-tf/del-el      els ii)
                                         (mapv data/elr->v))
 
-                 :ops/transform-el (->> (ops-path-tf/transform-el els i to)
+                 :ops/change-pcmd-k (->> (ops-path-tf/change-pcmd-k els i to)
                                         (mapv data/elr->v))
 
                  ;; --- ops-cmpt
@@ -127,7 +127,7 @@
             :ii  [0]
             :=>  [[:L [15 15]]]))
 
-   (xx {:= {:op :ops/transform-el}}
+   (xx {:= {:op :ops/change-pcmd-k}}
 
        (x-> :els [[:M [0 0]] [:L [5 5]]]
             :i   1

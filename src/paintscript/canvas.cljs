@@ -31,7 +31,7 @@
                     navr-sel]}
    els
    {:as el  :keys [el-k]}
-   {:as pnt :keys [xy xy-abs pnt-i-main]}
+   {:as pnt :keys [xy pnt-i-main]}
    locr-ctx]
   (r/with-let [!hover? (r/atom false)]
     (let [navr-hov (-> navr-hov (assoc :ref-pth nil :cmpt-pth0 nil))
@@ -39,8 +39,7 @@
           navr-ctx (-> locr-ctx data/locr->nav)]
       (when
         (vector? xy) ;; skip v/V, h/H
-        (let [[x y :as xy*] (or xy-abs
-                                xy)
+        (let [[x y :as xy*] xy
 
               cp?       (some? pnt-i-main)
 
@@ -54,12 +53,9 @@
           (when (or (not cp?) sel-pv?)
             [:g
              (when cp?
-               (let [el-main (-> els (get pnt-i-main) :el-argv peek)
-
-                     [x1 y1] xy*
-                     [x2 y2] (-> el-main
-                                 (cond-> (ops-path/relative? el-k)
-                                         (#(-> % ops-path-tf/xy-abs-meta (or %)))))
+               (let [el-main     (-> els (get pnt-i-main) :el-argv peek)
+                     [x1 y1]     xy*
+                     [x2 y2]     el-main
                      line-params {:x1 x1 :x2 x2
                                   :y1 y1 :y2 y2}]
                  [:g
@@ -284,11 +280,9 @@
 
                (let [p-els'        (->> p-els
                                         (ops-elem/resolve-els-refs (:defs cmpt-sel))
-                                        ; (data-ops/attach-xy-abs-meta)
-                                        )
+                                        (#(ops-path-tf/normalize-pcmds % :op :rel->abs)))
                      p-el-pnts-seq (render/path-pnts {:interactive? true
                                                       :coords? true}
-                                                     ; s-el-opts
                                                      s-el-opts
                                                      p-els')]
                  ^{:key (hash locr)}

@@ -215,39 +215,6 @@
                                  mirror-axis
                                  mirror-pos)))))
 
-
-;; -----------------------------------------------------------------------------
-;; decorate
-
-(defn- with-xy-abs-meta [xy-rel
-                         xy-abs] (-> xy-rel
-                                     (with-meta {:xy-abs xy-abs})))
-
-(defn xy-abs-meta [xy-rel] (-> xy-rel meta :xy-abs))
-
-(defn attach-xy-abs-meta [p-els]
-  (map (fn [{:as p-el :keys [p-el-k], xys  :el-argv}
-            {:as p-el-norm,           xys' :el-argv}]
-         (let [p-el' (case p-el-k
-                       :c (-> p-el
-                              (assoc :el-argv (map with-xy-abs-meta xys xys')))
-                       :s (let [[c2  tgt]  xys
-                                [c2' tgt'] xys']
-                            (-> p-el
-                                (assoc :el-argv [(with-xy-abs-meta c2 c2')
-                                                 (with-xy-abs-meta tgt tgt')])))
-                       :t (let [[tgt]  xys
-                                [tgt'] xys']
-                            (-> p-el
-                                (assoc :el-argv [(with-xy-abs-meta tgt tgt')])))
-                       p-el)]
-           (-> p-el'
-               (with-meta (meta p-el)))))
-       p-els
-       (-> p-els (normalize-pcmds :op :rel->abs))))
-
-
-
 ;; -----------------------------------------------------------------------------
 ;; extract
 
@@ -384,14 +351,16 @@
       (u/vec-remove eli)))
 
 (defn p-el-prev [pth p-el-i]
-  (let [v (get pth (dec p-el-i))]
+  (let [v (get-in pth [:el-argv (dec p-el-i)])]
     (when (record? v)
       v)))
 
-(defn transform-el
+(defn change-pcmd-k
   [pth p-el-i to]
-  (let [{:as el   p-el-k :el-k} (get pth p-el-i)
-        {:as el-1 el-1-k :el-k} (p-el-prev pth p-el-i)
+  (let [pth   (-> pth
+                  (update :el-argv normalize-pcmds :rel->bs))
+        {:as el,   p-el-k :el-k} (get-in pth [:el-argv p-el-i])
+        {:as el-1, el-1-k :el-k} (p-el-prev pth p-el-i)
         p-el' (case p-el-k
                 :L (let [tgt (-> el :el-argv peek)]
                      (case to
@@ -414,4 +383,5 @@
                        :S (data/elemv :S [c tgt])
                        :C (data/elemv :C [(-> el-1 :el-argv peek) c tgt]))))]
     (-> pth
-        (u/vec-replace p-el-i p-el'))))
+        (update :el-argv u/vec-replace p-el-i p-el')
+        data/refresh-elrr)))
