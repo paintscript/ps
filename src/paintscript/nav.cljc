@@ -63,10 +63,12 @@
               (reduce (fn [pthv k]
                         (let [v (get navr k)]
                           (-> pthv
-                              (cond-> (and v
-                                           (-> k #{:p-el-i :xy-i})) (conj :el-argv)
-                                      v
-                                      (conj v)
+                              (cond-> v
+                                      (-> (cond-> (or (and (= :p-el-i k)
+                                                           (= :script (:src-k navr)))
+                                                      (= :xy-i k))
+                                                  (conj :el-argv))
+                                          (conj v))
                                       (or (not v)
                                           (= trunc-k k)) reduced))))
                       []

@@ -178,8 +178,9 @@
 
                ref-fn      #(when (and % (not= % @!svg-dom))
                               (reset! !svg-dom %)
-                              (let [on-resize! @(r/cursor !s-app [:ui :on-resize!])]
-                                (on-resize! canvas)))]
+                              (when full-screen?
+                                (let [on-resize! @(r/cursor !s-app [:ui :on-resize!])]
+                                 (on-resize! canvas))))]
 
     (let [{:as svg-params
            :keys
@@ -252,11 +253,14 @@
 
           (when (and navr-sel
                      (:p-el-i navr-sel))
-            (let [p-els'    (-> (nav/get-in-nav cmpt-root navr-sel :x-el-k)
-
-                                ;; to render an individual el it needs to be full & abs:
-                                (ops-elem/update-el-argv ops-path-tf/normalize-pcmds)
-                                :el-argv)
+            (let [x-el      (nav/get-in-nav cmpt-root navr-sel :x-el-k)
+                  p-els'    (-> (case (:src-k navr-sel)
+                                  :defs   (-> x-el
+                                              ops-path-tf/normalize-pcmds)
+                                  :script (-> x-el
+                                              ;; to render an individual el it needs to be full & abs:
+                                              (ops-elem/update-el-argv ops-path-tf/normalize-pcmds)
+                                              :el-argv)))
                   p-els-seg (ops-path-tf/get-path-segment (:src-k  navr-sel) p-els'
                                                           (:p-el-i navr-sel))]
               [:g.sel
@@ -291,8 +295,8 @@
                                 :coord-size   10
                                 :report-down! report-down!
                                 :report-over! report-over!
-                                :navr-sel      navr-sel
-                                :navr-hov      navr-hov
+                                :navr-sel     navr-sel
+                                :navr-hov     navr-hov
                                 :controls?    (= (:x-el-k navr-sel)
                                                  (data/get-locr locr :x-el-k))}
                                p-els'
@@ -305,7 +309,7 @@
 (defn canvas-paint
   ([cmpt-root]
    ;; NOTE: used via gallery
-   (canvas-paint nil nil cmpt-root cmpt-root cmpt-root))
+   (canvas-paint nil (r/atom nil) cmpt-root cmpt-root cmpt-root))
   ([c-app !s-app
     cmpt-root cmpt-base cmpt-sel]
    (let [;; NOTE: can't be cached b/c floats hash to integer

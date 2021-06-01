@@ -7,6 +7,7 @@
             [reagent.core :as r]
 
             [paintscript.util :as u]
+            [paintscript.data :as data]
             [paintscript.canvas :as canvas]
             ; [paintscript.app.canvas-module :as canvas-module]
             ))
@@ -36,16 +37,18 @@
        :on-click #(dispatch! [:save-edn])]]
 
      (case tab
-       :script [:textarea
-                {:value     (str/trim (pprint' gg))
-                 :on-focus  #(key/disable!)
-                 :on-blur   #(key/enable!)
-                 :on-change #(reset! !root-def (-> % .-target .-value read-string))}]
-       :config [:textarea
-                {:value     (str/trim (pprint' cg))
-                 :on-focus  #(key/disable!)
-                 :on-blur   #(key/enable!)
-                 :on-change #(reset! !c-gallery (-> % .-target .-value read-string))}])
+       :script [:div.sidebar-config
+                [:textarea
+                 {:value     (str/trim (pprint' gg))
+                  :on-focus  #(key/disable!)
+                  :on-blur   #(key/enable!)
+                  :on-change #(reset! !root-def (-> % .-target .-value read-string))}]]
+       :config [:div.sidebar-config
+                [:textarea
+                 {:value     (str/trim (pprint' cg))
+                  :on-focus  #(key/disable!)
+                  :on-blur   #(key/enable!)
+                  :on-change #(reset! !c-gallery (-> % .-target .-value read-string))}]])
 
      [:div.shell
       [:textarea
@@ -92,9 +95,8 @@
                    {:as painting :keys [component]}] (->> paintings
                                                           sort)
                   :let [c  (u/deep-merge (-> root-def :config)
-                                            (-> gallery  :config)
-                                            (-> painting :config)
-                                            )
+                                         (-> gallery  :config)
+                                         (-> painting :config))
                         c' (-> (or c
                                    c-base)
                                (assoc-in [:canvas :coords?] false))]]
@@ -103,4 +105,6 @@
                {:on-click #(app-dispatch! [:set-canvas [c component]])}
                [:div.gallery-item-title (or (:title painting)
                                             painting-id)]
-               [canvas/canvas-paint c' (merge c' component)]])]])]])))
+               [canvas/canvas-paint (-> (u/deep-merge c' component)
+                                        data/parse-cmpt)]
+               ])]])]])))

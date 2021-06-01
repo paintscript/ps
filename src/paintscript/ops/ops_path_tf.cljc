@@ -246,7 +246,7 @@
 (defn get-tgt [el] (-> el :el-argv peek))
 
 (defn offset-pnt [pnt delta] (mapv + pnt delta))
-(defn xy-delta  [pnt1 pnt2] (mapv - pnt1 pnt2))
+(defn xy-delta   [pnt1 pnt2] (mapv - pnt1 pnt2))
 
 (defn get-pnt [els [eli xyi-abs]]
   (get-in els [eli :el-argv (or xyi-abs 0)]))

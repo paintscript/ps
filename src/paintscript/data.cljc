@@ -83,7 +83,8 @@
           pcmd-i (-> locr :el-pthv peek)]
       (map-indexed
        (fn [i xy]
-         (let [locr' (-> locr (update :el-pthv conj :el-argv i))]
+         (let [locr' (-> locr
+                         (update :el-pthv conj :el-argv i))]
            (if (and ;(el/has-cp? p-el-k)
                     (< i cp-cnt))
              (let [i-main (if (and (= 2 cp-cnt)
@@ -109,7 +110,10 @@
         el-argv' (case el-k
                    :path (->> (map-indexed vector el-argv)
                               (mapv (fn [[i pcmdv]]
-                                      (let [locr' (-> locr (update :el-pthv conj :el-argv i))]
+                                      (let [locr' (-> locr
+                                                      (cond-> (= :script (-> locr :el-pthv first))
+                                                              (update :el-pthv conj :el-argv))
+                                                      (update :el-pthv conj i))]
                                         (elv->r locr' pcmdv)))))
                    nil)]
     (-> elr
@@ -127,8 +131,10 @@
 
 (defn parse-cmpt
   ([cmpt-tree] (parse-cmpt locr-root cmpt-tree))
-  ([locr {:as cmpt-tree :keys [script], {:keys [path-seqs
-                                                components]} :defs}]
+  ([locr {:as cmpt-tree :keys [script]
+          {:as cmpt-defs
+           :keys [path-seqs
+                  components]} :defs}]
    (-> cmpt-tree
        (cond-> components
                (update-in [:defs :components]
@@ -149,8 +155,24 @@
                                          (let [locr' (-> locr
                                                          (assoc :el-pthv [:script i]))]
                                            (elvv->rr locr' elv))))
-                                      %))))))
-
+                                      %))
+               cmpt-defs
+               (update-in [:defs] #(into {}
+                                         (map (fn [[k v :as kv]]
+                                                (case k
+                                                  (:d
+                                                   :components) kv
+                                                  (let [locr' (-> locr
+                                                                  (assoc :el-pthv [:defs k]))
+                                                        v'    (->> v
+                                                                   (map-indexed
+                                                                    (fn [i vi]
+                                                                      (let [locr' (-> locr'
+                                                                                      (update :el-pthv conj i))]
+                                                                        (elvv->rr locr' vi))))
+                                                                   vec)]
+                                                    [k v']))))
+                                         %))))))
 
 
 (defn serialize-cmpt

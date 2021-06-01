@@ -26,9 +26,8 @@
   [cmpt-defs els]
   (->> els
        (into []
-             (mapcat (fn [elr]
-                       (if (ref? elr)
-                         (let [navr (nav/nav-rec :src-k  :defs
-                                                 :x-el-k (-> elr ref-id))]
-                           (resolve-els-ref cmpt-defs elr))
-                         [elr]))))))
+             (comp (map-indexed (fn [i elr]
+                                  (if (ref? elr)
+                                    (resolve-els-ref cmpt-defs elr)
+                                    [elr])))
+                   cat))))
