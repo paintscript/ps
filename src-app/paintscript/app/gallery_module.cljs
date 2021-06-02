@@ -8,7 +8,7 @@
 
             [paintscript.util :as u]
             [paintscript.data :as data]
-            [paintscript.canvas :as canvas]
+            [paintscript.app.canvas :as canvas]
             ; [paintscript.app.canvas-module :as canvas-module]
             ))
 

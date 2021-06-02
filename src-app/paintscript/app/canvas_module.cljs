@@ -3,7 +3,7 @@
             [reagent.core :as r]
             [keybind.core :as key]
             [paintscript.util :as u]
-            [paintscript.canvas :as canvas]
+            [paintscript.app.canvas :as canvas]
             [paintscript.app.sidebar :refer [canvas-sidebar]]
             [paintscript.nav :as nav]
 

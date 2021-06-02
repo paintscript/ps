@@ -13,6 +13,7 @@
          urlkit/urlkit {:mvn/version "0.3.7"}
          urlkit-util/urlkit-util {:mvn/version "0.3.3"}}
  :paths ["src/"
+         "src-app/"
          ; "resources-app/"
          ]
  :aliases

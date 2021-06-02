@@ -179,7 +179,7 @@
                    (if-let [{:keys [tfs+]} (:repeat opts)]
                      (cond
                        ;; NOTE: uses svg-hiccup-kit's (different) tf params
-                       tfs+ (sk-pat/tf-cascade cmpt-hiccup tfs+))
+                       tfs+ (sk-pat/tf-cascade tfs+ cmpt-hiccup))
                      [tf (derive-cmpt-tf opts cmpt*)
                       cmpt-hiccup]))
                  (println "error: referenced component not found" (pr-str s-el)))

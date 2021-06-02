@@ -1,4 +1,4 @@
-(ns paintscript.canvas
+(ns paintscript.app.canvas
   (:require [clojure.string :as str]
 
             [svg-hiccup-kit.core :as sk :refer [d d2 tf tf*]]
