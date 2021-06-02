@@ -1,7 +1,6 @@
 (ns paintscript.core
   (:require [paintscript.render :as render]
             [paintscript.paint :as paint]
-            #?(:cljs [paintscript.canvas :as canvas])
             [paintscript.data :as data]))
 
 (defn path
@@ -16,5 +15,3 @@
 (defn paint
   ([cmpt] (paint nil cmpt))
   ([c-fns cmpt] (paint/paint c-fns (data/parse-cmpt cmpt))))
-
-(def plot-coords  #?(:cljs canvas/plot-coords))

@@ -347,8 +347,9 @@
 
 (defn del-el
   [els eli]
-  (-> els
-      (u/vec-remove eli)))
+  (if (record? els)
+    (-> els (update :el-argv u/vec-remove eli))
+    (-> els (u/vec-remove eli))))
 
 (defn p-el-prev [pth p-el-i]
   (let [v (get pth (dec p-el-i))]

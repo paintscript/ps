@@ -160,16 +160,13 @@
                    {:cmpt cmpt'
                     :ui   (-> ui (assoc :navr-sel navr-sel'))})
 
-    :del-sel     (let [[k1 k2]    (drop-while #(not (get navr-sel %)) nav/kk-rev)
-                       i-del      (get navr-sel k1)
-                       pth-vec    (nav/nav-rec->data-pth navr-sel)
-                       navr-sel'  (-> navr-sel (assoc k1 nil))
-                       coll-pth   (-> navr-sel' nav/nav-rec->data-pth)
-                       navr-sel'' (-> navr-sel' (update k2 dec))]
+    :del-sel     (let [k-el      (-> navr-sel nav/nav-head-k)
+                       i-del     (-> navr-sel (get   k-el))
+                       navr-sel' (-> navr-sel (assoc k-el nil))]
 
                    ;; TODO: when coll is empty delete k2 as well
-                   {:cmpt (-> cmpt (update-in coll-pth ops-path-tf/del-el i-del))
-                    :ui   (-> ui   (merge {:navr-sel (-> navr-sel )}))})
+                   {:cmpt (-> cmpt (nav/update-in-nav navr-sel' ops-path-tf/del-el i-del))
+                    :ui   (-> ui   (assoc :navr-sel navr-sel'))})
 
     :el-tf       (let [to arg]
                    {:cmpt (-> cmpt (nav/update-in-nav* navr-sel :x-el-k
