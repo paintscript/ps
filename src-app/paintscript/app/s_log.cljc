@@ -79,10 +79,10 @@
 
 (defn- update-head?
   "when the op is equivalent to the last one replace it insead of adding an
-   additional one (especially :set-sel-d ops are dispatched en-mass when moving
+   additional one (especially :op/set-sel-d ops are dispatched en-mass when moving
    a point)"
   [s-curr s-item]
-  (and (= :set-sel-d
+  (and (= :op/set-sel-d
           (first (:op s-curr))
           (first (:op s-item)))
        (= (-> s-curr :navr-sel)

@@ -45,7 +45,7 @@
       [zc/button
        :label    "+"
        :active?  @(r/cursor !ui [:insert-mode?])
-       :on-click #(dispatch! [:toggle-insert])]]
+       :on-click #(dispatch! [:op/toggle-insert])]]
 
      ;; --- main
 
@@ -69,7 +69,7 @@
                      {:value     (str/trim (u/pprint* conf-ext))
                       :on-focus  #(key/disable!)
                       :on-blur   #(key/enable!)
-                      :on-change #(dispatch! [:op/set-config-str (-> % .-target .-value)])}]]
+                      :on-change #(dispatch! [:op/set-conf-str (-> % .-target .-value)])}]]
 
        :tab/log    (let [[i-active
                           i-s-items] (s-log/items !s-log)]
@@ -118,25 +118,26 @@
            [:div.selection-level.iii
             [:span (-> navr-sel vals pr-str)]
             [:div.controls.crud
-             [zc/button :label "blur" :on-click #(dispatch! [:navr-sel nil])]
-             [zc/button :label "up" :on-click #(dispatch! [:navr-sel (-> navr-sel
-                                                                        nav/nav-up)])]]]
+             [zc/button :label "blur" :on-click #(dispatch! [:op/navr-sel nil])]
+             [zc/button :label "up" :on-click #(dispatch! [:op/navr-sel
+                                                           (-> navr-sel
+                                                               nav/nav-up)])]]]
 
            [:div.selection-level.path
             [:span (pr-str opts)]
             [:div.controls.crud
-             [zc/button :label "add" :on-click #(dispatch! [:pth-append])]
-             [zc/button :label "del" :on-click #(dispatch! [:pth-del])]]]
+             [zc/button :label "add" :on-click #(dispatch! [:op/pth-append])]
+             [zc/button :label "del" :on-click #(dispatch! [:op/pth-del])]]]
 
            [:div.selection-level.path-vec
             [:span.pth-k (pr-str k)]
             [:div.controls.crud
-             [zc/button :label "add" :on-click #(dispatch! [:el-append])]
+             [zc/button :label "add" :on-click #(dispatch! [:op/el-append])]
              [zc/button :label "del" :on-click #(dispatch! [:el-del])]]]
 
            [:div.selection-level.point
             [:span (pr-str (nav/xys> xys :xyi (:xy-i navr-sel)))]
             (when (contains? #{:L :arc} k)
               [:div.controls.crud
-               [zc/button :label "add" :on-click #(dispatch! [:xy-append])]
-               [zc/button :label "del" :on-click #(dispatch! [:xy-del])]])]]))]]))
+               [zc/button :label "add" :on-click #(dispatch! [:op/xy-append])]
+               [zc/button :label "del" :on-click #(dispatch! [:op/xy-del])]])]]))]]))

@@ -66,7 +66,7 @@
                 [:span.ref {:on-click
                             (fn [^js ev]
                               (.stopPropagation ev)
-                              (dispatch! [:nav-into-ref s-el]))}
+                              (dispatch! [:op/nav-into-ref s-el]))}
                  cmpt-id])
         nil)]
      (when (and sel?
@@ -132,7 +132,7 @@
                         [:li (if active?
                                {:class "current"}
                                {:on-click #(dispatch!
-                                            [:navr-sel
+                                            [:op/navr-sel
                                              (nav/nav-rec :cmpt-pth cmpt-pth-acc')])})
                          [:span.cmpt-id cmpt-id]]))))))]]))
 
@@ -146,9 +146,9 @@
         navr-sel-dispatcher (fn [navr-sel*]
                               (fn [^js ev]
                                 (.stopPropagation ev)
-                                (dispatch! [:navr-sel (when (not= @!navr-sel
-                                                                  navr-sel*)
-                                                        navr-sel*)])))]
+                                (dispatch! [:op/navr-sel (when (not= @!navr-sel
+                                                                     navr-sel*)
+                                                           navr-sel*)])))]
     [:div.sidebar-items
      [:ol.s-els
 
@@ -163,7 +163,7 @@
         [:li.cmpt-pth
          [zc-std/checkbox
           :model     true
-          :on-change #(dispatch! [:disable-ref-pth])
+          :on-change #(dispatch! [:op/disable-ref-pth])
           :label     (str "in context (" (->> ref-pth
                                               (map #(str "$" (:cmpt-id %)))
                                               (cons "root")
@@ -179,7 +179,7 @@
                          "root")
           :options   (cons "root"
                            (keys cmpts))
-          :on-change #(dispatch! [:sel-cmpt-id %])]])
+          :on-change #(dispatch! [:op/sel-cmpt-id %])]])
 
       ;; --- script items
 

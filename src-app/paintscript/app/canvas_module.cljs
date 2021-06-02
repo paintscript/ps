@@ -64,7 +64,7 @@
                                 ; NOTE: toggle doesn't work w/ select followed
                                 ;; by select+drag
                                 ; (swap! !navr-sel #(when (not= % navr-sel) navr-sel))
-                                (dispatch! [:navr-sel navr-sel'])))
+                                (dispatch! [:op/navr-sel navr-sel'])))
 
                report-over! (fn [navr val]
                               (swap! !navr-hov
