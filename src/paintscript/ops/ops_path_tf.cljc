@@ -315,7 +315,8 @@
 ;; --- els
 
 (defn derive-successor-pcmd [els eli]
-  (let [{:as el-1 :keys [el-k], pnts :el-argv} (get els eli)]
+  (let [{:as el-1 :keys [el-k], pnts :el-argv} (get (-> els (cond-> (record? els) :el-argv))
+                                                    eli)]
     (case el-k
       :M (data/elem :el-k :L, :el-argv [(offset-pnt (last pnts) [10 10])])
       :L (data/elem :el-k :L, :el-argv [(offset-pnt (last pnts) [10 10])])
@@ -324,26 +325,22 @@
       :S (let [tgt (offset-pnt (last pnts) [10 10])]
            (data/elem :el-k :S, :el-argv [tgt tgt])))))
 
-(defn append-p-el
-  ([p-els p-el-i] (let [p-el (derive-successor-pcmd p-els p-el-i)]
-                      (append-p-el p-els p-el-i p-el)))
-  ([p-els p-el-i p-el]
-   (cond
-     (and (record? p-els)
-          (-> p-els :el-k (= :path)))
-     (let [p-el-i  (or p-el-i
-                       (-> p-els :el-argv count dec))]
-       (-> p-els
-           (update :el-argv u/vec-append p-el-i p-el)
-
-           ;; NOTE: when a pcmd is inserted anywhere other than at the end,
-           ;; all subsequent locrs become out of sync; a conversion round-trip
-           ;; re-initializes them correctly
-           data/refresh-elrr))
-
-     ;; --- path-seq (:defs)
-     (seq p-els) (-> p-els (u/vec-append p-el-i p-el))
-     :else       [p-el])))
+(defn insert-el
+  "insert an element into `x`
+   - if no `i` is given append at the end
+   - if no `el` is provided infer one based on the previous element"
+  [x & {:keys [el-i el]}]
+  (let [el (or el
+               (derive-successor-pcmd x el-i))]
+    (if (record? x)
+      (-> x
+          (update :el-argv
+                  (if el-i
+                    #(-> % (u/vec-append el-i el))
+                    #(-> % (conj el)))))
+      (if el-i
+        (-> x (u/vec-append el-i el))
+        (-> x (conj el))))))
 
 (defn del-el
   [els eli]
@@ -390,7 +387,7 @@
                         p-el' (change-pcmd-k* (:el-argv pth) p-el-i to)]
                     (-> pth
                         (update :el-argv u/vec-replace p-el-i p-el')
-                        data/refresh-elrr))
+                        data/refresh-x))
 
     ;; path-seq (only used in ops-xspace?)
     (vector? pth) (let [pth   (-> pth

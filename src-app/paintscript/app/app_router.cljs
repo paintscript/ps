@@ -57,14 +57,15 @@
                                          data/parse-cmpt))
                app-dispatch! (fn [[op-k arg :as op]]
                                (case op-k
-                                 :set-canvas
+                                 :op/set-canvas
                                  (let [[config cmpt0] arg]
                                    (reset! !config-canvas (or config
                                                               conf0))
-                                   (reset! !cmpt0 cmpt0)
+                                   (reset! !cmpt0         (-> cmpt0
+                                                              data/parse-cmpt))
                                    (swap!  !app-state assoc :page :canvas))
 
-                                 :save-edn
+                                 :op/save-edn
                                  (let [gg @!galleries
                                        gc @!c-gallery]
                                    (write-edn! :galleries gg)

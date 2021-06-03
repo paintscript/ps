@@ -128,10 +128,14 @@
 (defn- derive-attrs
   [cmpt {:as s-el-opts
          :keys [attr-class]}]
-  (u/deep-merge (:attrs cmpt) ;; includes inherited via configs
-                (get (:attr-classes cmpt)
-                     (:attr-class   s-el-opts))
-                (:attrs s-el-opts)))
+  (let [out (u/deep-merge (:attrs cmpt) ;; includes inherited via configs
+                          (get (:attr-classes cmpt)
+                               (:attr-class   s-el-opts))
+                          (:attrs s-el-opts))]
+    (-> out
+        (cond-> (not (or (:stroke out)
+                         (:fill   out)))
+                (assoc :stroke "currentColor")))))
 
 (defn normalize-tf-params [{:keys [translate scale rotate]}]
   (-> {}

@@ -1,6 +1,7 @@
 (ns paintscript.nav
   (:require [clojure.string :as str]
-            [paintscript.util :as u]))
+            [paintscript.util :as u]
+            [paintscript.data :as data]))
 
 ;; TODO: add layering capability either by stacking or nesting navs
 (defrecord Nav [cmpt-pth0 ;; base cmpt
@@ -20,11 +21,7 @@
 (def kk-rev    (reverse kk-all))
 
 (defn nav-rec [& {:as args :keys [cmpt-pth src-k x-el-k p-el-i xy-i]}]
-  {:pre [(case src-k
-           :script (-> x-el-k integer?)
-           :defs   (-> x-el-k string?)
-           true)
-         (-> p-el-i ((some-fn nil? integer?)))
+  {:pre [(-> p-el-i ((some-fn nil? integer?)))
          (-> xy-i   ((some-fn nil? integer?)))]}
   (map->Nav args))
 
@@ -44,6 +41,23 @@
               p-el-i   (conj p-el-i)
               xy-i     (conj xy-i))
       (->> (str/join "/"))))
+
+(defn locr->nav [{:as locr :keys [cmpt-pthv]}]
+  (reduce (fn [acc [k v]]
+            (assoc acc k v))
+          (nav-rec :cmpt-pth (when (seq cmpt-pthv) cmpt-pthv))
+          (map vector
+               [:src-k :x-el-k :p-el-i :xy-i]
+               (remove #{:el-argv} (:el-pthv locr)))))
+
+(defn navr->locr [navr]
+  (data/->Loc (or (:cmpt-pth navr) [])
+              (reduce (fn [acc k]
+                        (if-let [v (get navr k)]
+                          (conj acc v)
+                          (reduced acc)))
+                      []
+                      [:src-k :x-el-k :p-el-i :xy-i])))
 
 (defn- cmpt-pth->data-pth [cmpt-pth]
   (->> cmpt-pth
@@ -99,10 +113,16 @@
 (defn update-in-nav [cmpt-root navr f & args]
   (update-in* cmpt-root (nav-rec->data-pth navr) f args))
 
-(defn update-in-nav* [cmpt-root navr trunc-k f & args]
-  (if-not (get navr trunc-k)
+(defn update-in-nav* [cmpt-root navr {:keys [trunc-k
+                                             refresh-locr?]}
+                      f & args]
+  (if (and trunc-k
+           (not (get navr trunc-k)))
     cmpt-root
-    (update-in* cmpt-root (nav-rec->data-pth navr trunc-k) f args)))
+    (let [data-pth (nav-rec->data-pth navr trunc-k)]
+      (-> (update-in* cmpt-root data-pth f args)
+          (cond-> refresh-locr?
+                  (update-in* data-pth data/refresh-x [(navr->locr navr)]))))))
 
 (defn- cmpt->index [cmpt-pth cmpt]
   (->> (keys (get-in cmpt [:defs :components]))

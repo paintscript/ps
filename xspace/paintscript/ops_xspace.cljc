@@ -37,8 +37,8 @@
                                         (mapv data/elr->v))
                  :ops/del-pnt      (->> (apply ops-path-tf/del-pnt     els ii)
                                         (mapv data/elr->v))
-                 :ops/append-p-el  (->> (ops-path-tf/append-p-el els ii)
-                                        (mapv data/elr->v))
+                 ; :ops/append-p-el  (->> (ops-path-tf/append-p-el els ii)
+                 ;                        (mapv data/elr->v))
                  :ops/del-el       (->> (apply ops-path-tf/del-el      els ii)
                                         (mapv data/elr->v))
 
@@ -115,11 +115,11 @@
             :=>  [[:L [0 0] [10 10]]]))
 
    ;; el
-   (xx {:= {:op :ops/append-p-el}}
-
-       (x-> :els [[:L [0 0] [5 5]]]
-            :ii  0
-            :=>  [[:L [0 0] [5 5]] [:L [15 15]]]))
+   ; (xx {:= {:op :ops/append-p-el}}
+   ;
+   ;     (x-> :els [[:L [0 0] [5 5]]]
+   ;          :ii  0
+   ;          :=>  [[:L [0 0] [5 5]] [:L [15 15]]]))
 
    (xx {:= {:op :ops/del-el}}
 

@@ -99,7 +99,15 @@
                                                                            arg)
                                                                          (:canvas full-svg-params))))))))
                _ (swap! !s-app assoc-in [:ui :on-resize!] on-resize!)
-               _ (.addEventListener js/window "resize" on-resize!)]
+               _ (.addEventListener js/window "resize" on-resize!)
+               ; _ (do
+               ;     (dispatch! [:op/clear])
+               ;     (dispatch! [:op/svg-path "M 10 10 L 20 20"])
+               ;     (dispatch! [:op/sel-rel :next])
+               ;     (dispatch! [:op/sel-rel :open])
+               ;     (dispatch! [:op/sel-rel :next])
+               ;     (dispatch! [:op/el-append [:L [10 50]]]))
+               ]
 
     (let [conf-ext   @!conf-ext
           navr-sel   @!navr-sel

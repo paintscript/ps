@@ -36,7 +36,7 @@
   (r/with-let [!hover? (r/atom false)]
     (let [navr-hov (-> navr-hov (assoc :ref-pth nil :cmpt-pth0 nil))
           navr-sel (-> navr-sel (assoc :ref-pth nil :cmpt-pth0 nil))
-          navr-ctx (-> locr-ctx data/locr->nav)]
+          navr-ctx (-> locr-ctx nav/locr->nav)]
       (when
         (vector? xy) ;; skip v/V, h/H
         (let [[x y :as xy*] xy
@@ -227,7 +227,8 @@
          ;; --- background hatching
          [:defs
           [:pattern#diagonalHatch
-           {:pattern-units "userSpaceOnUse" :width 5 :height 5}
+           {:width  5 :pattern-units "userSpaceOnUse"
+            :height 5}
            [:path {:style {:stroke         "var(--blue-light)"
                            :stroke-linecap "square"
                            :stroke-width   1}
@@ -235,7 +236,8 @@
 
          (when (:hatching canvas)
            [tf {:tl canvas-xy0}
-            [:rect {:width w :height h :fill "url(#diagonalHatch)"}]])
+            [:rect {:width  w :fill "url(#diagonalHatch)"
+                    :height h}]])
 
          [tf* tf-params
 

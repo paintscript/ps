@@ -13,7 +13,7 @@
 
 (defn update-el [cmpt navr-sel f & args]
   (-> cmpt
-      (nav/update-in-nav* navr-sel :x-el-k #(apply f % args))))
+      (nav/update-in-nav* navr-sel {:trunc-k :x-el-k} #(apply f % args))))
 
 (defn update-els [cmpt navr-sel f & args]
   (case (nav/nav-head-k navr-sel)
@@ -56,7 +56,7 @@
     (case (nav/nav-head-k navr-sel)
       (nil
        :cmpt-pth) (-> cmpt
-                      (nav/update-in-nav* navr-sel :cmpt-pth
+                      (nav/update-in-nav* navr-sel {:trunc-k :cmpt-pth}
                                           (fn [cmpt-sel]
                                             (apply update-pcmds-cmpt cmpt-sel f-pcmds args))))
       ;; NOTE: dosn't come up?
@@ -65,7 +65,7 @@
       (:x-el-k
        :p-el-i
        :xy-i)     (-> cmpt
-                      (nav/update-in-nav* navr-sel :x-el-k
+                      (nav/update-in-nav* navr-sel {:trunc-k :x-el-k}
                                           (fn [el]
                                             (apply ops-elem/update-el-argv el f-pcmds args)))))))
 

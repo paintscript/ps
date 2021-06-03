@@ -96,7 +96,7 @@
         "doc"         [:op/set-p-opts [:doc (first args)]]
 
         ;; --- nav
-        "clear"       [:op.s-log/clear]
+        "clear"       [:op/clear]
         "def"         (let [[pk] args]
                         [:op/def pk])
         "script"      (let [sel-path (map edn/read-string args)]
@@ -117,9 +117,10 @@
   (case op-k
     :op/set-cmpt-str    (let [cmpt-edn (->> (edn/read-string arg)
                                             (data/parse-cmpt (-> navr-sel
-                                                                 data/navr->locr)))]
+                                                                 nav/navr->locr)))]
                           {:cmpt (if (:cmpt-pth navr-sel)
-                                   (nav/update-in-nav* cmpt navr-sel :cmpt-pth
+                                   (nav/update-in-nav* cmpt navr-sel
+                                                       {:trunc-k :cmpt-pth}
                                                        (fn [cmpt-prev]
                                                          cmpt-edn))
                                    cmpt-edn)})
@@ -146,19 +147,34 @@
     :op/pth-del         {:cmpt (-> cmpt (update :script ops-cmpt/del-pth (:x-el-k navr-sel)))
                          :ui   (-> ui   (assoc :navr-sel nil :snap nil))}
 
-    :op/el-append       (let [el         arg
-                              {:keys
-                               [p-el-i]} navr-sel
-                              init?      (not (seq (:script cmpt)))
-                              cmpt'      (cond
-                                           init? (-> cmpt (update :script conj
-                                                                  (data/elemv :path [el])))
-                                           el    (-> cmpt (nav/update-in-nav* navr-sel :x-el-k ops-path-tf/append-p-el p-el-i el))
-                                           :else (-> cmpt (nav/update-in-nav* navr-sel :x-el-k ops-path-tf/append-p-el p-el-i)))
-                              navr-sel'   (-> navr-sel
-                                              (update :p-el-i #(some-> % inc)))]
-                          {:cmpt cmpt'
-                           :ui   (-> ui (assoc :navr-sel navr-sel'))})
+    :op/el-append       (let [el         (-> arg
+                                             (cond-> (vector? arg)
+                                                     data/elvv->rr))
+                              [navr-coll
+                               el-i]     (cond
+                                           (-> (nav/get-in-nav cmpt navr-sel) :el-k (= :path))
+                                           [navr-sel nil]
+
+                                           (-> (nav/get-in-nav cmpt (-> navr-sel
+                                                                        nav/nav-up)) :el-k (= :path))
+                                           [(-> navr-sel nav/nav-up)
+                                            (:p-el-i navr-sel)])]
+                          {:cmpt (-> cmpt
+                                     (nav/update-in-nav* navr-coll {:refresh-locr? true}
+                                                         ops-path-tf/insert-el :el-i el-i :el el))})
+
+    :op/svg-path        (let [[svg-path] args]
+                          (println :op/svg-path svg-path)
+                          (let [p-new (-> svg-path
+                                          conv/path-d->path
+                                          data/elvv->rr)
+                                navr  (or navr-sel
+                                          (nav/nav-rec :src-k :script))]
+                            ; (pprint p-new)
+                            {:cmpt (-> cmpt
+                                       (nav/update-in-nav* navr {:refresh-locr? true}
+                                                           ops-path-tf/insert-el
+                                                           :el p-new))}))
 
     :op/del-sel         (let [k-el      (-> navr-sel nav/nav-head-k)
                               i-del     (-> navr-sel (get   k-el))
@@ -169,8 +185,9 @@
                            :ui   (-> ui   (assoc :navr-sel navr-sel'))})
 
     :op/el-tf           (let [to arg]
-                          {:cmpt (-> cmpt (nav/update-in-nav* navr-sel :x-el-k
-                                                              ops-path-tf/change-pcmd-k (:p-el-i navr-sel) to))
+                          {:cmpt (-> cmpt (nav/update-in-nav* navr-sel {:trunc-k :x-el-k}
+                                                              ops-path-tf/change-pcmd-k
+                                                              (:p-el-i navr-sel) to))
                            :ui   (-> ui   (update :navr-sel nav/nav-truncate :p-el-i))})
 
     :op/xy-append       {:cmpt (-> cmpt (update-in [:script (:x-el-k navr-sel)]
@@ -224,13 +241,6 @@
                                                     (assoc-in [:defs pk] [])
                                                     (update :script conj el))))
                                :ui   (-> ui (assoc :navr-sel [:defs pk nil]))})))
-
-    :op/svg-path        (let [[svg-path] args]
-                          (println :svg-path svg-path)
-                          (let [p-new (conv/path-d->path svg-path)]
-                            (pprint p-new)
-                            {:cmpt (-> cmpt
-                                       (update :script conj p-new))}))
 
     :op/navr-sel        {:ui (-> ui
                                  (assoc :navr-sel arg)

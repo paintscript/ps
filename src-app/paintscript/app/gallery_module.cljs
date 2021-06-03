@@ -34,7 +34,7 @@
        :class "save"
        :label "save"
        :disabled? (not diff?)
-       :on-click #(dispatch! [:save-edn])]]
+       :on-click #(dispatch! [:op/save-edn])]]
 
      (case tab
        :script [:div.sidebar-config
@@ -102,7 +102,7 @@
                                (assoc-in [:canvas :coords?] false))]]
               ^{:key painting-id}
               [:div.gallery-item
-               {:on-click #(app-dispatch! [:set-canvas [c component]])}
+               {:on-click #(app-dispatch! [:op/set-canvas [c component]])}
                [:div.gallery-item-title (or (:title painting)
                                             painting-id)]
                [canvas/canvas-paint (-> (u/deep-merge c' component)

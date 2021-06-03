@@ -1,5 +1,4 @@
-(ns paintscript.data
-  (:require [paintscript.nav :as nav]))
+(ns paintscript.data)
 
 ;; NOTE:
 ;; - unlike nav/Nav these are data paths for direct use with
@@ -16,23 +15,6 @@
             :p-el-i 2
             :xy-i   3)]
     (get-in locr [:el-pthv i])))
-
-(defn locr->nav [{:as locr :keys [cmpt-pthv]}]
-  (reduce (fn [acc [k v]]
-            (assoc acc k v))
-          (nav/nav-rec :cmpt-pth (when (seq cmpt-pthv) cmpt-pthv))
-          (map vector
-               [:src-k :x-el-k :p-el-i :xy-i]
-               (remove #{:el-argv} (:el-pthv locr)))))
-
-(defn navr->locr [navr]
-  (->Loc (or (:cmpt-pth navr) [])
-         (reduce (fn [acc k]
-                   (if-let [v (get navr k)]
-                     (conj acc v)
-                     (reduced acc)))
-                 []
-                 [:src-k :x-el-k :p-el-i :xy-i])))
 
 ;; NOTE: the pnt wrapper is only useful for the visual/interactive editor,
 ;; not for programmatic processing
@@ -96,29 +78,30 @@
        el-argv))))
 
 (defn elvv->rr
-  [locr elv-tree]
-  (let [{:as elr
-         :keys [el-k
-                el-opts
-                el-argv]} (elv->r locr elv-tree)
+  ([elv-tree] (elvv->rr locr-root elv-tree))
+  ([locr elv-tree]
+   (let [{:as elr
+          :keys [el-k
+                 el-opts
+                 el-argv]} (elv->r locr elv-tree)
 
-        el-opts' (when-let [xy (:xy el-opts)]
-                   (let [locr' (-> locr (update :el-pthv conj :el-opts :xy))]
-                     (-> el-opts
-                         (assoc :xy (pnt :locr locr' :xy xy)))))
+         el-opts' (when-let [xy (:xy el-opts)]
+                    (let [locr' (-> locr (update :el-pthv conj :el-opts :xy))]
+                      (-> el-opts
+                          (assoc :xy (pnt :locr locr' :xy xy)))))
 
-        el-argv' (case el-k
-                   :path (->> (map-indexed vector el-argv)
-                              (mapv (fn [[i pcmdv]]
-                                      (let [locr' (-> locr
-                                                      (cond-> (= :script (-> locr :el-pthv first))
-                                                              (update :el-pthv conj :el-argv))
-                                                      (update :el-pthv conj i))]
-                                        (elv->r locr' pcmdv)))))
-                   nil)]
-    (-> elr
-        (cond-> el-opts' (assoc :el-opts el-opts')
-                el-argv' (assoc :el-argv el-argv')))))
+         el-argv' (case el-k
+                    :path (->> (map-indexed vector el-argv)
+                               (mapv (fn [[i pcmdv]]
+                                       (let [locr' (-> locr
+                                                       (cond-> (= :script (-> locr :el-pthv first))
+                                                               (update :el-pthv conj :el-argv))
+                                                       (update :el-pthv conj i))]
+                                         (elv->r locr' pcmdv)))))
+                    nil)]
+     (-> elr
+         (cond-> el-opts' (assoc :el-opts el-opts')
+                 el-argv' (assoc :el-argv el-argv'))))))
 
 (defn elrr->vv
   [{:as elr-tree :keys [el-k]}]
@@ -128,6 +111,15 @@
               elr->v)
     (-> elr-tree
         elr->v)))
+
+(defn elvv-vec->elrr-vec
+  [elvv-vec locr]
+  (into []
+        (map-indexed (fn [i elv]
+                       (let [locr' (-> locr
+                                       (assoc :el-pthv [:script i]))]
+                         (elvv->rr locr' elv))))
+        elvv-vec))
 
 (defn parse-cmpt
   ([cmpt-tree] (parse-cmpt locr-root cmpt-tree))
@@ -149,13 +141,7 @@
                                           [cmpt-id cmpt-def'])))
                                  %))
                script
-               (update :script #(into []
-                                      (map-indexed
-                                       (fn [i elv]
-                                         (let [locr' (-> locr
-                                                         (assoc :el-pthv [:script i]))]
-                                           (elvv->rr locr' elv))))
-                                      %))
+               (update :script elvv-vec->elrr-vec locr)
                cmpt-defs
                (update-in [:defs] #(into {}
                                          (map (fn [[k v :as kv]]
@@ -186,7 +172,14 @@
                                            (-> cmpt-def serialize-cmpt)])))
               script    (update :script #(mapv elrr->vv %)))))
 
-(defn refresh-elrr [elrr]
-  (-> elrr
-      elrr->vv
-      (->> (elvv->rr (:locr elrr)))))
+(defn refresh-x
+  ([x] (refresh-x x nil))
+  ([x locr]
+   (if (record? x)
+     (-> x
+         elrr->vv
+         (->> (elvv->rr (or locr
+                            (:locr x)))))
+     (->> x
+          (mapv elrr->vv)
+          (#(elvv-vec->elrr-vec % locr))))))
